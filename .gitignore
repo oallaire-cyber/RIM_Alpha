@@ -1,0 +1,17 @@
+# Environnement Python
+venv/
+__pycache__/
+*.pyc
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Fichiers temporaires
+*.log
+*.tmp
+.DS_Store
+
+# Données Neo4j locales
+neo4j_data/
