@@ -386,9 +386,9 @@ def render_graph(nodes: list, edges: list, color_by: str = "score"):
             "enabled": true,
             "solver": "forceAtlas2Based",
             "forceAtlas2Based": {
-                "gravitationalConstant": -50,
+                "gravitationalConstant": -150,
                 "centralGravity": 0.01,
-                "springLength": 150,
+                "springLength": 250,
                 "springConstant": 0.08
             },
             "stabilization": {"iterations": 100}
@@ -410,7 +410,7 @@ def render_graph(nodes: list, edges: list, color_by: str = "score"):
             color = get_color_by_category(node["category"])
         
         # Taille proportionnelle au score
-        size = 20 + (score * 4)
+        size = 5 + (score * 2)
         
         # Info-bulle
         title = f"""
@@ -452,12 +452,19 @@ def render_graph(nodes: list, edges: list, color_by: str = "score"):
         )
     
     # Génération du HTML
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".html", mode="w", encoding="utf-8") as f:
-        net.save_graph(f.name)
-        f.seek(0)
-        with open(f.name, 'r', encoding='utf-8') as html_file:
-            html_content = html_file.read()
-        os.unlink(f.name)
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".html", mode="w", encoding="utf-8")
+    tmp_path = tmp_file.name
+    tmp_file.close()
+    
+    net.save_graph(tmp_path)
+    
+    with open(tmp_path, 'r', encoding='utf-8') as html_file:
+        html_content = html_file.read()
+    
+    try:
+        os.unlink(tmp_path)
+    except PermissionError:
+        pass  # Windows garde parfois le fichier verrouillé, on ignore
     
     # Affichage
     st.components.v1.html(html_content, height=620, scrolling=False)

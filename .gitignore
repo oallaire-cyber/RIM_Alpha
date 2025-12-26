@@ -15,3 +15,6 @@ __pycache__/
 
 # Données Neo4j locales
 neo4j_data/
+
+# JavaScript
+lib/
