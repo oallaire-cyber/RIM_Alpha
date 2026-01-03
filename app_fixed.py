@@ -544,7 +544,7 @@ def get_color_by_exposure(exposure: float) -> str:
     else:
         return "#27ae60"
 
-def render_graph(nodes: list, edges: list, color_by: str = "level"):
+def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enabled: bool = True):
     """Génère et affiche le graphe interactif avec PyVis"""
     if not nodes:
         st.info("Aucun risque à afficher. Créez votre premier risque !")
@@ -558,35 +558,42 @@ def render_graph(nodes: list, edges: list, color_by: str = "level"):
         directed=True
     )
     
-    net.set_options("""
-    {
-        "nodes": {
-            "font": {"size": 14, "face": "Arial"},
+    # Configuration avec option de physique
+    net.set_options(f"""
+    {{
+        "nodes": {{
+            "font": {{"size": 14, "face": "Arial"}},
             "borderWidth": 2,
             "shadow": true
-        },
-        "edges": {
-            "arrows": {"to": {"enabled": true, "scaleFactor": 1.0}},
-            "smooth": {"type": "curvedCW", "roundness": 0.2},
+        }},
+        "edges": {{
+            "arrows": {{"to": {{"enabled": true, "scaleFactor": 1.0}}}},
+            "smooth": {{"type": "curvedCW", "roundness": 0.2}},
             "shadow": true
-        },
-        "physics": {
-            "enabled": true,
+        }},
+        "physics": {{
+            "enabled": {str(physics_enabled).lower()},
             "solver": "forceAtlas2Based",
-            "forceAtlas2Based": {
+            "forceAtlas2Based": {{
                 "gravitationalConstant": -150,
                 "centralGravity": 0.01,
                 "springLength": 300,
                 "springConstant": 0.05
-            },
-            "stabilization": {"iterations": 150}
-        },
-        "interaction": {
+            }},
+            "stabilization": {{
+                "iterations": 150,
+                "fit": true
+            }}
+        }},
+        "interaction": {{
             "hover": true,
             "navigationButtons": true,
-            "keyboard": true
-        }
-    }
+            "keyboard": true,
+            "dragNodes": true,
+            "dragView": true,
+            "zoomView": true
+        }}
+    }}
     """)
     
     for node in nodes:
@@ -836,6 +843,16 @@ def main():
                 format_func=lambda x: "Niveau" if x == "level" else "Exposition"
             )
             
+            st.markdown("---")
+            
+            physics_enabled = st.checkbox(
+                "🔄 Physique active",
+                value=True,
+                help="Décochez pour figer les nœuds après les avoir positionnés"
+            )
+            
+            st.info("💡 Astuce : Décochez 'Physique active' puis glissez les nœuds où vous voulez. Ils resteront fixes !")
+            
             if st.button("🔄 Actualiser", use_container_width=True):
                 st.rerun()
         
@@ -850,7 +867,7 @@ def main():
                 filters["status"] = status_filter
             
             nodes, edges = manager.get_graph_data(filters if filters else None)
-            render_graph(nodes, edges, color_by)
+            render_graph(nodes, edges, color_by, physics_enabled)
     
     # === ONGLET RISQUES ===
     with tab_risks:

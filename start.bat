@@ -54,7 +54,7 @@ echo Pour arreter l'application, fermez cette fenetre ou appuyez sur Ctrl+C
 echo.
 
 REM Lancement de Streamlit
-streamlit run app_phase1.py
+streamlit run app.py
 
 REM Si l'utilisateur ferme Streamlit, proposer d'arreter Neo4j
 echo.

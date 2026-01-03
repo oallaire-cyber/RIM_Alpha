@@ -4,7 +4,7 @@
 // =============================================================================
 
 // 1. PURGE (optionnel, décommenter si besoin de repartir à zéro)
-// MATCH (n) DETACH DELETE n;
+MATCH (n) DETACH DELETE n;
 
 // =============================================================================
 // 2. CRÉATION DES RISQUES STRATÉGIQUES (8)
