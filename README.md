@@ -1,213 +1,177 @@
-# 🎯 Risk Influence Map
+# 🎯 Risk Influence Map - Phase 1
 
-Application Streamlit pour la cartographie dynamique des risques et de leurs influences mutuelles, utilisant Neo4j comme base de données graphe.
+POC enrichi pour la gestion des risques avec architecture stratégique/opérationnelle et risques contingents.
 
-## 🎯 Objectif
+## 🆕 Nouvelles fonctionnalités Phase 1
 
-Disposer d'une vue dynamique des risques permettant de :
-- **Visualiser** le graphe des risques et leurs interdépendances
-- **Modéliser** les influences entre risques (amplification, déclenchement, atténuation, corrélation)
-- **Gérer** le cycle de vie complet des risques (CRUD)
-- **Analyser** l'impact en cascade des risques
+### Architecture à deux niveaux
+- **Risques Stratégiques** : Orientés conséquences business, pilotés par la direction
+- **Risques Opérationnels** : Orientés causes, pilotés par les fonctions métiers
 
-## 📋 Prérequis
+### Trois types de liens d'influence
+1. **Niveau 1 (Op → Strat)** : Comment les risques opérationnels impactent les stratégiques
+2. **Niveau 2 (Strat → Strat)** : Effets de cascade entre risques stratégiques
+3. **Niveau 3 (Op → Op)** : Propagation entre risques opérationnels
 
-- **Python 3.9+** (déjà installé sur la plupart des systèmes)
-- **Docker** pour Neo4j (ou Neo4j Desktop)
-- Aucun droit administrateur requis
-- Aucun serveur web tiers nécessaire
+### Gestion des risques contingents
+- Modélisation des risques futurs dépendants de décisions structurantes
+- Timeline des décisions (ex: Q3 2026)
+- Visualisation en pointillés dans le graphe
+- Conditions d'activation traçables
 
-## 🚀 Installation rapide
+### Multi-catégorisation
+- **Programme** : Risques transverses
+- **Produit** : Risques techniques du réacteur
+- **Industriel** : Risques de production
+- **Supply Chain** : Risques d'approvisionnement
 
-### 1. Lancer Neo4j avec Docker
+Un risque peut appartenir à plusieurs catégories simultanément.
 
+### Import/Export Excel
+- Export complet des risques et influences
+- Import pour alimentation initiale
+- Format standardisé pour faciliter le partage
+
+### Filtres avancés
+- Filtrage par niveau (Stratégique/Opérationnel)
+- Filtrage par catégories (multi-sélection)
+- Filtrage par statut (Active/Contingent/Archived)
+- Visualisation adaptée selon les filtres
+
+## 📊 Modèle de données
+
+### Nœud Risk
+```
+Properties:
+- id: UUID unique
+- name: Nom du risque
+- level: "Strategic" | "Operational"
+- categories: ["Programme", "Produit", "Industriel", "Supply Chain"]
+- description: Description détaillée
+- status: "Active" | "Contingent" | "Archived"
+- activation_condition: Condition pour risques contingents
+- activation_decision_date: Date de décision structurante
+- owner: Responsable du risque
+- probability: 0-10 (optionnel)
+- impact: 0-10 (optionnel)
+- exposure: probability × impact (calculé)
+- current_score_type: "Qualitative_4x4" | "Quantitative" | "None"
+```
+
+### Relation INFLUENCES
+```
+Properties:
+- id: UUID unique
+- influence_type: "Level1_Op_to_Strat" | "Level2_Strat_to_Strat" | "Level3_Op_to_Op"
+- strength: "Weak" | "Moderate" | "Strong" | "Critical"
+- description: Explication du lien
+- confidence: 0.0-1.0 (niveau de certitude)
+```
+
+## 🚀 Installation
+
+### Prérequis
+- Python 3.9+
+- Docker (pour Neo4j)
+
+### 1. Lancer Neo4j
 ```bash
 docker run -d \
-    --name neo4j-risk-map \
+    --name neo4j-risk \
     -p 7474:7474 -p 7687:7687 \
-    -e NEO4J_AUTH=neo4j/risk2024secure \
-    -v neo4j_risk_data:/data \
+    -e NEO4J_AUTH=neo4j/password123 \
+    -v neo4j_data:/data \
     neo4j:latest
 ```
 
-### 2. Installer les dépendances Python
-
+### 2. Installer les dépendances
 ```bash
-# Créer un environnement virtuel (recommandé)
-python -m venv venv
-
-# Activer l'environnement
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
-
-# Installer les dépendances
-pip install -r requirements.txt
+pip install -r requirements_phase1.txt
 ```
 
 ### 3. Lancer l'application
-
 ```bash
-streamlit run app.py
+streamlit run app_phase1.py
 ```
 
-L'application s'ouvre automatiquement dans votre navigateur sur `http://localhost:8501`
+## 💡 Cas d'usage
 
-## 📊 Fonctionnalités
-
-### Gestion des Risques (Nœuds)
-
-| Attribut | Description |
-|----------|-------------|
-| **Nom** | Identifiant du risque |
-| **Catégorie** | Cyber, Opérationnel, Stratégique, Financier, Conformité, Réputation, RH, Environnemental |
-| **Probabilité** | Échelle 1-10 |
-| **Impact** | Échelle 1-10 |
-| **Score** | Calculé automatiquement (Probabilité × Impact) |
-| **Statut** | Actif, Surveillé, Mitigé, Fermé |
-| **Description** | Texte libre |
-
-### Gestion des Influences (Relations)
-
-| Attribut | Description |
-|----------|-------------|
-| **Source** | Risque origine |
-| **Cible** | Risque impacté |
-| **Type** | Amplifie, Déclenche, Atténue, Corrèle |
-| **Force** | Échelle 1-10 |
-| **Description** | Explication de l'influence |
-
-### Visualisation
-
-- **Graphe interactif** avec PyVis
-- **Couleurs dynamiques** selon le score ou la catégorie
-- **Taille des nœuds** proportionnelle au score de risque
-- **Épaisseur des liens** proportionnelle à la force d'influence
-- **Navigation** : zoom, déplacement, sélection
-- **Info-bulles** au survol
-
-### Interface
-
+### Exemple 1 : Risque contingent lié au choix du combustible
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  🎯 Risk Influence Map                                      │
-├─────────────────────────────────────────────────────────────┤
-│  📊 Risques: 12  │  🔗 Influences: 18  │  📈 Score: 5.2     │
-├─────────────────────────────────────────────────────────────┤
-│  [Visualisation] [Risques] [Influences] [Données]           │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │                                                     │   │
-│  │              [Graphe Interactif]                    │   │
-│  │                                                     │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+Nom: Tension approvisionnement combustible type A
+Niveau: Strategic
+Catégories: ["Programme", "Supply Chain"]
+Statut: Contingent
+Condition d'activation: "Si choix du combustible uranium enrichi type A"
+Date de décision: 2026-09-30
 ```
 
-## 🔧 Configuration
-
-### Connexion Neo4j
-
-Par défaut :
-- **URI** : `bolt://localhost:7687`
-- **Utilisateur** : `neo4j`
-- **Mot de passe** : celui défini dans `NEO4J_AUTH`
-
-### Variables d'environnement (optionnel)
-
-```bash
-export NEO4J_URI=bolt://localhost:7687
-export NEO4J_USER=neo4j
-export NEO4J_PASSWORD=votre_mot_de_passe
+### Exemple 2 : Chaîne d'influence Op → Strat
+```
+[Risque Op] Défaillance fournisseur pièce critique
+    ↓ (INFLUENCES Level1, Critical)
+[Risque Strat] Retard mise en production
+    ↓ (INFLUENCES Level2, Strong)
+[Risque Strat] Non-atteinte objectif profitabilité
 ```
 
-## 📁 Structure du projet
+## 📋 Format Excel pour Import
 
-```
-risk_influence_map/
-├── app.py              # Application principale
-├── requirements.txt    # Dépendances Python
-└── README.md          # Documentation
-```
+### Sheet "Risks"
+| name | level | categories | description | status | owner | probability | impact |
+|------|-------|------------|-------------|--------|-------|-------------|--------|
+| Risque 1 | Strategic | ["Programme"] | Description | Active | John | 7.0 | 8.0 |
 
-## 🔍 Requêtes Cypher utiles
+### Sheet "Influences"
+| source_id | target_id | strength | description | confidence |
+|-----------|-----------|----------|-------------|------------|
+| uuid-1 | uuid-2 | Critical | Description | 0.9 |
 
-### Risques les plus influents
-```cypher
-MATCH (r:Risk)-[i:INFLUENCES]->()
-RETURN r.name, count(i) as influences_sortantes
-ORDER BY influences_sortantes DESC
-LIMIT 5
-```
+## 🎨 Légende de visualisation
 
-### Risques les plus impactés
-```cypher
-MATCH ()-[i:INFLUENCES]->(r:Risk)
-RETURN r.name, count(i) as influences_entrantes
-ORDER BY influences_entrantes DESC
-LIMIT 5
-```
+### Couleurs par niveau
+- 🟣 **Violet** : Risques Stratégiques
+- 🔵 **Bleu** : Risques Opérationnels
 
-### Chaînes d'influence
-```cypher
-MATCH path = (a:Risk)-[:INFLUENCES*1..3]->(b:Risk)
-WHERE a <> b
-RETURN path
-LIMIT 20
-```
+### Couleurs par exposition
+- 🔴 **Rouge** : Critique (≥7)
+- 🟠 **Orange** : Élevé (4-7)
+- 🔵 **Bleu** : Modéré (2-4)
+- 🟢 **Vert** : Faible (<2)
 
-### Score d'influence cumulé
-```cypher
-MATCH (r:Risk)
-OPTIONAL MATCH (r)-[out:INFLUENCES]->()
-OPTIONAL MATCH ()-[in:INFLUENCES]->(r)
-RETURN r.name, 
-       r.score as score_propre,
-       sum(out.strength) as influence_emise,
-       sum(in.strength) as influence_recue
-ORDER BY r.score DESC
-```
+### Types de liens
+- 🔴 **Rouge** : Op → Strat (Niveau 1)
+- 🟣 **Violet** : Strat → Strat (Niveau 2)
+- 🔵 **Bleu** : Op → Op (Niveau 3)
 
-## 🛡️ Cas d'usage Cybersécurité
+### Styles visuels
+- **Pointillés** : Risques contingents
+- **Solides** : Risques actifs
+- **Largeur du lien** : Proportionnelle à la force (Weak → Critical)
 
-### Exemple de modélisation
+## 🔜 Phases suivantes
 
-```
-[Phishing réussi] --Déclenche--> [Compromission credentials]
-         |                              |
-         |                              v
-         +-------Amplifie------> [Mouvement latéral]
-                                        |
-                                        v
-                                 [Exfiltration données]
-                                        |
-                                        v
-                                 [Impact réputation]
-```
+### Phase 2 (1 mois)
+- Dashboard exécutif avec KPIs
+- Historisation des modifications
+- Simulation "Si décision X, quels risques s'activent?"
+- Scoring flexible (quali/quanti)
 
-### Catégories recommandées pour la cyber
+### Phase 3 (1-2 mois)
+- KRIs et monitoring temps réel
+- Analyse de scénarios
+- Exports PowerPoint/PDF
+- Formation et documentation
 
-- **Cyber** : Risques techniques (malware, vulnérabilités, etc.)
-- **Opérationnel** : Continuité d'activité, processus
-- **Conformité** : RGPD, NIS2, certifications
-- **Réputation** : Image, confiance clients
-- **Financier** : Pertes directes, amendes
+### Phase 4 (évolutif)
+- Transition vers quantitatif (€, jours)
+- Monte Carlo
+- API pour alimentation auto
+- Machine learning
 
-## 🔄 Évolutions possibles
+## 📞 Support
 
-- [ ] Import/Export CSV des risques
-- [ ] Simulation de propagation d'impact
-- [ ] Historique des modifications
-- [ ] Calcul automatique du risque résiduel
-- [ ] Intégration avec des référentiels (EBIOS RM, ISO 27005)
-- [ ] API REST pour intégration SIEM/SOAR
-- [ ] Multi-utilisateurs avec authentification
-
-## 📝 Licence
-
-POC interne - Usage libre pour développement et tests.
+Pour questions ou suggestions sur le POC Phase 1, contacter l'équipe programme.
 
 ---
-
-*Développé pour l'analyse dynamique des risques cyber et business*
+*POC Phase 1 - Risk Influence Map pour programme SMR*
