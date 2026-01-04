@@ -1,69 +1,78 @@
 @echo off
-echo ========================================
-echo Risk Influence Map - Demarrage
-echo ========================================
+REM Risk Influence Map - Startup Script (Windows)
+REM This script starts the Neo4j database and launches the Streamlit application
+
+echo.
+echo ============================================
+echo   Risk Influence Map - Starting...
+echo ============================================
 echo.
 
-REM Verification de Docker
-docker --version >nul 2>&1
+REM Check if Docker is running
+docker info >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERREUR] Docker n'est pas installe ou n'est pas dans le PATH
-    echo Veuillez installer Docker Desktop depuis https://www.docker.com/products/docker-desktop
+    echo [ERROR] Docker is not running
+    echo Please start Docker Desktop and try again
     pause
     exit /b 1
 )
 
-echo [1/4] Verification de Docker... OK
-echo.
-
-REM Demarrage de Neo4j avec Docker Compose
-echo [2/4] Demarrage de Neo4j...
-docker-compose up -d
-
-if %errorlevel% neq 0 (
-    echo [ERREUR] Impossible de demarrer Neo4j
-    pause
-    exit /b 1
+REM Start Neo4j with docker-compose
+echo [INFO] Starting Neo4j database...
+if exist docker-compose.yml (
+    docker-compose up -d
+) else (
+    echo [WARN] docker-compose.yml not found, starting Neo4j manually...
+    docker run -d --name neo4j-rim -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/risk2024secure -v neo4j_rim_data:/data neo4j:latest
 )
 
-echo Neo4j demarre... Attente de 10 secondes pour initialisation...
+REM Wait for Neo4j to be ready
+echo [INFO] Waiting for Neo4j to be ready...
 timeout /t 10 /nobreak >nul
 
-echo [3/4] Neo4j demarre avec succes!
-echo.
-echo Neo4j Browser accessible sur: http://localhost:7474
-echo Identifiants par defaut: neo4j / risk2024secure
-echo.
-
-REM Verification de Python
-python --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERREUR] Python n'est pas installe ou n'est pas dans le PATH
-    echo Veuillez installer Python depuis https://www.python.org/downloads/
+REM Check if Neo4j is accessible
+curl -s http://localhost:7474 >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [SUCCESS] Neo4j is running
+) else (
+    echo [ERROR] Neo4j failed to start properly
     pause
     exit /b 1
 )
 
-echo [4/4] Lancement de l'application Streamlit...
 echo.
-echo ========================================
-echo Application Risk Influence Map
-echo ========================================
-echo L'application va s'ouvrir dans votre navigateur...
-echo Pour arreter l'application, fermez cette fenetre ou appuyez sur Ctrl+C
+echo ============================================
+echo   Neo4j Browser: http://localhost:7474
+echo   Username: neo4j
+echo   Password: risk2024secure
+echo ============================================
 echo.
 
-REM Lancement de Streamlit
+REM Check if Python virtual environment exists
+if exist venv\Scripts\activate.bat (
+    echo [INFO] Activating virtual environment...
+    call venv\Scripts\activate.bat
+) else (
+    echo [WARN] Virtual environment not found
+    echo [TIP] Create one with: python -m venv venv
+)
+
+REM Check if dependencies are installed
+python -c "import streamlit" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [INFO] Installing Python dependencies...
+    pip install -r requirements.txt
+)
+
+REM Launch Streamlit application
+echo.
+echo ============================================
+echo   Launching Risk Influence Map...
+echo ============================================
+echo.
 streamlit run app.py
 
-REM Si l'utilisateur ferme Streamlit, proposer d'arreter Neo4j
-echo.
-echo.
-set /p STOP_NEO4J="Voulez-vous arreter Neo4j ? (o/n): "
-if /i "%STOP_NEO4J%"=="o" (
-    echo Arret de Neo4j...
-    docker-compose down
-    echo Neo4j arrete.
-)
+REM Cleanup (optional - uncomment to stop Neo4j when closing)
+REM docker-compose down
 
 pause

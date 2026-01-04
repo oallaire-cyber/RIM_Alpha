@@ -1,79 +1,77 @@
 #!/bin/bash
 
-echo "========================================"
-echo "Risk Influence Map - Démarrage"
-echo "========================================"
+# Risk Influence Map - Startup Script (Linux/Mac)
+# This script starts the Neo4j database and launches the Streamlit application
+
+echo "🎯 Starting Risk Influence Map..."
 echo ""
 
-# Vérification de Docker
-if ! command -v docker &> /dev/null; then
-    echo "[ERREUR] Docker n'est pas installé"
-    echo "Veuillez installer Docker depuis https://www.docker.com/products/docker-desktop"
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo "❌ Error: Docker is not running"
+    echo "Please start Docker Desktop and try again"
     exit 1
 fi
 
-echo "[1/4] Vérification de Docker... OK"
-echo ""
-
-# Démarrage de Neo4j avec Docker Compose
-echo "[2/4] Démarrage de Neo4j..."
-docker-compose up -d
-
-if [ $? -ne 0 ]; then
-    echo "[ERREUR] Impossible de démarrer Neo4j"
-    exit 1
+# Start Neo4j with docker-compose
+echo "📦 Starting Neo4j database..."
+if [ -f "docker-compose.yml" ]; then
+    docker-compose up -d
+else
+    echo "⚠️  docker-compose.yml not found, starting Neo4j manually..."
+    docker run -d \
+        --name neo4j-rim \
+        -p 7474:7474 -p 7687:7687 \
+        -e NEO4J_AUTH=neo4j/risk2024secure \
+        -v neo4j_rim_data:/data \
+        neo4j:latest
 fi
 
-echo "Neo4j démarre... Attente de 10 secondes pour initialisation..."
+# Wait for Neo4j to be ready
+echo "⏳ Waiting for Neo4j to be ready..."
 sleep 10
 
-echo "[3/4] Neo4j démarré avec succès!"
-echo ""
-echo "Neo4j Browser accessible sur: http://localhost:7474"
-echo "Identifiants par défaut: neo4j / risk2024secure"
-echo ""
-
-# Vérification de Python
-if ! command -v python3 &> /dev/null && ! command -v python &> /dev/null; then
-    echo "[ERREUR] Python n'est pas installé"
-    echo "Veuillez installer Python depuis https://www.python.org/downloads/"
+# Check if Neo4j is accessible
+if curl -s http://localhost:7474 > /dev/null; then
+    echo "✅ Neo4j is running at http://localhost:7474"
+else
+    echo "❌ Neo4j failed to start properly"
     exit 1
 fi
 
-# Déterminer la commande Python
-if command -v python3 &> /dev/null; then
-    PYTHON_CMD=python3
+echo ""
+echo "📊 Neo4j Browser: http://localhost:7474"
+echo "   Username: neo4j"
+echo "   Password: risk2024secure"
+echo ""
+
+# Check if Python virtual environment exists
+if [ -d "venv" ]; then
+    echo "🐍 Activating virtual environment..."
+    source venv/bin/activate
 else
-    PYTHON_CMD=python
+    echo "⚠️  Virtual environment not found"
+    echo "💡 Tip: Create one with 'python -m venv venv'"
 fi
 
-echo "[4/4] Lancement de l'application Streamlit..."
-echo ""
-echo "========================================"
-echo "Application Risk Influence Map"
-echo "========================================"
-echo "L'application va s'ouvrir dans votre navigateur..."
-echo "Pour arrêter l'application, appuyez sur Ctrl+C"
-echo ""
+# Check if dependencies are installed
+if ! python -c "import streamlit" 2>/dev/null; then
+    echo "📦 Installing Python dependencies..."
+    pip install -r requirements.txt
+fi
 
-# Fonction de nettoyage à l'arrêt
+# Launch Streamlit application
+echo ""
+echo "🚀 Launching Risk Influence Map application..."
+echo ""
+streamlit run app.py
+
+# Cleanup function (called when script exits)
 cleanup() {
     echo ""
-    echo ""
-    read -p "Voulez-vous arrêter Neo4j ? (o/n): " STOP_NEO4J
-    if [ "$STOP_NEO4J" = "o" ] || [ "$STOP_NEO4J" = "O" ]; then
-        echo "Arrêt de Neo4j..."
-        docker-compose down
-        echo "Neo4j arrêté."
-    fi
-    exit 0
+    echo "👋 Shutting down..."
+    # Uncomment to stop Neo4j when exiting:
+    # docker-compose down
 }
 
-# Capture du signal Ctrl+C
-trap cleanup SIGINT SIGTERM
-
-# Lancement de Streamlit
-streamlit run app_phase1.py
-
-# Si Streamlit se termine normalement
-cleanup
+trap cleanup EXIT

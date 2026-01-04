@@ -1,1061 +1,733 @@
 """
-Risk Influence Map - Phase 1
-Application Streamlit pour la gestion des risques avec approche stratégique/opérationnelle
+Risk Influence Map (RIM) - Main Application
+A Streamlit application for dynamic risk mapping and influence visualization using Neo4j
 """
 
 import streamlit as st
 from neo4j import GraphDatabase
 from pyvis.network import Network
+import streamlit.components.v1 as components
 import pandas as pd
-import tempfile
+from typing import List, Dict, Tuple, Optional
 import os
-from datetime import datetime, timedelta
-import json
 
-# Configuration de la page
+# Page configuration
 st.set_page_config(
-    page_title="Risk Influence Map - Phase 1",
+    page_title="Risk Influence Map",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Styles CSS personnalisés
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: #1f4e79;
-        margin-bottom: 0.5rem;
-    }
-    .sub-header {
-        font-size: 1.1rem;
-        color: #666;
-        margin-bottom: 2rem;
-    }
-    .contingent-badge {
-        background-color: #f39c12;
-        color: white;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.8em;
-    }
-    .strategic-badge {
-        background-color: #9b59b6;
-        color: white;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.8em;
-    }
-    .operational-badge {
-        background-color: #3498db;
-        color: white;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.8em;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Constants
+RISK_CATEGORIES = [
+    "Cyber", "Operational", "Strategic", "Financial", 
+    "Compliance", "Reputation", "HR", "Environmental"
+]
+
+RISK_STATUS = ["Active", "Monitored", "Mitigated", "Closed"]
+
+INFLUENCE_TYPES = ["AMPLIFIES", "TRIGGERS", "MITIGATES", "CORRELATES"]
+
+CATEGORY_COLORS = {
+    "Cyber": "#FF6B6B",
+    "Operational": "#4ECDC4",
+    "Strategic": "#45B7D1",
+    "Financial": "#FFA07A",
+    "Compliance": "#98D8C8",
+    "Reputation": "#F7DC6F",
+    "HR": "#BB8FCE",
+    "Environmental": "#85C1E2"
+}
+
+# Neo4j Connection Configuration
+NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "risk2024secure")
 
 
-# ============================================================================
-# CLASSE DE GESTION NEO4J
-# ============================================================================
-
-class RiskGraphManager:
-    """Gestionnaire de la base de données Neo4j pour les risques"""
+class Neo4jConnection:
+    """Handle Neo4j database connections"""
     
     def __init__(self, uri: str, user: str, password: str):
         self.driver = None
-        self.uri = uri
-        self.user = user
-        self.password = password
-    
-    def connect(self) -> bool:
-        """Établit la connexion à Neo4j"""
         try:
-            self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
+            self.driver = GraphDatabase.driver(uri, auth=(user, password))
+            # Test connection
             self.driver.verify_connectivity()
-            return True
         except Exception as e:
-            st.error(f"Erreur de connexion: {e}")
-            return False
+            st.error(f"❌ Failed to connect to Neo4j: {str(e)}")
+            st.info("Please ensure Neo4j is running and credentials are correct.")
     
     def close(self):
-        """Ferme la connexion"""
         if self.driver:
             self.driver.close()
     
-    def execute_query(self, query: str, parameters: dict = None):
-        """Exécute une requête Cypher"""
-        with self.driver.session() as session:
-            result = session.run(query, parameters or {})
-            return list(result)
-    
-    # --- GESTION DES RISQUES (NŒUDS) ---
-    
-    def create_risk(self, name: str, level: str, categories: list, description: str,
-                    status: str, activation_condition: str = None, 
-                    activation_decision_date: str = None, owner: str = "",
-                    probability: float = None, impact: float = None) -> bool:
-        """Crée un nouveau nœud de risque avec le modèle Phase 1"""
-        query = """
-        CREATE (r:Risk {
-            id: randomUUID(),
-            name: $name,
-            description: $description,
-            level: $level,
-            status: $status,
-            activation_condition: $activation_condition,
-            activation_decision_date: $activation_decision_date,
-            categories: $categories,
-            owner: $owner,
-            current_score_type: $current_score_type,
-            probability: $probability,
-            impact: $impact,
-            exposure: $exposure,
-            created_at: datetime(),
-            updated_at: datetime(),
-            last_review_date: $last_review_date,
-            next_review_date: $next_review_date
-        })
-        RETURN r.id as id
-        """
-        
-        # Calcul de l'exposition
-        if probability and impact:
-            exposure = probability * impact
-            current_score_type = "Qualitative_4x4"
-        else:
-            exposure = None
-            current_score_type = "None"
-        
-        # Dates de revue
-        last_review_date = datetime.now().isoformat()
-        next_review_date = (datetime.now() + timedelta(days=90)).isoformat()
+    def execute_query(self, query: str, parameters: Optional[Dict] = None):
+        """Execute a Cypher query and return results"""
+        if not self.driver:
+            return []
         
         try:
-            result = self.execute_query(query, {
-                "name": name,
-                "level": level,
-                "categories": categories,
-                "description": description,
-                "status": status,
-                "activation_condition": activation_condition,
-                "activation_decision_date": activation_decision_date,
-                "owner": owner,
-                "current_score_type": current_score_type,
-                "probability": probability,
-                "impact": impact,
-                "exposure": exposure,
-                "last_review_date": last_review_date,
-                "next_review_date": next_review_date
-            })
-            return len(result) > 0
+            with self.driver.session() as session:
+                result = session.run(query, parameters or {})
+                return [record.data() for record in result]
         except Exception as e:
-            st.error(f"Erreur lors de la création: {e}")
-            return False
-    
-    def get_all_risks(self, level_filter=None, category_filter=None, status_filter=None) -> list:
-        """Récupère tous les risques avec filtres optionnels"""
-        conditions = []
-        params = {}
-        
-        if level_filter:
-            conditions.append("r.level = $level")
-            params["level"] = level_filter
-        
-        if category_filter:
-            conditions.append("$category IN r.categories")
-            params["category"] = category_filter
-        
-        if status_filter:
-            conditions.append("r.status = $status")
-            params["status"] = status_filter
-        
-        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
-        
-        query = f"""
-        MATCH (r:Risk)
-        {where_clause}
-        RETURN r.id as id, r.name as name, r.level as level,
-               r.categories as categories, r.description as description,
-               r.status as status, r.activation_condition as activation_condition,
-               r.activation_decision_date as activation_decision_date,
-               r.owner as owner, r.probability as probability,
-               r.impact as impact, r.exposure as exposure,
-               r.current_score_type as current_score_type
-        ORDER BY r.exposure DESC
-        """
-        return self.execute_query(query, params)
-    
-    def get_risk_by_id(self, risk_id: str) -> dict:
-        """Récupère un risque par son ID"""
-        query = """
-        MATCH (r:Risk {id: $id})
-        RETURN r.id as id, r.name as name, r.level as level,
-               r.categories as categories, r.description as description,
-               r.status as status, r.activation_condition as activation_condition,
-               r.activation_decision_date as activation_decision_date,
-               r.owner as owner, r.probability as probability,
-               r.impact as impact, r.exposure as exposure
-        """
-        result = self.execute_query(query, {"id": risk_id})
-        return dict(result[0]) if result else None
-    
-    def update_risk(self, risk_id: str, name: str, level: str, categories: list,
-                    description: str, status: str, activation_condition: str,
-                    activation_decision_date: str, owner: str,
-                    probability: float, impact: float) -> bool:
-        """Met à jour un risque existant"""
-        exposure = (probability * impact) if (probability and impact) else None
-        
-        query = """
-        MATCH (r:Risk {id: $id})
-        SET r.name = $name,
-            r.level = $level,
-            r.categories = $categories,
-            r.description = $description,
-            r.status = $status,
-            r.activation_condition = $activation_condition,
-            r.activation_decision_date = $activation_decision_date,
-            r.owner = $owner,
-            r.probability = $probability,
-            r.impact = $impact,
-            r.exposure = $exposure,
-            r.updated_at = datetime()
-        RETURN r.id
-        """
-        try:
-            result = self.execute_query(query, {
-                "id": risk_id,
-                "name": name,
-                "level": level,
-                "categories": categories,
-                "description": description,
-                "status": status,
-                "activation_condition": activation_condition,
-                "activation_decision_date": activation_decision_date,
-                "owner": owner,
-                "probability": probability,
-                "impact": impact,
-                "exposure": exposure
-            })
-            return len(result) > 0
-        except Exception as e:
-            st.error(f"Erreur lors de la mise à jour: {e}")
-            return False
-    
-    def delete_risk(self, risk_id: str) -> bool:
-        """Supprime un risque et toutes ses relations"""
-        query = """
-        MATCH (r:Risk {id: $id})
-        DETACH DELETE r
-        """
-        try:
-            self.execute_query(query, {"id": risk_id})
-            return True
-        except Exception as e:
-            st.error(f"Erreur lors de la suppression: {e}")
-            return False
-    
-    # --- GESTION DES INFLUENCES (LIENS) ---
-    
-    def create_influence(self, source_id: str, target_id: str,
-                         influence_type: str, strength: str,
-                         description: str = "", confidence: float = 0.8) -> bool:
-        """Crée une relation d'influence entre deux risques"""
-        query = """
-        MATCH (source:Risk {id: $source_id})
-        MATCH (target:Risk {id: $target_id})
-        
-        // Détermine le type basé sur les niveaux
-        WITH source, target,
-             CASE 
-                WHEN source.level = 'Operational' AND target.level = 'Strategic' THEN 'Level1_Op_to_Strat'
-                WHEN source.level = 'Strategic' AND target.level = 'Strategic' THEN 'Level2_Strat_to_Strat'
-                WHEN source.level = 'Operational' AND target.level = 'Operational' THEN 'Level3_Op_to_Op'
-                ELSE 'Unknown'
-             END as determined_type
-        
-        CREATE (source)-[i:INFLUENCES {
-            id: randomUUID(),
-            influence_type: determined_type,
-            strength: $strength,
-            description: $description,
-            confidence: $confidence,
-            created_at: datetime(),
-            last_validated: datetime()
-        }]->(target)
-        RETURN i.id as id
-        """
-        try:
-            result = self.execute_query(query, {
-                "source_id": source_id,
-                "target_id": target_id,
-                "strength": strength,
-                "description": description,
-                "confidence": confidence
-            })
-            return len(result) > 0
-        except Exception as e:
-            st.error(f"Erreur lors de la création du lien: {e}")
-            return False
-    
-    def get_all_influences(self) -> list:
-        """Récupère toutes les relations d'influence"""
-        query = """
-        MATCH (source:Risk)-[i:INFLUENCES]->(target:Risk)
-        RETURN i.id as id, source.id as source_id, source.name as source_name,
-               source.level as source_level, target.id as target_id,
-               target.name as target_name, target.level as target_level,
-               i.influence_type as influence_type, i.strength as strength,
-               i.description as description, i.confidence as confidence
-        ORDER BY i.strength DESC
-        """
-        return self.execute_query(query)
-    
-    def update_influence(self, influence_id: str, strength: str,
-                         description: str, confidence: float) -> bool:
-        """Met à jour une relation d'influence"""
-        query = """
-        MATCH ()-[i:INFLUENCES {id: $id}]->()
-        SET i.strength = $strength,
-            i.description = $description,
-            i.confidence = $confidence,
-            i.last_validated = datetime()
-        RETURN i.id
-        """
-        try:
-            result = self.execute_query(query, {
-                "id": influence_id,
-                "strength": strength,
-                "description": description,
-                "confidence": confidence
-            })
-            return len(result) > 0
-        except Exception as e:
-            st.error(f"Erreur lors de la mise à jour: {e}")
-            return False
-    
-    def delete_influence(self, influence_id: str) -> bool:
-        """Supprime une relation d'influence"""
-        query = """
-        MATCH ()-[i:INFLUENCES {id: $id}]->()
-        DELETE i
-        """
-        try:
-            self.execute_query(query, {"id": influence_id})
-            return True
-        except Exception as e:
-            st.error(f"Erreur lors de la suppression: {e}")
-            return False
-    
-    # --- STATISTIQUES ET GRAPHE ---
-    
-    def get_statistics(self) -> dict:
-        """Récupère les statistiques du graphe"""
-        stats = {
-            "total_risks": 0,
-            "strategic_risks": 0,
-            "operational_risks": 0,
-            "contingent_risks": 0,
-            "total_influences": 0,
-            "avg_exposure": 0,
-            "categories": {},
-            "by_level": {}
-        }
-        
-        # Risques totaux
-        result = self.execute_query("MATCH (r:Risk) RETURN count(r) as count")
-        stats["total_risks"] = result[0]["count"] if result else 0
-        
-        # Risques stratégiques
-        result = self.execute_query("MATCH (r:Risk {level: 'Strategic'}) RETURN count(r) as count")
-        stats["strategic_risks"] = result[0]["count"] if result else 0
-        
-        # Risques opérationnels
-        result = self.execute_query("MATCH (r:Risk {level: 'Operational'}) RETURN count(r) as count")
-        stats["operational_risks"] = result[0]["count"] if result else 0
-        
-        # Risques contingents
-        result = self.execute_query("MATCH (r:Risk {status: 'Contingent'}) RETURN count(r) as count")
-        stats["contingent_risks"] = result[0]["count"] if result else 0
-        
-        # Influences
-        result = self.execute_query("MATCH ()-[i:INFLUENCES]->() RETURN count(i) as count")
-        stats["total_influences"] = result[0]["count"] if result else 0
-        
-        # Exposition moyenne
-        result = self.execute_query("""
-            MATCH (r:Risk) 
-            WHERE r.exposure IS NOT NULL 
-            RETURN avg(r.exposure) as avg
-        """)
-        stats["avg_exposure"] = round(result[0]["avg"] or 0, 2)
-        
-        # Par catégorie
-        result = self.execute_query("""
-            MATCH (r:Risk)
-            UNWIND r.categories as category
-            RETURN category, count(r) as count
-            ORDER BY count DESC
-        """)
-        stats["categories"] = {r["category"]: r["count"] for r in result}
-        
-        return stats
-    
-    def get_graph_data(self, filters: dict = None) -> tuple:
-        """Récupère les données pour la visualisation du graphe"""
-        # Construire les conditions de filtre
-        conditions = []
-        params = {}
-        
-        if filters:
-            # Filtrer par niveau (Strategic/Operational)
-            level_list = filters.get("level")
-            if level_list and len(level_list) > 0:
-                conditions.append("r.level IN $levels")
-                params["levels"] = level_list
-            
-            # Filtrer par catégories (multi-sélection)
-            category_list = filters.get("categories")
-            if category_list and len(category_list) > 0:
-                # Utiliser ANY pour vérifier si au moins une catégorie du filtre est dans r.categories
-                conditions.append("ANY(cat IN r.categories WHERE cat IN $categories)")
-                params["categories"] = category_list
-            
-            # Filtrer par statut (Active/Contingent/Archived)
-            status_list = filters.get("status")
-            if status_list and len(status_list) > 0:
-                conditions.append("r.status IN $statuses")
-                params["statuses"] = status_list
-        
-        # Construire la clause WHERE
-        where_clause = "WHERE " + " AND ".join(conditions) if len(conditions) > 0 else ""
-        
-        nodes_query = f"""
-            MATCH (r:Risk)
-            {where_clause}
-            RETURN r.id as id, r.name as name, r.level as level,
-                   r.categories as categories, r.status as status,
-                   r.exposure as exposure, r.owner as owner
-        """
-        nodes = self.execute_query(nodes_query, params)
-        
-        # Récupérer seulement les liens entre les nœuds filtrés
-        if nodes and len(nodes) > 0:
-            node_ids = [n["id"] for n in nodes]
-            edges_query = """
-                MATCH (source:Risk)-[i:INFLUENCES]->(target:Risk)
-                WHERE source.id IN $node_ids AND target.id IN $node_ids
-                RETURN source.id as source, target.id as target,
-                       i.influence_type as influence_type, i.strength as strength
-            """
-            edges = self.execute_query(edges_query, {"node_ids": node_ids})
-        else:
-            edges = []
-        
-        return nodes if nodes else [], edges if edges else []
-    
-    def export_to_excel(self, filepath: str):
-        """Exporte les risques et influences vers Excel"""
-        risks = self.get_all_risks()
-        influences = self.get_all_influences()
-        
-        df_risks = pd.DataFrame([dict(r) for r in risks])
-        df_influences = pd.DataFrame([dict(i) for i in influences])
-        
-        with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
-            if not df_risks.empty:
-                df_risks.to_excel(writer, sheet_name='Risks', index=False)
-            if not df_influences.empty:
-                df_influences.to_excel(writer, sheet_name='Influences', index=False)
-    
-    def import_from_excel(self, filepath: str) -> dict:
-        """Importe les risques et influences depuis Excel"""
-        result = {"risks_created": 0, "influences_created": 0, "errors": []}
-        
-        try:
-            # Import des risques
-            df_risks = pd.read_excel(filepath, sheet_name='Risks')
-            for _, row in df_risks.iterrows():
-                try:
-                    categories = eval(row['categories']) if isinstance(row['categories'], str) else row['categories']
-                    if self.create_risk(
-                        name=row['name'],
-                        level=row['level'],
-                        categories=categories,
-                        description=row.get('description', ''),
-                        status=row['status'],
-                        activation_condition=row.get('activation_condition'),
-                        activation_decision_date=row.get('activation_decision_date'),
-                        owner=row.get('owner', ''),
-                        probability=row.get('probability'),
-                        impact=row.get('impact')
-                    ):
-                        result["risks_created"] += 1
-                except Exception as e:
-                    result["errors"].append(f"Erreur risque '{row['name']}': {str(e)}")
-            
-            # Import des influences
-            try:
-                df_influences = pd.read_excel(filepath, sheet_name='Influences')
-                for _, row in df_influences.iterrows():
-                    try:
-                        if self.create_influence(
-                            source_id=row['source_id'],
-                            target_id=row['target_id'],
-                            influence_type=row['influence_type'],
-                            strength=row['strength'],
-                            description=row.get('description', ''),
-                            confidence=row.get('confidence', 0.8)
-                        ):
-                            result["influences_created"] += 1
-                    except Exception as e:
-                        result["errors"].append(f"Erreur influence: {str(e)}")
-            except:
-                pass  # Pas de sheet Influences
-        except Exception as e:
-            result["errors"].append(f"Erreur globale: {str(e)}")
-        
-        return result
+            st.error(f"Query execution error: {str(e)}")
+            return []
 
 
-# ============================================================================
-# FONCTIONS D'INTERFACE
-# ============================================================================
+# Initialize connection
+@st.cache_resource
+def get_neo4j_connection():
+    """Get cached Neo4j connection"""
+    return Neo4jConnection(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
 
-def get_color_by_level(level: str) -> str:
-    """Retourne une couleur selon le niveau"""
-    return "#9b59b6" if level == "Strategic" else "#3498db"
 
-def get_color_by_exposure(exposure: float) -> str:
-    """Retourne une couleur selon le niveau d'exposition"""
-    if exposure is None:
-        return "#95a5a6"
-    if exposure >= 7:
-        return "#e74c3c"
-    elif exposure >= 4:
-        return "#f39c12"
-    elif exposure >= 2:
-        return "#3498db"
-    else:
-        return "#27ae60"
+def get_all_risks(conn: Neo4jConnection) -> List[Dict]:
+    """Retrieve all risks from database"""
+    query = """
+    MATCH (r:Risk)
+    RETURN r.name as name, r.category as category, 
+           r.probability as probability, r.impact as impact,
+           r.score as score, r.status as status, 
+           r.description as description
+    ORDER BY r.score DESC
+    """
+    return conn.execute_query(query)
 
-def render_graph(nodes: list, edges: list, color_by: str = "level"):
-    """Génère et affiche le graphe interactif avec PyVis"""
-    if not nodes:
-        st.info("Aucun risque à afficher. Créez votre premier risque !")
+
+def get_all_influences(conn: Neo4jConnection) -> List[Dict]:
+    """Retrieve all influences from database"""
+    query = """
+    MATCH (r1:Risk)-[i:INFLUENCES]->(r2:Risk)
+    RETURN r1.name as source, r2.name as target, 
+           type(i) as relationship_type,
+           i.type as influence_type, i.strength as strength, 
+           i.description as description
+    """
+    return conn.execute_query(query)
+
+
+def create_risk(conn: Neo4jConnection, name: str, category: str, 
+                probability: int, impact: int, status: str, 
+                description: str) -> bool:
+    """Create a new risk in the database"""
+    score = probability * impact
+    query = """
+    CREATE (r:Risk {
+        name: $name,
+        category: $category,
+        probability: $probability,
+        impact: $impact,
+        score: $score,
+        status: $status,
+        description: $description
+    })
+    """
+    parameters = {
+        "name": name,
+        "category": category,
+        "probability": probability,
+        "impact": impact,
+        "score": score,
+        "status": status,
+        "description": description
+    }
+    
+    result = conn.execute_query(query, parameters)
+    return result is not None
+
+
+def update_risk(conn: Neo4jConnection, original_name: str, name: str, 
+                category: str, probability: int, impact: int, 
+                status: str, description: str) -> bool:
+    """Update an existing risk"""
+    score = probability * impact
+    query = """
+    MATCH (r:Risk {name: $original_name})
+    SET r.name = $name,
+        r.category = $category,
+        r.probability = $probability,
+        r.impact = $impact,
+        r.score = $score,
+        r.status = $status,
+        r.description = $description
+    """
+    parameters = {
+        "original_name": original_name,
+        "name": name,
+        "category": category,
+        "probability": probability,
+        "impact": impact,
+        "score": score,
+        "status": status,
+        "description": description
+    }
+    
+    result = conn.execute_query(query, parameters)
+    return result is not None
+
+
+def delete_risk(conn: Neo4jConnection, name: str) -> bool:
+    """Delete a risk and all its relationships"""
+    query = """
+    MATCH (r:Risk {name: $name})
+    DETACH DELETE r
+    """
+    result = conn.execute_query(query, {"name": name})
+    return result is not None
+
+
+def create_influence(conn: Neo4jConnection, source: str, target: str, 
+                     influence_type: str, strength: int, 
+                     description: str) -> bool:
+    """Create an influence relationship between two risks"""
+    query = f"""
+    MATCH (r1:Risk {{name: $source}})
+    MATCH (r2:Risk {{name: $target}})
+    CREATE (r1)-[i:INFLUENCES {{
+        type: $influence_type,
+        strength: $strength,
+        description: $description
+    }}]->(r2)
+    """
+    parameters = {
+        "source": source,
+        "target": target,
+        "influence_type": influence_type,
+        "strength": strength,
+        "description": description
+    }
+    
+    result = conn.execute_query(query, parameters)
+    return result is not None
+
+
+def delete_influence(conn: Neo4jConnection, source: str, target: str) -> bool:
+    """Delete an influence relationship"""
+    query = """
+    MATCH (r1:Risk {name: $source})-[i:INFLUENCES]->(r2:Risk {name: $target})
+    DELETE i
+    """
+    result = conn.execute_query(query, {"source": source, "target": target})
+    return result is not None
+
+
+def get_risk_statistics(conn: Neo4jConnection) -> Dict:
+    """Get statistics about the risk network"""
+    stats = {}
+    
+    # Total risks
+    query_risks = "MATCH (r:Risk) RETURN count(r) as count"
+    result = conn.execute_query(query_risks)
+    stats['total_risks'] = result[0]['count'] if result else 0
+    
+    # Total influences
+    query_influences = "MATCH ()-[i:INFLUENCES]->() RETURN count(i) as count"
+    result = conn.execute_query(query_influences)
+    stats['total_influences'] = result[0]['count'] if result else 0
+    
+    # Average risk score
+    query_avg = "MATCH (r:Risk) RETURN avg(r.score) as avg_score"
+    result = conn.execute_query(query_avg)
+    stats['avg_score'] = round(result[0]['avg_score'], 2) if result and result[0]['avg_score'] else 0
+    
+    # Risk distribution by category
+    query_category = """
+    MATCH (r:Risk)
+    RETURN r.category as category, count(r) as count
+    ORDER BY count DESC
+    """
+    stats['category_distribution'] = conn.execute_query(query_category)
+    
+    return stats
+
+
+def visualize_risk_network(conn: Neo4jConnection, color_by: str = "category"):
+    """Create an interactive network visualization"""
+    # Get all risks and influences
+    risks = get_all_risks(conn)
+    influences = get_all_influences(conn)
+    
+    if not risks:
+        st.warning("No risks found in the database. Please add some risks first.")
         return
     
-    net = Network(
-        height="700px",
-        width="100%",
-        bgcolor="#ffffff",
-        font_color="#333333",
-        directed=True
-    )
+    # Create network
+    net = Network(height="600px", width="100%", bgcolor="#222222", 
+                  font_color="white", directed=True)
     
+    # Configure physics
     net.set_options("""
     {
-        "nodes": {
-            "font": {"size": 14, "face": "Arial"},
-            "borderWidth": 2,
-            "shadow": true
-        },
-        "edges": {
-            "arrows": {"to": {"enabled": true, "scaleFactor": 1.0}},
-            "smooth": {"type": "curvedCW", "roundness": 0.2},
-            "shadow": true
-        },
         "physics": {
             "enabled": true,
-            "solver": "forceAtlas2Based",
-            "forceAtlas2Based": {
-                "gravitationalConstant": -150,
-                "centralGravity": 0.01,
-                "springLength": 300,
-                "springConstant": 0.05
-            },
-            "stabilization": {"iterations": 150}
+            "barnesHut": {
+                "gravitationalConstant": -8000,
+                "centralGravity": 0.3,
+                "springLength": 200,
+                "springConstant": 0.04
+            }
         },
-        "interaction": {
-            "hover": true,
-            "navigationButtons": true,
-            "keyboard": true
+        "edges": {
+            "smooth": {
+                "type": "continuous"
+            },
+            "arrows": {
+                "to": {
+                    "enabled": true,
+                    "scaleFactor": 0.5
+                }
+            }
         }
     }
     """)
     
-    for node in nodes:
-        exposure = node["exposure"] or 0
-        level = node["level"]
-        status = node["status"]
+    # Add nodes
+    for risk in risks:
+        name = risk['name']
+        category = risk.get('category', 'Unknown')
+        score = risk.get('score', 0)
+        probability = risk.get('probability', 0)
+        impact = risk.get('impact', 0)
+        status = risk.get('status', 'Active')
         
-        if color_by == "level":
-            color = get_color_by_level(level)
-        else:
-            color = get_color_by_exposure(exposure)
+        # Determine color
+        if color_by == "category":
+            color = CATEGORY_COLORS.get(category, "#95a5a6")
+        else:  # color by score
+            if score >= 70:
+                color = "#e74c3c"  # High risk - Red
+            elif score >= 40:
+                color = "#f39c12"  # Medium risk - Orange
+            else:
+                color = "#27ae60"  # Low risk - Green
         
-        size = 10 + (exposure * 2) if exposure else 15
+        # Size proportional to score (min 10, max 50)
+        size = max(10, min(50, score // 2))
         
-        # Style pour contingent
-        if status == "Contingent":
-            shape = "box"
-            border_style = "dashes"
-        else:
-            shape = "dot"
-            border_style = None
-        
-        categories_str = ", ".join(node["categories"]) if node["categories"] else "N/A"
-        
-        # Formater l'exposition correctement
-        exposure_str = f"{exposure:.2f}" if exposure else "N/A"
-        
+        # Create hover title
         title = f"""
-        <b>{node['name']}</b><br>
-        <b>Niveau:</b> {level}<br>
-        <b>Statut:</b> {status}<br>
-        <b>Catégories:</b> {categories_str}<br>
-        <b>Exposition:</b> {exposure_str}<br>
-        <b>Owner:</b> {node.get('owner', 'N/A')}
+        <b>{name}</b><br>
+        Category: {category}<br>
+        Score: {score} (P:{probability} × I:{impact})<br>
+        Status: {status}
         """
         
-        net.add_node(
-            node["id"],
-            label=node["name"],
-            title=title,
-            color=color,
-            size=size,
-            shape=shape,
-            borderWidthSelected=4
+        net.add_node(name, label=name, color=color, size=size, title=title)
+    
+    # Add edges
+    for influence in influences:
+        source = influence['source']
+        target = influence['target']
+        influence_type = influence.get('influence_type', 'INFLUENCES')
+        strength = influence.get('strength', 5)
+        
+        # Edge width proportional to strength
+        width = max(1, strength / 2)
+        
+        # Color by influence type
+        edge_colors = {
+            "AMPLIFIES": "#e74c3c",
+            "TRIGGERS": "#e67e22",
+            "MITIGATES": "#27ae60",
+            "CORRELATES": "#3498db"
+        }
+        color = edge_colors.get(influence_type, "#95a5a6")
+        
+        title = f"{influence_type} (Strength: {strength})"
+        
+        net.add_edge(source, target, width=width, color=color, title=title)
+    
+    # Generate and display
+    net.save_graph("/home/claude/risk_network.html")
+    
+    with open("/home/claude/risk_network.html", "r", encoding="utf-8") as f:
+        html_content = f.read()
+    
+    components.html(html_content, height=650)
+
+
+def render_dashboard():
+    """Render the main dashboard with statistics"""
+    st.title("🎯 Risk Influence Map")
+    st.markdown("Dynamic risk visualization and influence mapping")
+    
+    conn = get_neo4j_connection()
+    
+    if not conn.driver:
+        st.error("Cannot connect to Neo4j database. Please check your configuration.")
+        return
+    
+    # Get statistics
+    stats = get_risk_statistics(conn)
+    
+    # Display metrics
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("📊 Total Risks", stats['total_risks'])
+    
+    with col2:
+        st.metric("🔗 Total Influences", stats['total_influences'])
+    
+    with col3:
+        st.metric("📈 Average Score", stats['avg_score'])
+    
+    st.markdown("---")
+
+
+def render_visualization_tab():
+    """Render the visualization tab"""
+    st.header("📊 Risk Network Visualization")
+    
+    conn = get_neo4j_connection()
+    
+    if not conn.driver:
+        return
+    
+    # Visualization options
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        color_option = st.radio(
+            "Color nodes by:",
+            ["category", "score"],
+            horizontal=True
         )
     
-    for edge in edges:
-        strength = edge["strength"]
-        influence_type = edge["influence_type"]
+    with col2:
+        if st.button("🔄 Refresh Visualization"):
+            st.rerun()
+    
+    # Display network
+    visualize_risk_network(conn, color_by=color_option)
+    
+    # Legend
+    with st.expander("📖 Legend"):
+        st.markdown("""
+        **Node Size**: Proportional to risk score
         
-        # Couleur selon le type d'influence
-        if "Level1" in influence_type:
-            color = "#e74c3c"  # Rouge pour Op→Strat
-            width = 2
-        elif "Level2" in influence_type:
-            color = "#9b59b6"  # Violet pour Strat→Strat
-            width = 2.5
-        else:  # Level3
-            color = "#3498db"  # Bleu pour Op→Op
-            width = 1.5
+        **Node Colors** (when colored by category):
+        """)
+        for category, color in CATEGORY_COLORS.items():
+            st.markdown(f'<span style="color:{color}">■</span> {category}', 
+                       unsafe_allow_html=True)
         
-        # Ajuster selon strength
-        if strength == "Critical":
-            width *= 2
-        elif strength == "Strong":
-            width *= 1.5
-        elif strength == "Moderate":
-            width *= 1.2
+        st.markdown("""
+        **Node Colors** (when colored by score):
+        - 🔴 Red: High risk (≥70)
+        - 🟠 Orange: Medium risk (40-69)
+        - 🟢 Green: Low risk (<40)
         
-        net.add_edge(
-            edge["source"],
-            edge["target"],
-            title=f"{influence_type} ({strength})",
-            width=width,
-            color=color
-        )
-    
-    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".html", mode="w", encoding="utf-8")
-    tmp_path = tmp_file.name
-    tmp_file.close()
-    
-    net.save_graph(tmp_path)
-    
-    with open(tmp_path, 'r', encoding='utf-8') as html_file:
-        html_content = html_file.read()
-    
-    try:
-        os.unlink(tmp_path)
-    except PermissionError:
-        pass
-    
-    st.components.v1.html(html_content, height=720, scrolling=False)
-
-
-def init_session_state():
-    """Initialise l'état de session"""
-    if "manager" not in st.session_state:
-        st.session_state.manager = None
-    if "connected" not in st.session_state:
-        st.session_state.connected = False
-
-
-def connection_sidebar():
-    """Affiche la barre latérale de connexion"""
-    st.sidebar.markdown("## 🔌 Connexion Neo4j")
-    
-    with st.sidebar.expander("Paramètres de connexion", expanded=not st.session_state.connected):
-        uri = st.text_input("URI", value="bolt://localhost:7687", key="neo4j_uri")
-        user = st.text_input("Utilisateur", value="neo4j", key="neo4j_user")
-        password = st.text_input("Mot de passe", type="password", key="neo4j_password")
+        **Edge Colors**:
+        - 🔴 Red: AMPLIFIES
+        - 🟠 Orange: TRIGGERS
+        - 🟢 Green: MITIGATES
+        - 🔵 Blue: CORRELATES
         
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Connecter", type="primary", use_container_width=True):
-                manager = RiskGraphManager(uri, user, password)
-                if manager.connect():
-                    st.session_state.manager = manager
-                    st.session_state.connected = True
-                    st.success("Connecté !")
-                    st.rerun()
-        
-        with col2:
-            if st.button("Déconnecter", use_container_width=True, disabled=not st.session_state.connected):
-                if st.session_state.manager:
-                    st.session_state.manager.close()
-                st.session_state.manager = None
-                st.session_state.connected = False
-                st.rerun()
-    
-    if st.session_state.connected:
-        st.sidebar.success("✅ Connecté à Neo4j")
-    else:
-        st.sidebar.warning("⚠️ Non connecté")
-    
-    if st.session_state.connected:
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("### 🎨 Légende")
-        st.sidebar.markdown("""
-        **Niveaux:**
-        - 🟣 Stratégique
-        - 🔵 Opérationnel
-        - ⬜ Contingent (pointillés)
-        
-        **Liens d'influence:**
-        - 🔴 Op → Strat (Niveau 1)
-        - 🟣 Strat → Strat (Niveau 2)
-        - 🔵 Op → Op (Niveau 3)
+        **Edge Width**: Proportional to influence strength
         """)
 
 
-def main():
-    """Fonction principale de l'application"""
-    init_session_state()
+def render_risks_tab():
+    """Render the risks management tab"""
+    st.header("🎯 Risk Management")
     
-    st.markdown('<p class="main-header">🎯 Risk Influence Map - Phase 1</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Système de cartographie dynamique des risques stratégiques et opérationnels</p>', unsafe_allow_html=True)
+    conn = get_neo4j_connection()
     
-    connection_sidebar()
-    
-    if not st.session_state.connected:
-        st.info("👈 Veuillez vous connecter à Neo4j via la barre latérale pour commencer.")
-        
-        with st.expander("📖 Instructions Phase 1", expanded=True):
-            st.markdown("""
-            ### Nouveautés Phase 1
-            
-            ✨ **Architecture à deux niveaux**
-            - Risques **Stratégiques** (orientés conséquences business)
-            - Risques **Opérationnels** (orientés causes)
-            
-            🔗 **Trois types de liens d'influence**
-            - Niveau 1: Opérationnel → Stratégique
-            - Niveau 2: Stratégique → Stratégique
-            - Niveau 3: Opérationnel → Opérationnel
-            
-            ⚠️ **Gestion des risques contingents**
-            - Risques futurs liés aux décisions structurantes
-            - Timeline des décisions
-            - Visualisation en pointillés
-            
-            🏷️ **Multi-catégorisation**
-            - Programme, Produit, Industriel, Supply Chain
-            - Filtres multi-critères
-            
-            📊 **Import/Export Excel**
-            - Alimentation initiale facilitée
-            - Sauvegarde et partage
-            """)
+    if not conn.driver:
         return
     
-    manager = st.session_state.manager
+    # Create tabs for CRUD operations
+    tab1, tab2, tab3 = st.tabs(["View Risks", "Add Risk", "Edit/Delete Risk"])
     
-    # Statistiques en haut
-    stats = manager.get_statistics()
-    col1, col2, col3, col4, col5 = st.columns(5)
+    with tab1:
+        st.subheader("All Risks")
+        risks = get_all_risks(conn)
+        
+        if risks:
+            df = pd.DataFrame(risks)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No risks found. Create your first risk in the 'Add Risk' tab.")
+    
+    with tab2:
+        st.subheader("Create New Risk")
+        
+        with st.form("create_risk_form"):
+            name = st.text_input("Risk Name*", placeholder="e.g., Data Breach")
+            category = st.selectbox("Category*", RISK_CATEGORIES)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                probability = st.slider("Probability", 1, 10, 5)
+            with col2:
+                impact = st.slider("Impact", 1, 10, 5)
+            
+            status = st.selectbox("Status", RISK_STATUS)
+            description = st.text_area("Description", 
+                                      placeholder="Describe the risk in detail...")
+            
+            submitted = st.form_submit_button("✅ Create Risk")
+            
+            if submitted:
+                if not name:
+                    st.error("Risk name is required")
+                else:
+                    success = create_risk(conn, name, category, probability, 
+                                        impact, status, description)
+                    if success:
+                        st.success(f"✅ Risk '{name}' created successfully!")
+                        st.balloons()
+                    else:
+                        st.error("Failed to create risk. It may already exist.")
+    
+    with tab3:
+        st.subheader("Edit or Delete Risk")
+        
+        risks = get_all_risks(conn)
+        if not risks:
+            st.info("No risks available to edit.")
+            return
+        
+        risk_names = [r['name'] for r in risks]
+        selected_risk_name = st.selectbox("Select Risk", risk_names)
+        
+        # Get selected risk details
+        selected_risk = next((r for r in risks if r['name'] == selected_risk_name), None)
+        
+        if selected_risk:
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                with st.form("edit_risk_form"):
+                    st.markdown("**Edit Risk Details**")
+                    
+                    new_name = st.text_input("Risk Name", value=selected_risk['name'])
+                    category = st.selectbox("Category", RISK_CATEGORIES, 
+                                          index=RISK_CATEGORIES.index(selected_risk.get('category', RISK_CATEGORIES[0])))
+                    
+                    col_p, col_i = st.columns(2)
+                    with col_p:
+                        probability = st.slider("Probability", 1, 10, 
+                                              selected_risk.get('probability', 5))
+                    with col_i:
+                        impact = st.slider("Impact", 1, 10, 
+                                         selected_risk.get('impact', 5))
+                    
+                    status = st.selectbox("Status", RISK_STATUS,
+                                        index=RISK_STATUS.index(selected_risk.get('status', RISK_STATUS[0])))
+                    description = st.text_area("Description", 
+                                              value=selected_risk.get('description', ''))
+                    
+                    submitted = st.form_submit_button("💾 Update Risk")
+                    
+                    if submitted:
+                        success = update_risk(conn, selected_risk_name, new_name, 
+                                            category, probability, impact, 
+                                            status, description)
+                        if success:
+                            st.success(f"✅ Risk updated successfully!")
+                            st.rerun()
+                        else:
+                            st.error("Failed to update risk.")
+            
+            with col2:
+                st.markdown("**Delete Risk**")
+                if st.button("🗑️ Delete Risk", type="secondary"):
+                    success = delete_risk(conn, selected_risk_name)
+                    if success:
+                        st.success(f"✅ Risk '{selected_risk_name}' deleted!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to delete risk.")
+
+
+def render_influences_tab():
+    """Render the influences management tab"""
+    st.header("🔗 Influence Management")
+    
+    conn = get_neo4j_connection()
+    
+    if not conn.driver:
+        return
+    
+    tab1, tab2, tab3 = st.tabs(["View Influences", "Add Influence", "Delete Influence"])
+    
+    with tab1:
+        st.subheader("All Influences")
+        influences = get_all_influences(conn)
+        
+        if influences:
+            df = pd.DataFrame(influences)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No influences found. Create your first influence in the 'Add Influence' tab.")
+    
+    with tab2:
+        st.subheader("Create New Influence")
+        
+        risks = get_all_risks(conn)
+        if len(risks) < 2:
+            st.warning("You need at least 2 risks to create an influence.")
+            return
+        
+        risk_names = [r['name'] for r in risks]
+        
+        with st.form("create_influence_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                source = st.selectbox("Source Risk*", risk_names, key="source")
+            with col2:
+                target = st.selectbox("Target Risk*", risk_names, key="target")
+            
+            influence_type = st.selectbox("Influence Type*", INFLUENCE_TYPES)
+            strength = st.slider("Strength", 1, 10, 5)
+            description = st.text_area("Description", 
+                                      placeholder="Explain how the source influences the target...")
+            
+            submitted = st.form_submit_button("✅ Create Influence")
+            
+            if submitted:
+                if source == target:
+                    st.error("Source and target must be different risks")
+                else:
+                    success = create_influence(conn, source, target, 
+                                             influence_type, strength, description)
+                    if success:
+                        st.success(f"✅ Influence created: {source} → {target}")
+                        st.balloons()
+                    else:
+                        st.error("Failed to create influence.")
+    
+    with tab3:
+        st.subheader("Delete Influence")
+        
+        influences = get_all_influences(conn)
+        if not influences:
+            st.info("No influences available to delete.")
+            return
+        
+        # Create display strings for influences
+        influence_options = [
+            f"{inf['source']} → {inf['target']} ({inf.get('influence_type', 'INFLUENCES')})"
+            for inf in influences
+        ]
+        
+        selected = st.selectbox("Select Influence to Delete", influence_options)
+        
+        if st.button("🗑️ Delete Influence", type="secondary"):
+            # Parse the selected influence
+            parts = selected.split(" → ")
+            source = parts[0]
+            target = parts[1].split(" (")[0]
+            
+            success = delete_influence(conn, source, target)
+            if success:
+                st.success("✅ Influence deleted successfully!")
+                st.rerun()
+            else:
+                st.error("Failed to delete influence.")
+
+
+def render_analytics_tab():
+    """Render the analytics tab"""
+    st.header("📊 Risk Analytics")
+    
+    conn = get_neo4j_connection()
+    
+    if not conn.driver:
+        return
+    
+    col1, col2 = st.columns(2)
     
     with col1:
-        st.metric("🎯 Total Risques", stats["total_risks"])
+        st.subheader("Top Influencing Risks")
+        query = """
+        MATCH (r:Risk)-[i:INFLUENCES]->()
+        RETURN r.name as Risk, count(i) as Outgoing_Influences
+        ORDER BY Outgoing_Influences DESC
+        LIMIT 5
+        """
+        results = conn.execute_query(query)
+        if results:
+            df = pd.DataFrame(results)
+            st.dataframe(df, hide_index=True)
+        else:
+            st.info("No data available")
+    
     with col2:
-        st.metric("🟣 Stratégiques", stats["strategic_risks"])
-    with col3:
-        st.metric("🔵 Opérationnels", stats["operational_risks"])
-    with col4:
-        st.metric("⚠️ Contingents", stats["contingent_risks"])
-    with col5:
-        st.metric("🔗 Influences", stats["total_influences"])
+        st.subheader("Most Influenced Risks")
+        query = """
+        MATCH ()-[i:INFLUENCES]->(r:Risk)
+        RETURN r.name as Risk, count(i) as Incoming_Influences
+        ORDER BY Incoming_Influences DESC
+        LIMIT 5
+        """
+        results = conn.execute_query(query)
+        if results:
+            df = pd.DataFrame(results)
+            st.dataframe(df, hide_index=True)
+        else:
+            st.info("No data available")
     
     st.markdown("---")
     
-    # Onglets principaux
-    tab_viz, tab_risks, tab_influences, tab_import = st.tabs([
-        "📊 Visualisation",
-        "🎯 Risques",
-        "🔗 Influences",
-        "📥 Import/Export"
-    ])
+    # Risk distribution by category
+    st.subheader("Risk Distribution by Category")
+    stats = get_risk_statistics(conn)
+    if stats.get('category_distribution'):
+        df = pd.DataFrame(stats['category_distribution'])
+        st.bar_chart(df.set_index('category'))
+    else:
+        st.info("No data available")
+
+
+def main():
+    """Main application entry point"""
     
-    # === ONGLET VISUALISATION ===
-    with tab_viz:
-        col_filters, col_display = st.columns([1, 3])
+    # Sidebar
+    with st.sidebar:
+        st.image("https://via.placeholder.com/200x80/1e3a8a/ffffff?text=RIM+POC", 
+                 use_container_width=True)
+        st.markdown("### Navigation")
         
-        with col_filters:
-            st.markdown("### Filtres")
-            
-            level_filter = st.multiselect(
-                "Niveau",
-                ["Strategic", "Operational"],
-                default=["Strategic", "Operational"]
-            )
-            
-            all_categories = ["Programme", "Produit", "Industriel", "Supply Chain"]
-            category_filter = st.multiselect(
-                "Catégories",
-                all_categories,
-                default=all_categories
-            )
-            
-            status_filter = st.multiselect(
-                "Statut",
-                ["Active", "Contingent", "Archived"],
-                default=["Active", "Contingent"]
-            )
-            
-            color_by = st.radio(
-                "Couleur par:",
-                ["level", "exposure"],
-                format_func=lambda x: "Niveau" if x == "level" else "Exposition"
-            )
-            
-            if st.button("🔄 Actualiser", use_container_width=True):
-                st.rerun()
+        page = st.radio(
+            "Select View:",
+            ["Dashboard", "Visualization", "Risks", "Influences", "Analytics"],
+            label_visibility="collapsed"
+        )
         
-        with col_display:
-            # Construire le dictionnaire de filtres (ne pas mettre de valeurs None)
-            filters = {}
-            if level_filter:
-                filters["level"] = level_filter
-            if category_filter:
-                filters["categories"] = category_filter
-            if status_filter:
-                filters["status"] = status_filter
-            
-            nodes, edges = manager.get_graph_data(filters if filters else None)
-            render_graph(nodes, edges, color_by)
+        st.markdown("---")
+        st.markdown("### About")
+        st.markdown("""
+        **Risk Influence Map** is a proof-of-concept for dynamic risk 
+        management using graph database technology.
+        """)
+        
+        st.markdown("---")
+        st.markdown("### Connection Status")
+        conn = get_neo4j_connection()
+        if conn.driver:
+            st.success("✅ Neo4j Connected")
+        else:
+            st.error("❌ Neo4j Disconnected")
     
-    # === ONGLET RISQUES ===
-    with tab_risks:
-        col_form, col_list = st.columns([1, 1])
-        
-        with col_form:
-            st.markdown("### ➕ Créer un Risque")
-            
-            with st.form("create_risk_form", clear_on_submit=True):
-                name = st.text_input("Nom du risque *", placeholder="Ex: Retard de livraison combustible")
-                
-                level = st.selectbox("Niveau *", ["Strategic", "Operational"])
-                
-                categories = st.multiselect(
-                    "Catégories *",
-                    ["Programme", "Produit", "Industriel", "Supply Chain"],
-                    default=["Programme"]
-                )
-                
-                description = st.text_area("Description", placeholder="Description détaillée du risque...")
-                
-                status = st.selectbox("Statut", ["Active", "Contingent", "Archived"])
-                
-                activation_condition = None
-                activation_decision_date = None
-                
-                if status == "Contingent":
-                    activation_condition = st.text_area(
-                        "Condition d'activation",
-                        placeholder="Ex: Si choix du combustible X, alors..."
-                    )
-                    activation_decision_date = st.date_input("Date de décision").isoformat()
-                
-                owner = st.text_input("Owner", placeholder="Responsable du risque")
-                
-                col_p, col_i = st.columns(2)
-                with col_p:
-                    probability = st.slider("Probabilité (optionnel)", 0.0, 10.0, 5.0, 0.5)
-                with col_i:
-                    impact = st.slider("Impact (optionnel)", 0.0, 10.0, 5.0, 0.5)
-                
-                if probability > 0 and impact > 0:
-                    st.info(f"**Exposition calculée:** {probability * impact:.1f}")
-                
-                submitted = st.form_submit_button("Créer le risque", type="primary", use_container_width=True)
-                
-                if submitted:
-                    if name and categories:
-                        if manager.create_risk(
-                            name, level, categories, description, status,
-                            activation_condition, activation_decision_date, owner,
-                            probability if probability > 0 else None,
-                            impact if impact > 0 else None
-                        ):
-                            st.success(f"Risque '{name}' créé avec succès !")
-                            st.rerun()
-                    else:
-                        st.error("Le nom et au moins une catégorie sont obligatoires")
-        
-        with col_list:
-            st.markdown("### 📋 Risques existants")
-            
-            risks = manager.get_all_risks()
-            
-            if risks:
-                for risk in risks:
-                    level_badge = "strategic-badge" if risk['level'] == "Strategic" else "operational-badge"
-                    contingent_badge = " <span class='contingent-badge'>CONTINGENT</span>" if risk['status'] == "Contingent" else ""
-                    
-                    title = f"{risk['name']}{contingent_badge}"
-                    
-                    with st.expander(f"{'🟣' if risk['level'] == 'Strategic' else '🔵'} {risk['name']}", expanded=False):
-                        st.markdown(f"**Niveau:** {risk['level']}")
-                        st.markdown(f"**Catégories:** {', '.join(risk['categories'])}")
-                        st.markdown(f"**Statut:** {risk['status']}")
-                        
-                        if risk['status'] == "Contingent":
-                            st.markdown(f"**Condition:** {risk.get('activation_condition', 'N/A')}")
-                            st.markdown(f"**Décision:** {risk.get('activation_decision_date', 'N/A')}")
-                        
-                        if risk.get('exposure'):
-                            st.markdown(f"**Exposition:** {risk['exposure']:.2f}")
-                        
-                        st.markdown(f"**Owner:** {risk.get('owner', 'Non défini')}")
-                        
-                        if risk.get('description'):
-                            st.markdown(f"**Description:** {risk['description']}")
-                        
-                        col_edit, col_del = st.columns(2)
-                        
-                        with col_del:
-                            if st.button("🗑️ Supprimer", key=f"del_{risk['id']}", use_container_width=True):
-                                if manager.delete_risk(risk['id']):
-                                    st.success("Risque supprimé")
-                                    st.rerun()
-            else:
-                st.info("Aucun risque créé.")
-    
-    # === ONGLET INFLUENCES ===
-    with tab_influences:
-        col_form, col_list = st.columns([1, 1])
-        
-        risks = manager.get_all_risks()
-        risk_options = {f"{r['name']} [{r['level']}]": r['id'] for r in risks}
-        
-        with col_form:
-            st.markdown("### ➕ Créer une Influence")
-            
-            if len(risks) < 2:
-                st.warning("Vous devez avoir au moins 2 risques pour créer une influence.")
-            else:
-                with st.form("create_influence_form", clear_on_submit=True):
-                    source_name = st.selectbox("Risque source", list(risk_options.keys()))
-                    target_name = st.selectbox("Risque cible",
-                        [n for n in risk_options.keys() if n != source_name])
-                    
-                    st.info("ℹ️ Le type d'influence (Niveau 1/2/3) est déterminé automatiquement selon les niveaux source/cible")
-                    
-                    strength = st.selectbox("Force de l'influence", [
-                        "Weak", "Moderate", "Strong", "Critical"
-                    ])
-                    
-                    confidence = st.slider("Niveau de confiance", 0.0, 1.0, 0.8, 0.1)
-                    
-                    description = st.text_area("Description",
-                        placeholder="Décrivez comment ce risque influence l'autre...")
-                    
-                    submitted = st.form_submit_button("Créer l'influence", type="primary", use_container_width=True)
-                    
-                    if submitted:
-                        source_id = risk_options[source_name]
-                        target_id = risk_options[target_name]
-                        
-                        if manager.create_influence(source_id, target_id, "", strength, description, confidence):
-                            st.success("Influence créée !")
-                            st.rerun()
-        
-        with col_list:
-            st.markdown("### 📋 Influences existantes")
-            
-            influences = manager.get_all_influences()
-            
-            if influences:
-                for inf in influences:
-                    type_emoji = "🔴" if "Level1" in inf['influence_type'] else ("🟣" if "Level2" in inf['influence_type'] else "🔵")
-                    
-                    with st.expander(f"{type_emoji} {inf['source_name']} → {inf['target_name']}"):
-                        st.markdown(f"**Type:** {inf['influence_type']}")
-                        st.markdown(f"**Force:** {inf['strength']}")
-                        st.markdown(f"**Confiance:** {inf['confidence']:.0%}")
-                        
-                        if inf.get('description'):
-                            st.markdown(f"**Description:** {inf['description']}")
-                        
-                        if st.button("🗑️ Supprimer", key=f"del_inf_{inf['id']}", use_container_width=True):
-                            if manager.delete_influence(inf['id']):
-                                st.success("Influence supprimée")
-                                st.rerun()
-            else:
-                st.info("Aucune influence créée.")
-    
-    # === ONGLET IMPORT/EXPORT ===
-    with tab_import:
-        st.markdown("### 📥 Import/Export Excel")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("#### Export vers Excel")
-            if st.button("📤 Exporter les données", use_container_width=True):
-                filepath = "/tmp/rim_export.xlsx"
-                manager.export_to_excel(filepath)
-                
-                with open(filepath, 'rb') as f:
-                    st.download_button(
-                        "⬇️ Télécharger le fichier Excel",
-                        f.read(),
-                        file_name=f"RIM_Export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True
-                    )
-        
-        with col2:
-            st.markdown("#### Import depuis Excel")
-            uploaded_file = st.file_uploader("Choisir un fichier Excel", type=['xlsx'])
-            
-            if uploaded_file is not None:
-                if st.button("📥 Importer les données", use_container_width=True):
-                    filepath = f"/tmp/{uploaded_file.name}"
-                    with open(filepath, 'wb') as f:
-                        f.write(uploaded_file.getvalue())
-                    
-                    result = manager.import_from_excel(filepath)
-                    
-                    if result["errors"]:
-                        st.warning(f"Import terminé avec erreurs")
-                        for error in result["errors"]:
-                            st.error(error)
-                    else:
-                        st.success(f"Import réussi !")
-                    
-                    st.info(f"Risques créés: {result['risks_created']}, Influences créées: {result['influences_created']}")
-                    
-                    if result["risks_created"] > 0 or result["influences_created"] > 0:
-                        st.rerun()
+    # Main content
+    if page == "Dashboard":
+        render_dashboard()
+        render_visualization_tab()
+    elif page == "Visualization":
+        render_visualization_tab()
+    elif page == "Risks":
+        render_risks_tab()
+    elif page == "Influences":
+        render_influences_tab()
+    elif page == "Analytics":
+        render_analytics_tab()
 
 
 if __name__ == "__main__":
