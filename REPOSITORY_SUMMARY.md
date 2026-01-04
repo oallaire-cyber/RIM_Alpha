@@ -176,6 +176,12 @@ docker-compose up -d
 4. Basic authentication (Neo4j default)
 5. No CSV import/export (planned for v1.1)
 
+## Recent Fixes
+
+- **v1.0.1**: Fixed TypeError when risks have None/null values for score, probability, or impact
+- Improved error handling for missing data fields
+- Better statistics calculation with null value handling
+
 ## Recommended Improvements (Future)
 
 ### High Priority

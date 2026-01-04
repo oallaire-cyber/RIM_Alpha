@@ -64,6 +64,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- TypeError when risks have None values for score, probability, or impact
+- TypeError when numeric fields are stored as strings in database
+- FileNotFoundError on Windows due to hardcoded Linux paths
+- Average score calculation now properly handles null values
+- Edge width calculation handles None and string strength values
+- Graph visualization now uses cross-platform temporary directory
+- Added `safe_int()` utility function for robust type conversion
+
 ### Planned Features
 
 #### High Priority
