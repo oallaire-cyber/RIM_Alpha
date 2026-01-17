@@ -13,6 +13,7 @@ pyvis>=0.3.2
 # Data Manipulation
 pandas>=2.1.0
 numpy>=1.24.0
+openpyxl>=3.1.0
 
 # Additional Streamlit Components
 streamlit-extras>=0.3.0

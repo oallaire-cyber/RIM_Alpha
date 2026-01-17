@@ -1,281 +1,255 @@
-# 🎯 Risk Influence Map (RIM) - POC & Demo
+# 🎯 Risk Influence Map (RIM) - Phase 1
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Streamlit](https://img.shields.io/badge/streamlit-1.29+-red.svg)](https://streamlit.io)
-[![Neo4j](https://img.shields.io/badge/neo4j-5.0+-green.svg)](https://neo4j.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+A dynamic risk management visualization system built with Streamlit and Neo4j, designed for strategic and operational risk mapping in complex programs like SMR (Small Modular Reactor) nuclear projects.
 
-A dynamic risk management application that visualizes risks and their interdependencies using graph theory and Neo4j.
+![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.29+-red.svg)
+![Neo4j](https://img.shields.io/badge/Neo4j-5.x-green.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-## 🎯 Overview
+## 📋 Overview
 
-The Risk Influence Map (RIM) is a proof-of-concept application designed for strategic risk management in complex programs, particularly in the nuclear energy sector. It enables:
+The Risk Influence Map (RIM) is an innovative methodology for visualizing and managing the complex relationships between risks in large-scale programs. It distinguishes between:
 
-- **Dynamic visualization** of risks and their relationships
-- **Influence modeling** between risks (amplification, triggering, mitigation, correlation)
-- **Complete risk lifecycle management** (CRUD operations)
-- **Cascade impact analysis** through graph traversal
-- **Strategic vs. operational risk differentiation**
+- **Strategic Risks**: Consequence-oriented risks managed by program leadership
+- **Operational Risks**: Cause-oriented risks managed by functional teams
+- **Top Program Objectives (TPOs)**: Key program goals that risks may impact
 
-## ✨ Key Features
+## ✨ Features
 
 ### Risk Management
-- Create, read, update, and delete risks
-- Multi-dimensional risk attributes (category, probability, impact, status)
-- Automatic risk scoring calculation
-- Support for 8 risk categories (Cyber, Operational, Strategic, Financial, Compliance, Reputation, HR, Environmental)
+- Two-level risk architecture (Strategic/Operational)
+- Multi-category classification (Programme, Produit, Industriel, Supply Chain)
+- Contingent risk support with activation conditions and decision dates
+- Probability × Impact exposure calculation
 
 ### Influence Mapping
-- Model four types of influences: Amplifies, Triggers, Mitigates, Correlates
-- Weighted influence strength (1-10 scale)
-- Bidirectional and cascade influence analysis
-- Visual representation of influence chains
+- Three types of influence links:
+  - **Level 1**: Operational → Strategic (red)
+  - **Level 2**: Strategic → Strategic (purple)
+  - **Level 3**: Operational → Operational (blue)
+- Configurable strength (Weak/Moderate/Strong/Critical)
+- Confidence scoring
+
+### Top Program Objectives (TPOs)
+- Link strategic risks to program objectives
+- Cluster-based organization (Product Efficiency, Business Efficiency, Industrial Efficiency, Sustainability, Safety)
+- Impact level tracking (Low/Medium/High/Critical)
+- Yellow hexagon visualization
 
 ### Visualization
-- Interactive graph visualization using PyVis
-- Dynamic node sizing based on risk score
-- Color-coded nodes by category or risk score
-- Edge thickness proportional to influence strength
-- Zoom, pan, and node selection capabilities
+- Interactive graph powered by PyVis
+- Color coding by level or exposure
+- Multiple layout algorithms:
+  - Layered (TPO → Strategic → Operational)
+  - Category-based (2×2 grid)
+  - TPO Cluster grouping
+- Manual layout save/load with position capture
+- Physics toggle for node arrangement
 
-### Analytics
-- Risk distribution by category
-- Influence network statistics
-- Top influencing and influenced risks
-- Critical path identification
+### Filter System
+- Quick filter presets (Full View, Strategic Focus, Operational Focus, etc.)
+- Multi-select filters with All/None buttons
+- Filter validation and summary display
+- Persistent filter state
 
-## 🚀 Quick Start
+### Import/Export
+- Excel import/export with detailed logging
+- Name-based relationship matching for re-import capability
+- Comprehensive error reporting and warnings
+- Cypher templates for bulk database operations
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- **Docker** (for Neo4j database)
-- **Python 3.9+**
-- No admin rights required
-- No external web server needed
+- Python 3.9 or higher
+- Neo4j Database (local or cloud instance)
+- Git (for cloning)
 
 ### Installation
 
-1. **Start Neo4j with Docker**
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/oallaire-cyber/RIM_Alpha
+   cd rim-alpha
+   ```
 
-```bash
-docker-compose up -d
-```
+2. **Create a virtual environment** (recommended)
+   ```bash
+   python -m venv venv
+   
+   # Windows
+   venv\Scripts\activate
+   
+   # macOS/Linux
+   source venv/bin/activate
+   ```
 
-Or manually:
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-```bash
-docker run -d \
-    --name neo4j-rim \
-    -p 7474:7474 -p 7687:7687 \
-    -e NEO4J_AUTH=neo4j/risk2024secure \
-    -v neo4j_rim_data:/data \
-    neo4j:latest
-```
+4. **Set up Neo4j**
+   - Install [Neo4j Desktop](https://neo4j.com/download/) or use [Neo4j Aura](https://neo4j.com/cloud/aura/) (cloud)
+   - Create a new database
+   - Note your connection URI, username, and password
 
-2. **Install Python dependencies**
+5. **Run the application**
+   ```bash
+   streamlit run app_alpha.py
+   ```
 
-```bash
-# Create virtual environment (recommended)
-python -m venv venv
-
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-3. **Load demo data** (optional)
-
-Access Neo4j Browser at `http://localhost:7474` and load `demo_data.cypher`
-
-4. **Launch the application**
-
-```bash
-streamlit run app.py
-```
-
-Or use the startup scripts:
-- Windows: `start.bat`
-- Linux/Mac: `./start.sh`
-
-The application opens automatically at `http://localhost:8501`
-
-## 📊 Data Model
-
-### Risk Node Attributes
-
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `name` | String | Unique risk identifier |
-| `category` | Enum | Risk category (Cyber, Operational, Strategic, etc.) |
-| `probability` | Integer (1-10) | Likelihood of occurrence |
-| `impact` | Integer (1-10) | Severity if occurs |
-| `score` | Integer | Auto-calculated (probability × impact) |
-| `status` | Enum | Active, Monitored, Mitigated, Closed |
-| `description` | Text | Detailed risk description |
-
-### Influence Relationship Attributes
-
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `type` | Enum | AMPLIFIES, TRIGGERS, MITIGATES, CORRELATES |
-| `strength` | Integer (1-10) | Influence intensity |
-| `description` | Text | Explanation of the influence |
-
-## 📈 Use Cases
-
-### Cybersecurity Risk Analysis
-
-Model attack chains and cascading impacts:
-
-```
-[Phishing Success] --TRIGGERS--> [Credential Compromise]
-         |                              |
-         |                              v
-         +-------AMPLIFIES-------> [Lateral Movement]
-                                        |
-                                        v
-                                 [Data Exfiltration]
-                                        |
-                                        v
-                                 [Reputation Impact]
-```
-
-### Nuclear Program Risk Management
-
-- Differentiate strategic vs. operational risks
-- Model contingent risks dependent on Q3 2026 decisions
-- Visualize risk dependencies across program phases
-- Support governance decision-making
-
-### Enterprise Risk Management
-
-- Map business continuity risks
-- Analyze supply chain vulnerabilities
-- Track compliance and regulatory risks
-- Identify risk concentration areas
-
-## 🛠️ Configuration
-
-### Neo4j Connection
-
-Default configuration (modify in `app.py` if needed):
-
-```python
-NEO4J_URI = "bolt://localhost:7687"
-NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "risk2024secure"
-```
-
-### Environment Variables (Optional)
-
-```bash
-export NEO4J_URI=bolt://localhost:7687
-export NEO4J_USER=neo4j
-export NEO4J_PASSWORD=your_password
-```
+6. **Connect to Neo4j**
+   - Enter your Neo4j credentials in the sidebar
+   - Click "Connect"
 
 ## 📁 Project Structure
 
 ```
-RIM_Alpha/
-├── app.py                  # Main Streamlit application
-├── demo_data.cypher        # Sample data for demonstration
-├── docker-compose.yml      # Docker configuration for Neo4j
-├── requirements.txt        # Python dependencies
-├── start.sh               # Linux/Mac startup script
-├── start.bat              # Windows startup script
-├── README.md              # This file
-├── USER_GUIDE.md          # Detailed user documentation
-├── SETUP.md               # Installation and setup guide
-└── .gitignore             # Git ignore file
+rim-alpha/
+├── app_with_layouts.py      # Main Streamlit application
+├── requirements.txt         # Python dependencies
+├── demo_data_loader.cypher  # Cypher script to load demo data
+├── bulk_import_template.cypher  # Template for bulk data imports
+├── graph_layouts.json       # Saved layout positions (auto-generated)
+└── README.md               # This file
 ```
 
-## 🔍 Useful Cypher Queries
+## 🎮 Usage
 
-### Find Top Influencing Risks
+### Creating Risks
 
-```cypher
-MATCH (r:Risk)-[i:INFLUENCES]->()
-RETURN r.name, count(i) as outgoing_influences
-ORDER BY outgoing_influences DESC
-LIMIT 5
-```
+1. Navigate to the **🎯 Risks** tab
+2. Fill in the risk details:
+   - Name (required)
+   - Level: Strategic or Operational
+   - Categories (multi-select)
+   - Description
+   - Status: Active, Contingent, or Archived
+   - Probability and Impact (for exposure calculation)
+3. Click "Create Risk"
 
-### Find Most Influenced Risks
+### Creating Influences
 
-```cypher
-MATCH ()-[i:INFLUENCES]->(r:Risk)
-RETURN r.name, count(i) as incoming_influences
-ORDER BY incoming_influences DESC
-LIMIT 5
-```
+1. Navigate to the **🔗 Influences** tab
+2. Select source and target risks
+3. Configure strength and confidence
+4. Add description
+5. Click "Create Influence"
 
-### Identify Influence Chains
+### Creating TPOs
 
-```cypher
-MATCH path = (a:Risk)-[:INFLUENCES*1..3]->(b:Risk)
-WHERE a <> b
-RETURN path
-LIMIT 20
-```
+1. Navigate to the **🏆 TPOs** tab
+2. Enter reference code (e.g., TPO-01)
+3. Select cluster category
+4. Add name and description
+5. Click "Create TPO"
 
-### Calculate Cumulative Influence Score
+### Linking Risks to TPOs
 
-```cypher
-MATCH (r:Risk)
-OPTIONAL MATCH (r)-[out:INFLUENCES]->()
-OPTIONAL MATCH ()-[in:INFLUENCES]->(r)
-RETURN r.name, 
-       r.score as risk_score,
-       sum(out.strength) as outgoing_influence,
-       sum(in.strength) as incoming_influence
-ORDER BY r.score DESC
-```
+1. Navigate to the **📌 TPO Impacts** tab
+2. Select a strategic risk and a TPO
+3. Set impact level
+4. Click "Create Impact"
 
-## 🎓 Documentation
+### Using Layouts
 
-- [User Guide](USER_GUIDE.md) - Comprehensive usage documentation
-- [Setup Guide](SETUP.md) - Detailed installation instructions
-- [Contributing Guidelines](CONTRIBUTING.md) - How to contribute
+1. In the **📊 Visualization** tab, arrange nodes as desired
+2. Disable physics to freeze positions
+3. Enable "Position capture"
+4. Click "📍 Capture Positions" on the graph
+5. Click "📋 Copy to Clipboard"
+6. Paste in the sidebar text area
+7. Name and save your layout
 
-## 🔮 Future Enhancements
+### Import/Export
 
-- [ ] Import/Export CSV for risks and influences
-- [ ] Impact propagation simulation
-- [ ] Change history tracking
-- [ ] Automatic residual risk calculation
-- [ ] Integration with risk frameworks (EBIOS RM, ISO 27005)
-- [ ] REST API for SIEM/SOAR integration
-- [ ] Multi-user authentication and authorization
-- [ ] Advanced analytics and reporting
-- [ ] Layout persistence for graph visualization
-- [ ] Risk scenario modeling
+**Export:**
+1. Go to **📥 Import/Export** tab
+2. Click "Generate export"
+3. Download the Excel file
 
-## 📝 License
+**Import:**
+1. Prepare an Excel file with sheets: Risks, TPOs, Influences, TPO_Impacts
+2. Upload the file
+3. Review the detailed import log
 
-MIT License - See [LICENSE](LICENSE) file for details
+## 🔧 Configuration
+
+### Neo4j Connection
+
+Default connection settings:
+- URI: `bolt://localhost:7687`
+- Username: `neo4j`
+- Password: (your password)
+
+### Filter Presets
+
+Built-in presets:
+| Preset | Description |
+|--------|-------------|
+| 🌐 Full View | All risks and TPOs |
+| 🟣 Strategic Focus | Strategic risks + TPOs only |
+| 🔵 Operational Focus | Operational risks only |
+| ✅ Active Risks Only | Excludes contingent risks |
+| ⚠️ Contingent Risks | Future/contingent risks only |
+| 🎯 Risks Only | All risks, no TPOs |
+
+## 📊 Data Model
+
+### Nodes
+
+**Risk**
+- `id`: UUID
+- `name`: String
+- `level`: "Strategic" | "Operational"
+- `categories`: List of strings
+- `status`: "Active" | "Contingent" | "Archived"
+- `probability`: Float (0-1)
+- `impact`: Float (1-10)
+- `exposure`: Float (calculated)
+- `owner`: String
+- `description`: String
+- `activation_condition`: String (for contingent)
+- `activation_decision_date`: Date (for contingent)
+
+**TPO**
+- `id`: UUID
+- `reference`: String (e.g., "TPO-01")
+- `name`: String
+- `cluster`: String
+- `description`: String
+
+### Relationships
+
+**INFLUENCES** (Risk → Risk)
+- `influence_type`: "Level_1" | "Level_2" | "Level_3"
+- `strength`: "Weak" | "Moderate" | "Strong" | "Critical"
+- `confidence`: Float (0-1)
+- `description`: String
+
+**IMPACTS_TPO** (Risk → TPO)
+- `impact_level`: "Low" | "Medium" | "High" | "Critical"
+- `description`: String
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📧 Contact
+## 📄 License
 
-For questions or feedback about this POC:
-- Open an issue in this repository
-- Contact: [Your contact information]
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🙏 Acknowledgments
 
-- Built with [Streamlit](https://streamlit.io)
-- Powered by [Neo4j](https://neo4j.com)
-- Graph visualization using [PyVis](https://pyvis.readthedocs.io)
+- Built with [Streamlit](https://streamlit.io/)
+- Graph database powered by [Neo4j](https://neo4j.com/)
+- Visualization using [PyVis](https://pyvis.readthedocs.io/)
+
+## 📞 Contact
+
+For questions or feedback about the RIM methodology, please open an issue on GitHub.
 
 ---
-
-**Note**: This is a proof-of-concept application. For production use, additional security, scalability, and governance features would be required.
