@@ -40,12 +40,27 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
 ### Visualization
 - Interactive graph powered by PyVis
 - Color coding by level or exposure
+- **Fullscreen mode** for detailed graph exploration (press F or click button)
 - Multiple layout algorithms:
   - Layered (TPO → Strategic → Operational)
   - Category-based (2×2 grid)
   - TPO Cluster grouping
+  - **Auto-spread layout** with size-aware node spacing
 - Manual layout save/load with position capture
 - Physics toggle for node arrangement
+- Draggable nodes when physics is disabled
+
+### 🔍 Influence Explorer (New)
+- **Select any node** to explore its influence network
+- **Direction control**: 
+  - Upstream (what influences this node)
+  - Downstream (what this node influences)
+  - Both directions
+- **Depth control**: Limit traversal depth (1-10 levels) or unlimited
+- **Level filter**: Show All / Strategic only / Operational only
+- **TPO inclusion**: Toggle to show impacted TPOs
+- **Visual highlighting**: Selected node highlighted with red border and ★ symbol
+- **Network statistics**: Count of risks, TPOs, and connections displayed
 
 ### Filter System
 - Quick filter presets (Full View, Strategic Focus, Operational Focus, etc.)
@@ -109,12 +124,12 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
 
 ```
 rim-alpha/
-├── app_with_layouts.py      # Main Streamlit application
+├── app_alpha.py             # Main Streamlit application
 ├── requirements.txt         # Python dependencies
 ├── demo_data_loader.cypher  # Cypher script to load demo data
 ├── bulk_import_template.cypher  # Template for bulk data imports
 ├── graph_layouts.json       # Saved layout positions (auto-generated)
-└── README.md               # This file
+└── README.md                # This file
 ```
 
 ## 🎮 Usage
@@ -154,15 +169,34 @@ rim-alpha/
 3. Set impact level
 4. Click "Create Impact"
 
+### Using the Influence Explorer
+
+1. In the **📊 Visualization** tab, enable "🔍 Enable Influence Explorer"
+2. Select a node from the dropdown (shows [Strat], [Oper], or [TPO] prefixes)
+3. Choose direction: Upstream, Downstream, or Both
+4. Adjust depth limit or check "Unlimited"
+5. Filter by risk level if needed
+6. Toggle "Include TPOs" to show/hide impacted objectives
+7. The graph displays only the influence network around your selected node
+8. Click "Clear selection" to return to normal view
+
+### Using Fullscreen Mode
+
+1. Click the **⛶ Fullscreen** button on the graph (top-left corner)
+2. Or press **F** key to toggle fullscreen
+3. Press **ESC** to exit fullscreen
+4. Use mouse wheel to zoom, drag to pan
+
 ### Using Layouts
 
 1. In the **📊 Visualization** tab, arrange nodes as desired
-2. Disable physics to freeze positions
-3. Enable "Position capture"
-4. Click "📍 Capture Positions" on the graph
-5. Click "📋 Copy to Clipboard"
-6. Paste in the sidebar text area
-7. Name and save your layout
+2. Disable physics to freeze positions (nodes auto-spread with size-aware spacing)
+3. Drag nodes to fine-tune positions
+4. Enable "Position capture"
+5. Click "📍 Capture Positions" on the graph
+6. Click "📋 Copy to Clipboard"
+7. Paste in the sidebar text area
+8. Name and save your layout
 
 ### Import/Export
 
@@ -174,7 +208,7 @@ rim-alpha/
 **Import:**
 1. Prepare an Excel file with sheets: Risks, TPOs, Influences, TPO_Impacts
 2. Upload the file
-3. Review the detailed import log
+3. Review the detailed import log (errors, warnings, and full trace)
 
 ## 🔧 Configuration
 

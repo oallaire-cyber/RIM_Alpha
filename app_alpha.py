@@ -1004,6 +1004,281 @@ class RiskGraphManager:
         
         return nodes if nodes else [], all_edges if all_edges else []
     
+    def get_influence_network(self, node_id: str, direction: str = "both", 
+                               max_depth: int = None, level_filter: str = "all",
+                               include_tpos: bool = True) -> tuple:
+        """
+        Get nodes that influence or are influenced by the selected node.
+        
+        Args:
+            node_id: The ID of the selected node
+            direction: "upstream" (influences this node), "downstream" (influenced by), or "both"
+            max_depth: Maximum depth of traversal (None for unlimited)
+            level_filter: "all", "Strategic", or "Operational"
+            include_tpos: Whether to include TPOs in the result
+        
+        Returns:
+            tuple: (nodes, edges, selected_node_info)
+        """
+        params = {"node_id": node_id}
+        depth_clause = f"1..{max_depth}" if max_depth else ""
+        
+        # Level filter for intermediate nodes
+        level_condition = ""
+        if level_filter != "all":
+            level_condition = f"AND r.level = '{level_filter}'"
+        
+        # Get the selected node info first
+        selected_query = """
+            MATCH (n)
+            WHERE n.id = $node_id
+            RETURN n, labels(n) as labels
+        """
+        selected_result = self.execute_query(selected_query, params)
+        if not selected_result:
+            return [], [], None
+        
+        selected_record = selected_result[0]
+        selected_labels = selected_record["labels"]
+        selected_node_data = dict(selected_record["n"])
+        
+        # Determine if selected node is TPO or Risk
+        is_tpo = "TPO" in selected_labels
+        
+        if is_tpo:
+            # TPO selected - get risks that impact this TPO
+            nodes_set = {}
+            edges_list = []
+            
+            # Get risks that impact this TPO
+            impact_query = """
+                MATCH (r:Risk)-[i:IMPACTS_TPO]->(t:TPO {id: $node_id})
+                RETURN r.id as id, r.name as name, r.level as level,
+                       r.categories as categories, r.status as status,
+                       r.exposure as exposure, r.owner as owner,
+                       'Risk' as node_type,
+                       i.impact_level as impact_level, i.description as edge_description
+            """
+            risk_results = self.execute_query(impact_query, params)
+            
+            for record in risk_results:
+                node_id_result = record["id"]
+                if level_filter == "all" or record["level"] == level_filter:
+                    nodes_set[node_id_result] = dict(record)
+                    edges_list.append({
+                        "source": node_id_result,
+                        "target": node_id,
+                        "edge_type": "IMPACTS_TPO",
+                        "impact_level": record["impact_level"],
+                        "description": record.get("edge_description", "")
+                    })
+            
+            # Add the TPO itself
+            selected_node_info = {
+                "id": node_id,
+                "reference": selected_node_data.get("reference"),
+                "name": selected_node_data.get("name"),
+                "cluster": selected_node_data.get("cluster"),
+                "description": selected_node_data.get("description"),
+                "node_type": "TPO"
+            }
+            
+            nodes_list = list(nodes_set.values())
+            nodes_list.append(selected_node_info)
+            
+            return nodes_list, edges_list, selected_node_info
+        
+        # Risk selected - traverse influence relationships
+        nodes_set = {}
+        edges_set = set()
+        edges_list = []
+        
+        # Upstream: nodes that influence this node (directly or indirectly)
+        if direction in ["upstream", "both"]:
+            upstream_query = f"""
+                MATCH path = (r:Risk)-[:INFLUENCES*{depth_clause}]->(target:Risk {{id: $node_id}})
+                WHERE r.id <> $node_id {level_condition.replace('r.level', 'r.level')}
+                UNWIND nodes(path) as n
+                UNWIND relationships(path) as rel
+                WITH DISTINCT n, rel
+                WHERE n:Risk
+                RETURN n.id as id, n.name as name, n.level as level,
+                       n.categories as categories, n.status as status,
+                       n.exposure as exposure, n.owner as owner,
+                       'Risk' as node_type,
+                       startNode(rel).id as source_id, endNode(rel).id as target_id,
+                       rel.influence_type as influence_type, rel.strength as strength
+            """
+            try:
+                upstream_results = self.execute_query(upstream_query, params)
+                for record in upstream_results:
+                    rec_dict = dict(record)
+                    node_id_result = rec_dict["id"]
+                    if level_filter == "all" or rec_dict["level"] == level_filter:
+                        if node_id_result not in nodes_set:
+                            nodes_set[node_id_result] = {
+                                "id": node_id_result,
+                                "name": rec_dict["name"],
+                                "level": rec_dict["level"],
+                                "categories": rec_dict["categories"],
+                                "status": rec_dict["status"],
+                                "exposure": rec_dict["exposure"],
+                                "owner": rec_dict["owner"],
+                                "node_type": "Risk"
+                            }
+                        
+                        edge_key = (rec_dict["source_id"], rec_dict["target_id"])
+                        if edge_key not in edges_set:
+                            edges_set.add(edge_key)
+                            edges_list.append({
+                                "source": rec_dict["source_id"],
+                                "target": rec_dict["target_id"],
+                                "influence_type": rec_dict["influence_type"],
+                                "strength": rec_dict["strength"],
+                                "edge_type": "INFLUENCES"
+                            })
+            except Exception as e:
+                st.warning(f"Upstream query error: {e}")
+        
+        # Downstream: nodes influenced by this node (directly or indirectly)
+        if direction in ["downstream", "both"]:
+            downstream_query = f"""
+                MATCH path = (source:Risk {{id: $node_id}})-[:INFLUENCES*{depth_clause}]->(r:Risk)
+                WHERE r.id <> $node_id {level_condition}
+                UNWIND nodes(path) as n
+                UNWIND relationships(path) as rel
+                WITH DISTINCT n, rel
+                WHERE n:Risk
+                RETURN n.id as id, n.name as name, n.level as level,
+                       n.categories as categories, n.status as status,
+                       n.exposure as exposure, n.owner as owner,
+                       'Risk' as node_type,
+                       startNode(rel).id as source_id, endNode(rel).id as target_id,
+                       rel.influence_type as influence_type, rel.strength as strength
+            """
+            try:
+                downstream_results = self.execute_query(downstream_query, params)
+                for record in downstream_results:
+                    rec_dict = dict(record)
+                    node_id_result = rec_dict["id"]
+                    if level_filter == "all" or rec_dict["level"] == level_filter:
+                        if node_id_result not in nodes_set:
+                            nodes_set[node_id_result] = {
+                                "id": node_id_result,
+                                "name": rec_dict["name"],
+                                "level": rec_dict["level"],
+                                "categories": rec_dict["categories"],
+                                "status": rec_dict["status"],
+                                "exposure": rec_dict["exposure"],
+                                "owner": rec_dict["owner"],
+                                "node_type": "Risk"
+                            }
+                        
+                        edge_key = (rec_dict["source_id"], rec_dict["target_id"])
+                        if edge_key not in edges_set:
+                            edges_set.add(edge_key)
+                            edges_list.append({
+                                "source": rec_dict["source_id"],
+                                "target": rec_dict["target_id"],
+                                "influence_type": rec_dict["influence_type"],
+                                "strength": rec_dict["strength"],
+                                "edge_type": "INFLUENCES"
+                            })
+            except Exception as e:
+                st.warning(f"Downstream query error: {e}")
+        
+        # Add the selected node itself
+        selected_node_info = {
+            "id": node_id,
+            "name": selected_node_data.get("name"),
+            "level": selected_node_data.get("level"),
+            "categories": selected_node_data.get("categories"),
+            "status": selected_node_data.get("status"),
+            "exposure": selected_node_data.get("exposure"),
+            "owner": selected_node_data.get("owner"),
+            "node_type": "Risk"
+        }
+        nodes_set[node_id] = selected_node_info
+        
+        # Include TPOs if requested
+        tpo_nodes = []
+        tpo_edges = []
+        if include_tpos and direction in ["downstream", "both"]:
+            # Get TPOs impacted by the selected node and its downstream risks
+            risk_ids = list(nodes_set.keys())
+            if risk_ids:
+                tpo_query = """
+                    MATCH (r:Risk)-[i:IMPACTS_TPO]->(t:TPO)
+                    WHERE r.id IN $risk_ids
+                    RETURN DISTINCT t.id as id, t.reference as reference, t.name as name,
+                           t.cluster as cluster, t.description as description,
+                           'TPO' as node_type,
+                           r.id as risk_id, i.impact_level as impact_level, i.description as edge_description
+                """
+                tpo_results = self.execute_query(tpo_query, {"risk_ids": risk_ids})
+                tpo_set = {}
+                for record in tpo_results:
+                    rec_dict = dict(record)
+                    tpo_id = rec_dict["id"]
+                    if tpo_id not in tpo_set:
+                        tpo_set[tpo_id] = {
+                            "id": tpo_id,
+                            "reference": rec_dict["reference"],
+                            "name": rec_dict["name"],
+                            "cluster": rec_dict["cluster"],
+                            "description": rec_dict["description"],
+                            "node_type": "TPO"
+                        }
+                    tpo_edges.append({
+                        "source": rec_dict["risk_id"],
+                        "target": tpo_id,
+                        "edge_type": "IMPACTS_TPO",
+                        "impact_level": rec_dict["impact_level"],
+                        "description": rec_dict.get("edge_description", "")
+                    })
+                tpo_nodes = list(tpo_set.values())
+        
+        nodes_list = list(nodes_set.values())
+        nodes_list.extend(tpo_nodes)
+        edges_list.extend(tpo_edges)
+        
+        return nodes_list, edges_list, selected_node_info
+    
+    def get_all_nodes_for_selection(self) -> list:
+        """Get all risks and TPOs for the selection dropdown"""
+        query = """
+            MATCH (r:Risk)
+            RETURN r.id as id, r.name as name, r.level as level, 'Risk' as node_type
+            ORDER BY r.level, r.name
+        """
+        risks = self.execute_query(query)
+        
+        tpo_query = """
+            MATCH (t:TPO)
+            RETURN t.id as id, t.reference as reference, t.name as name, 'TPO' as node_type
+            ORDER BY t.reference
+        """
+        tpos = self.execute_query(tpo_query)
+        
+        result = []
+        for r in risks:
+            result.append({
+                "id": r["id"],
+                "label": f"[{r['level'][:4]}] {r['name']}",
+                "name": r["name"],
+                "type": "Risk",
+                "level": r["level"]
+            })
+        for t in tpos:
+            result.append({
+                "id": t["id"],
+                "label": f"[TPO] {t['reference']}: {t['name']}",
+                "name": t["name"],
+                "type": "TPO"
+            })
+        
+        return result
+    
     def export_to_excel(self, filepath: str):
         """Exports risks, influences, TPOs and TPO impacts to Excel"""
         risks = self.get_all_risks()
@@ -1578,6 +1853,159 @@ def generate_tpo_cluster_layout(nodes: list) -> dict:
     return positions
 
 
+def generate_auto_spread_layout(nodes: list) -> dict:
+    """
+    Generates an automatic spread layout for when physics is disabled.
+    Uses a hierarchical layout: TPOs at top, Strategic in middle, Operational at bottom.
+    Nodes are spread horizontally within each level with spacing based on node sizes.
+    """
+    import math
+    
+    positions = {}
+    
+    def get_node_size(node: dict) -> float:
+        """Calculate the visual size of a node (matches render_graph logic)"""
+        node_type = node.get("node_type", "Risk")
+        if node_type == "TPO":
+            return 35  # TPO base size
+        else:
+            exposure = node.get("exposure") or 0
+            return 25 + (exposure * 1.5) if exposure else 25
+    
+    def get_node_width(node: dict) -> float:
+        """Estimate the total width a node needs (size + label)"""
+        size = get_node_size(node)
+        # Account for label width (max 180px from widthConstraint)
+        # Use node size * 2 for diameter + some padding for label
+        label_width = 180  # max label width from widthConstraint
+        return max(size * 2, label_width) + 20  # Add padding
+    
+    # Separate nodes by type/level
+    tpos = [n for n in nodes if n.get("node_type") == "TPO"]
+    strategic = [n for n in nodes if n.get("level") == "Strategic" and n.get("node_type") != "TPO"]
+    operational = [n for n in nodes if n.get("level") == "Operational" and n.get("node_type") != "TPO"]
+    
+    # Layout parameters
+    canvas_width = 1400
+    margin_x = 100
+    min_spacing = 50  # Minimum gap between nodes
+    
+    def calculate_row_spacing(node_list: list) -> list:
+        """Calculate spacing for each node based on its size and neighbor's size"""
+        if len(node_list) <= 1:
+            return [0]
+        
+        spacings = []
+        for i in range(len(node_list) - 1):
+            # Space needed is half of current node + gap + half of next node
+            current_width = get_node_width(node_list[i])
+            next_width = get_node_width(node_list[i + 1])
+            spacing = (current_width / 2) + min_spacing + (next_width / 2)
+            spacings.append(spacing)
+        
+        return spacings
+    
+    def layout_row_with_sizes(node_list: list, y_position: float):
+        """Layout a row of nodes with spacing based on their sizes"""
+        n = len(node_list)
+        if n == 0:
+            return 0  # Return row height
+        
+        if n == 1:
+            positions[node_list[0]["id"]] = {
+                "x": int(canvas_width / 2),
+                "y": int(y_position)
+            }
+            return get_node_size(node_list[0]) * 2
+        
+        # Calculate individual spacings
+        spacings = calculate_row_spacing(node_list)
+        total_width = sum(spacings)
+        
+        # If total width exceeds canvas, scale down proportionally
+        available_width = canvas_width - 2 * margin_x
+        if total_width > available_width:
+            scale = available_width / total_width
+            spacings = [s * scale for s in spacings]
+            total_width = available_width
+        
+        # Start position to center the row
+        start_x = (canvas_width - total_width) / 2
+        start_x = max(start_x, margin_x)
+        
+        # Place nodes
+        current_x = start_x
+        max_size = 0
+        for i, node in enumerate(node_list):
+            positions[node["id"]] = {
+                "x": int(current_x),
+                "y": int(y_position)
+            }
+            max_size = max(max_size, get_node_size(node))
+            if i < len(spacings):
+                current_x += spacings[i]
+        
+        return max_size * 2  # Return approximate row height
+    
+    def layout_grid_with_sizes(node_list: list, y_start: float, max_per_row: int = 5):
+        """Layout nodes in a grid pattern with size-aware spacing"""
+        n = len(node_list)
+        if n == 0:
+            return 0
+        
+        rows = math.ceil(n / max_per_row)
+        current_y = y_start
+        total_height = 0
+        
+        for row_idx in range(rows):
+            start_idx = row_idx * max_per_row
+            end_idx = min(start_idx + max_per_row, n)
+            row_nodes = node_list[start_idx:end_idx]
+            
+            row_height = layout_row_with_sizes(row_nodes, current_y)
+            
+            # Calculate spacing to next row based on max node size in this row
+            max_node_size = max(get_node_size(node) for node in row_nodes)
+            row_spacing = max_node_size * 2 + min_spacing + 40  # Extra padding between rows
+            
+            current_y += row_spacing
+            total_height += row_spacing
+        
+        return total_height
+    
+    # Calculate max node sizes for vertical spacing
+    max_tpo_size = max([get_node_size(n) for n in tpos], default=35)
+    max_strategic_size = max([get_node_size(n) for n in strategic], default=25)
+    max_operational_size = max([get_node_size(n) for n in operational], default=25)
+    
+    # Y positions for each level with size-aware spacing
+    y_tpo = 80
+    
+    # Layout TPOs
+    tpo_height = layout_row_with_sizes(tpos, y_tpo) if tpos else 0
+    
+    # Strategic level starts after TPOs with appropriate gap
+    y_strategic = y_tpo + max(tpo_height, max_tpo_size * 2) + 80
+    
+    # Layout Strategic risks
+    if len(strategic) <= 5:
+        strategic_height = layout_row_with_sizes(strategic, y_strategic)
+    else:
+        strategic_height = layout_grid_with_sizes(strategic, y_strategic, max_per_row=5)
+    
+    # Operational level starts after Strategic
+    y_operational = y_strategic + max(strategic_height, max_strategic_size * 2) + 80
+    
+    # Layout Operational risks
+    if len(operational) <= 6:
+        layout_row_with_sizes(operational, y_operational)
+    else:
+        layout_grid_with_sizes(operational, y_operational, max_per_row=6)
+    
+    
+    return positions
+
+
 # ============================================================================
 # INTERFACE FUNCTIONS
 # ============================================================================
@@ -1635,11 +2063,25 @@ def wrap_label(text: str, max_width: int = 20) -> str:
     
     return '\n'.join(lines)
 
-def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enabled: bool = True, positions: dict = None, capture_positions: bool = False):
-    """Generates and displays the interactive graph with PyVis (with optional positions)"""
+def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enabled: bool = True, positions: dict = None, capture_positions: bool = False, highlighted_node_id: str = None):
+    """Generates and displays the interactive graph with PyVis (with optional positions)
+    
+    Args:
+        nodes: List of node dictionaries
+        edges: List of edge dictionaries
+        color_by: "level" or "exposure"
+        physics_enabled: Enable physics simulation
+        positions: Dict of node positions
+        capture_positions: Enable position capture UI
+        highlighted_node_id: ID of node to highlight (selected node)
+    """
     if not nodes:
         st.info("No risks to display. Create your first risk!")
         return None
+    
+    # If physics is disabled and no positions provided, generate an automatic layout
+    if not physics_enabled and not positions:
+        positions = generate_auto_spread_layout(nodes)
     
     net = Network(
         height="700px",
@@ -1700,6 +2142,7 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
     
     for node in nodes:
         node_type = node.get("node_type", "Risk")
+        is_highlighted = highlighted_node_id and node["id"] == highlighted_node_id
         
         if node_type == "TPO":
             # TPO Node - Yellow Hexagon
@@ -1707,26 +2150,46 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
             shape = "hexagon"
             size = 35  # Increased size
             
-            title = f"""
-            <div style="max-width: 300px;">
-            <b>🎯 {node['reference']}: {node['name']}</b><br>
-            <b>Type:</b> Top Program Objective<br>
-            <b>Cluster:</b> {node.get('cluster', 'N/A')}<br>
-            <b>Description:</b> {node.get('description', 'N/A')}
-            </div>
-            """
+            # Highlight styling for selected node
+            if is_highlighted:
+                border_color = "#e74c3c"  # Red border for selection
+                border_width = 6
+                shadow_color = "#e74c3c"
+            else:
+                border_color = "#f39c12"
+                border_width = 2
+                shadow_color = "rgba(0,0,0,0.2)"
+            
+            # Plain text tooltip (no HTML tags)
+            title_parts = [
+                f"🎯 {node['reference']}: {node['name']}",
+                f"Type: Top Program Objective",
+                f"Cluster: {node.get('cluster', 'N/A')}",
+                f"Description: {node.get('description', 'N/A')}"
+            ]
+            if is_highlighted:
+                title_parts.append("★ SELECTED NODE")
+            title = "\n".join(title_parts)
             
             # Use reference as label for TPOs (short)
             label = f"{node['reference']}"
+            if is_highlighted:
+                label = f"★ {label}"
             
             node_config = {
                 "label": label,
                 "title": title,
-                "color": color,
-                "size": size,
+                "color": {
+                    "background": color,
+                    "border": border_color,
+                    "highlight": {"background": "#f5d76e", "border": "#e74c3c"}
+                },
+                "size": size + (10 if is_highlighted else 0),
                 "shape": shape,
-                "borderWidthSelected": 4,
-                "font": {"color": "#333333", "size": 16, "face": "Arial", "bold": True}
+                "borderWidth": border_width,
+                "borderWidthSelected": 6,
+                "font": {"color": "#333333", "size": 16, "face": "Arial", "bold": True},
+                "shadow": {"enabled": True, "color": shadow_color, "size": 15 if is_highlighted else 10}
             }
         else:
             # Risk Node
@@ -1735,9 +2198,9 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
             status = node.get("status", "Active")
             
             if color_by == "level":
-                color = get_color_by_level(level)
+                base_color = get_color_by_level(level)
             else:
-                color = get_color_by_exposure(exposure)
+                base_color = get_color_by_exposure(exposure)
             
             # Increased base size for better visibility
             size = 25 + (exposure * 1.5) if exposure else 25
@@ -1750,42 +2213,63 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
                 shape = "dot"
                 border_style = None
             
+            # Highlight styling for selected node
+            if is_highlighted:
+                border_color = "#e74c3c"  # Red border for selection
+                border_width = 6
+                shadow_color = "#e74c3c"
+                size += 10  # Make selected node larger
+            else:
+                border_color = base_color
+                border_width = 2
+                shadow_color = "rgba(0,0,0,0.2)"
+            
             categories_str = ", ".join(node.get("categories", [])) if node.get("categories") else "N/A"
             
             # Format exposure correctly
             exposure_str = f"{exposure:.2f}" if exposure else "N/A"
             
-            title = f"""
-            <div style="max-width: 350px;">
-            <b>{node['name']}</b><br>
-            <b>Level:</b> {level}<br>
-            <b>Status:</b> {status}<br>
-            <b>Categories:</b> {categories_str}<br>
-            <b>Exposure:</b> {exposure_str}<br>
-            <b>Owner:</b> {node.get('owner', 'N/A')}
-            </div>
-            """
+            # Plain text tooltip (no HTML tags)
+            title_parts = [
+                f"{node['name']}",
+                f"Level: {level}",
+                f"Status: {status}",
+                f"Categories: {categories_str}",
+                f"Exposure: {exposure_str}",
+                f"Owner: {node.get('owner', 'N/A')}"
+            ]
+            if is_highlighted:
+                title_parts.append("★ SELECTED NODE")
+            title = "\n".join(title_parts)
             
             # Wrap long labels for better display
             label = wrap_label(node["name"], max_width=20)
+            if is_highlighted:
+                label = f"★ {label}"
             
             node_config = {
                 "label": label,
                 "title": title,
-                "color": color,
+                "color": {
+                    "background": base_color,
+                    "border": border_color,
+                    "highlight": {"background": base_color, "border": "#e74c3c"}
+                },
                 "size": size,
                 "shape": shape,
-                "borderWidthSelected": 4,
-                "font": {"color": "#333333", "size": 16, "face": "Arial"}
+                "borderWidth": border_width,
+                "borderWidthSelected": 6,
+                "font": {"color": "#333333", "size": 16, "face": "Arial"},
+                "shadow": {"enabled": True, "color": shadow_color, "size": 15 if is_highlighted else 10}
             }
         
-        # If positions are provided, apply them and fix the node
+        # If positions are provided, apply them as initial positions
+        # Don't fix them so they can still be dragged
         if positions and node["id"] in positions:
             pos = positions[node["id"]]
             node_config["x"] = pos["x"]
             node_config["y"] = pos["y"]
-            node_config["fixed"] = {"x": True, "y": True}
-            node_config["physics"] = False
+            # Note: We don't set "fixed" so nodes remain draggable
         
         net.add_node(node["id"], **node_config)
     
@@ -1809,9 +2293,10 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
             else:  # Low
                 width = 1.5
             
+            # Plain text tooltip
             title = f"Impacts TPO ({impact_level})"
             if edge.get("description"):
-                title += f"<br>{edge['description']}"
+                title += f"\n{edge['description']}"
             
             net.add_edge(
                 edge["source"],
@@ -1845,6 +2330,7 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
             elif strength == "Moderate":
                 width *= 1.2
             
+            # Plain text tooltip
             net.add_edge(
                 edge["source"],
                 edge["target"],
@@ -1991,6 +2477,164 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
         """
         # Insert before closing body tag
         html_content = html_content.replace('</body>', position_capture_js + '</body>')
+    
+    # Always add fullscreen capability using native Fullscreen API
+    fullscreen_js = """
+    <style>
+        #fullscreenBtn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 9999;
+            padding: 10px 18px;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        #fullscreenBtn:hover {
+            background-color: #34495e;
+            transform: scale(1.05);
+        }
+        
+        /* Styles when in fullscreen */
+        :fullscreen #mynetwork,
+        :-webkit-full-screen #mynetwork,
+        :-moz-full-screen #mynetwork,
+        :-ms-fullscreen #mynetwork {
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+        
+        :fullscreen body,
+        :-webkit-full-screen body,
+        :-moz-full-screen body,
+        :-ms-fullscreen body {
+            overflow: hidden;
+            background: white;
+        }
+        
+        :fullscreen #fullscreenBtn,
+        :-webkit-full-screen #fullscreenBtn,
+        :-moz-full-screen #fullscreenBtn,
+        :-ms-fullscreen #fullscreenBtn {
+            position: fixed;
+            background-color: #e74c3c;
+        }
+        
+        :fullscreen #fullscreenBtn:hover,
+        :-webkit-full-screen #fullscreenBtn:hover,
+        :-moz-full-screen #fullscreenBtn:hover,
+        :-ms-fullscreen #fullscreenBtn:hover {
+            background-color: #c0392b;
+        }
+        
+        /* Keyboard hint */
+        #fsHint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            padding: 8px 16px;
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            border-radius: 5px;
+            font-size: 13px;
+            display: none;
+            pointer-events: none;
+        }
+        
+        :fullscreen #fsHint,
+        :-webkit-full-screen #fsHint,
+        :-moz-full-screen #fsHint,
+        :-ms-fullscreen #fsHint {
+            display: block;
+        }
+    </style>
+    <button id="fullscreenBtn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+    <div id="fsHint">Press ESC to exit fullscreen | Use mouse wheel to zoom | Drag to pan</div>
+    <script>
+        function toggleFullscreen() {
+            var elem = document.documentElement;
+            var btn = document.getElementById('fullscreenBtn');
+            
+            if (!document.fullscreenElement && !document.webkitFullscreenElement && 
+                !document.mozFullScreenElement && !document.msFullscreenElement) {
+                // Enter fullscreen
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                } else if (elem.mozRequestFullScreen) {
+                    elem.mozRequestFullScreen();
+                } else if (elem.msRequestFullscreen) {
+                    elem.msRequestFullscreen();
+                }
+            } else {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+        
+        // Update button text and resize network on fullscreen change
+        function onFullscreenChange() {
+            var btn = document.getElementById('fullscreenBtn');
+            var isFs = document.fullscreenElement || document.webkitFullscreenElement || 
+                       document.mozFullScreenElement || document.msFullscreenElement;
+            
+            if (isFs) {
+                btn.innerHTML = '✕ Exit Fullscreen';
+                // Resize network to fill screen
+                setTimeout(function() {
+                    if (typeof network !== 'undefined' && network) {
+                        var width = window.innerWidth;
+                        var height = window.innerHeight;
+                        network.setSize(width + 'px', height + 'px');
+                        network.fit();
+                    }
+                }, 100);
+            } else {
+                btn.innerHTML = '⛶ Fullscreen';
+                // Resize back to original
+                setTimeout(function() {
+                    if (typeof network !== 'undefined' && network) {
+                        network.setSize('100%', '700px');
+                        network.redraw();
+                    }
+                }, 100);
+            }
+        }
+        
+        document.addEventListener('fullscreenchange', onFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+        document.addEventListener('mozfullscreenchange', onFullscreenChange);
+        document.addEventListener('MSFullscreenChange', onFullscreenChange);
+        
+        // Keyboard shortcut: F to toggle fullscreen
+        document.addEventListener('keydown', function(e) {
+            if ((e.key === 'f' || e.key === 'F') && 
+                !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+                e.preventDefault();
+                toggleFullscreen();
+            }
+        });
+    </script>
+    """
+    html_content = html_content.replace('</body>', fullscreen_js + '</body>')
     
     try:
         os.unlink(tmp_path)
@@ -2277,6 +2921,110 @@ def main():
             
             st.markdown("---")
             
+            # ===== INFLUENCE EXPLORER =====
+            st.markdown("### 🔍 Influence Explorer")
+            
+            # Initialize session state for influence explorer
+            if "influence_explorer_enabled" not in st.session_state:
+                st.session_state.influence_explorer_enabled = False
+            if "selected_node_id" not in st.session_state:
+                st.session_state.selected_node_id = None
+            
+            influence_explorer_enabled = st.checkbox(
+                "🔍 Enable Influence Explorer",
+                value=st.session_state.influence_explorer_enabled,
+                help="Select a node to see its influence network"
+            )
+            st.session_state.influence_explorer_enabled = influence_explorer_enabled
+            
+            if influence_explorer_enabled:
+                # Node selection dropdown
+                all_nodes = manager.get_all_nodes_for_selection()
+                
+                if all_nodes:
+                    node_options = {n["id"]: n["label"] for n in all_nodes}
+                    node_ids = [""] + list(node_options.keys())
+                    node_labels = ["-- Select a node --"] + [node_options[nid] for nid in node_ids[1:]]
+                    
+                    # Find current selection index
+                    current_idx = 0
+                    if st.session_state.selected_node_id and st.session_state.selected_node_id in node_ids:
+                        current_idx = node_ids.index(st.session_state.selected_node_id)
+                    
+                    selected_idx = st.selectbox(
+                        "Select node to explore",
+                        range(len(node_labels)),
+                        index=current_idx,
+                        format_func=lambda i: node_labels[i],
+                        key="node_selector"
+                    )
+                    
+                    if selected_idx > 0:
+                        st.session_state.selected_node_id = node_ids[selected_idx]
+                    else:
+                        st.session_state.selected_node_id = None
+                    
+                    if st.session_state.selected_node_id:
+                        # Direction control
+                        direction = st.radio(
+                            "Direction",
+                            ["both", "upstream", "downstream"],
+                            format_func=lambda x: {
+                                "upstream": "⬆️ Upstream (influences this node)",
+                                "downstream": "⬇️ Downstream (influenced by this node)",
+                                "both": "↕️ Both directions"
+                            }[x],
+                            horizontal=True,
+                            key="influence_direction"
+                        )
+                        
+                        # Depth control
+                        col_depth1, col_depth2 = st.columns([2, 1])
+                        with col_depth1:
+                            max_depth = st.slider(
+                                "Max depth",
+                                min_value=1,
+                                max_value=10,
+                                value=5,
+                                help="Maximum levels of influence to traverse",
+                                key="influence_depth"
+                            )
+                        with col_depth2:
+                            unlimited_depth = st.checkbox("Unlimited", value=False, key="unlimited_depth")
+                        
+                        if unlimited_depth:
+                            max_depth = None
+                        
+                        # Level filter for influence chain
+                        level_filter = st.radio(
+                            "Show risk levels",
+                            ["all", "Strategic", "Operational"],
+                            format_func=lambda x: {
+                                "all": "All levels",
+                                "Strategic": "🟣 Strategic only",
+                                "Operational": "🔵 Operational only"
+                            }[x],
+                            horizontal=True,
+                            key="influence_level_filter"
+                        )
+                        
+                        # TPO toggle
+                        include_tpos = st.checkbox(
+                            "🟡 Include TPOs",
+                            value=True,
+                            help="Show TPOs impacted by risks in the network",
+                            key="influence_include_tpos"
+                        )
+                        
+                        # Clear selection button
+                        if st.button("🔄 Clear selection", use_container_width=True):
+                            st.session_state.selected_node_id = None
+                            st.rerun()
+                else:
+                    st.info("No nodes available. Create some risks first!")
+            
+            st.markdown("---")
+            
             physics_enabled = st.checkbox(
                 "🔄 Physics enabled",
                 value=True,
@@ -2430,20 +3178,65 @@ def main():
                 st.rerun()
         
         with col_display:
-            # Get filters from FilterManager
-            filters = filter_mgr.get_filters_for_query()
+            # Check if influence explorer is active
+            if (st.session_state.get("influence_explorer_enabled", False) and 
+                st.session_state.get("selected_node_id")):
+                
+                # Get influence network data
+                selected_node_id = st.session_state.selected_node_id
+                direction = st.session_state.get("influence_direction", "both")
+                max_depth = None if st.session_state.get("unlimited_depth", False) else st.session_state.get("influence_depth", 5)
+                level_filter = st.session_state.get("influence_level_filter", "all")
+                include_tpos = st.session_state.get("influence_include_tpos", True)
+                
+                nodes, edges, selected_node_info = manager.get_influence_network(
+                    node_id=selected_node_id,
+                    direction=direction,
+                    max_depth=max_depth,
+                    level_filter=level_filter,
+                    include_tpos=include_tpos
+                )
+                
+                # Show info about the selected node
+                if selected_node_info:
+                    node_type = selected_node_info.get("node_type", "Risk")
+                    if node_type == "TPO":
+                        st.success(f"🔍 **Exploring:** {selected_node_info.get('reference')}: {selected_node_info.get('name')} (TPO)")
+                    else:
+                        st.success(f"🔍 **Exploring:** {selected_node_info.get('name')} ({selected_node_info.get('level')} Risk)")
+                    
+                    # Stats about the network
+                    risk_count = len([n for n in nodes if n.get("node_type") != "TPO"])
+                    tpo_count = len([n for n in nodes if n.get("node_type") == "TPO"])
+                    
+                    col_stat1, col_stat2, col_stat3 = st.columns(3)
+                    with col_stat1:
+                        st.metric("Risks in network", risk_count)
+                    with col_stat2:
+                        st.metric("TPOs impacted", tpo_count)
+                    with col_stat3:
+                        st.metric("Connections", len(edges))
+                
+                # Don't use positions in influence explorer mode
+                positions = None
+                highlighted_node_id = selected_node_id
+                
+            else:
+                # Normal mode - use filters
+                filters = filter_mgr.get_filters_for_query()
+                nodes, edges = manager.get_graph_data(filters if filters else None)
+                highlighted_node_id = None
+                
+                # Load positions if a layout is selected
+                positions = None
+                if "selected_layout_name" in st.session_state:
+                    layout_name = st.session_state.selected_layout_name
+                    positions = st.session_state.layout_manager.load_layout(layout_name)
+                    if positions:
+                        st.info(f"📍 Active layout: **{layout_name}**")
             
-            nodes, edges = manager.get_graph_data(filters if filters else None)
-            
-            # Load positions if a layout is selected
-            positions = None
-            if "selected_layout_name" in st.session_state:
-                layout_name = st.session_state.selected_layout_name
-                positions = st.session_state.layout_manager.load_layout(layout_name)
-                if positions:
-                    st.info(f"📍 Active layout: **{layout_name}**")
-            
-            render_graph(nodes, edges, color_by, physics_enabled, positions, capture_positions=capture_mode)
+            render_graph(nodes, edges, color_by, physics_enabled, positions, 
+                        capture_positions=capture_mode, highlighted_node_id=highlighted_node_id)
     
     # === RISKS TAB ===
     with tab_risks:
