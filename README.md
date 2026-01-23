@@ -50,7 +50,13 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
 - Physics toggle for node arrangement
 - Draggable nodes when physics is disabled
 
-### 🔍 Influence Explorer (New)
+### 📊 Edge Visibility Control (New)
+- **Progressive disclosure**: Show only the most important edges
+- **Slider control**: Adjust from 0% to 100% of edges displayed
+- **Smart ranking**: Edges ranked by strength × confidence
+- **Reduces clutter**: Makes complex graphs more readable
+
+### 🔍 Influence Explorer
 - **Select any node** to explore its influence network
 - **Direction control**: 
   - Upstream (what influences this node)
@@ -61,6 +67,39 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
 - **TPO inclusion**: Toggle to show impacted TPOs
 - **Visual highlighting**: Selected node highlighted with red border and ★ symbol
 - **Network statistics**: Count of risks, TPOs, and connections displayed
+
+### 📊 Influence Analysis Panel (New)
+A comprehensive analysis toolkit to identify key risks for mitigation:
+
+#### 🎯 Top Propagators
+- Identifies risks with **highest downstream impact**
+- Shows propagation score, TPOs reached, and risks influenced
+- **Use case**: "Mitigate here for global effect"
+- Click 🔍 to explore the node in the graph
+
+#### ⚠️ Convergence Points
+- Identifies risks/TPOs where **multiple influences converge**
+- Shows influence score, source count, and path count
+- Flags "High convergence" nodes requiring transverse management
+- **Use case**: "Mitigate upstream rather than directly"
+
+#### 🔥 Critical Paths
+- Shows **strongest influence chains** from Operational risks to TPOs
+- Displays full path with visual icons (🔵→🟣→🟡)
+- Shows path strength score
+- **Use case**: Identify key risk propagation routes
+
+#### 🚧 Bottlenecks
+- Identifies nodes appearing in **many paths to TPOs**
+- Shows path count and percentage of total paths
+- Flags critical bottlenecks (>50%)
+- **Use case**: "Single points of failure"
+
+#### 📦 Risk Clusters
+- Identifies **tightly interconnected risk groups**
+- Shows size, level breakdown, internal links, and density
+- Lists included risks
+- **Use case**: "Consider managing as units"
 
 ### Filter System
 - Quick filter presets (Full View, Strategic Focus, Operational Focus, etc.)
@@ -169,6 +208,18 @@ rim-alpha/
 3. Set impact level
 4. Click "Create Impact"
 
+### Using the Influence Analysis Panel
+
+1. In the **📊 Visualization** tab, expand the "📊 Influence Analysis" section
+2. Click "🔄 Refresh Analysis" to update the analysis
+3. Browse the five analysis tabs:
+   - **🎯 Top Propagators**: Risks to mitigate for maximum global effect
+   - **⚠️ Convergence Points**: Risks requiring transverse management
+   - **🔥 Critical Paths**: Strongest influence chains to TPOs
+   - **🚧 Bottlenecks**: Single points of failure in your risk network
+   - **📦 Risk Clusters**: Tightly connected risk groups
+4. Click 🔍 on any risk to explore it in the Influence Explorer
+
 ### Using the Influence Explorer
 
 1. In the **📊 Visualization** tab, enable "🔍 Enable Influence Explorer"
@@ -179,6 +230,14 @@ rim-alpha/
 6. Toggle "Include TPOs" to show/hide impacted objectives
 7. The graph displays only the influence network around your selected node
 8. Click "Clear selection" to return to normal view
+
+### Using Edge Visibility Control
+
+1. In the sidebar under "📊 Edge Visibility", select "Progressive disclosure"
+2. Use the slider to control what percentage of edges are shown
+3. Edges are ranked by importance (strength × confidence)
+4. Start with fewer edges (e.g., 25%) to see only critical connections
+5. Gradually increase to reveal more connections as needed
 
 ### Using Fullscreen Mode
 
@@ -267,6 +326,34 @@ Built-in presets:
 **IMPACTS_TPO** (Risk → TPO)
 - `impact_level`: "Low" | "Medium" | "High" | "Critical"
 - `description`: String
+
+## 📈 Analysis Algorithms
+
+### Propagation Score
+Measures downstream impact using weighted reachability:
+- TPO reached: 10 points × impact level
+- Strategic risk reached: 5 points
+- Operational risk reached: 2 points
+- Decay factor: 0.85^depth (closer = more impact)
+
+### Convergence Score
+Measures upstream influence concentration:
+- Counts unique source risks and paths
+- Weights by source type (Operational = 1.0, Strategic = 0.7)
+- Bonus multiplier for multiple independent paths
+- Flags high convergence when paths > sources × 1.5
+
+### Bottleneck Detection
+Identifies single points of failure:
+- Counts appearances in all paths to TPOs
+- Calculates percentage of total paths
+- Critical threshold: >50%
+
+### Cluster Detection
+Finds tightly interconnected groups:
+- Uses connected component analysis
+- Calculates density (internal edges / possible edges)
+- Groups by primary category
 
 ## 🤝 Contributing
 

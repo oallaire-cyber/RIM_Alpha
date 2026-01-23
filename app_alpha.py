@@ -1279,6 +1279,423 @@ class RiskGraphManager:
         
         return result
     
+    # --- INFLUENCE ANALYSIS METHODS ---
+    
+    def get_influence_analysis(self) -> dict:
+        """
+        Comprehensive influence analysis including:
+        - Top Propagators (risks with highest downstream impact)
+        - Convergence Points (most influenced risks/TPOs)
+        - Critical Paths (strongest influence chains)
+        - Bottlenecks (nodes appearing in many paths)
+        - Risk Clusters (tightly interconnected groups)
+        """
+        analysis = {
+            "top_propagators": [],
+            "convergence_points": [],
+            "critical_paths": [],
+            "bottlenecks": [],
+            "risk_clusters": []
+        }
+        
+        # Strength values for scoring
+        strength_values = {"Critical": 4, "Strong": 3, "Moderate": 2, "Weak": 1}
+        impact_values = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
+        
+        # Get all nodes and edges for analysis
+        all_risks = self.get_all_risks()
+        all_tpos = self.get_all_tpos()
+        all_influences = self.get_all_influences()
+        all_tpo_impacts = self.get_all_tpo_impacts()
+        
+        # Build adjacency structures
+        risk_dict = {r["id"]: dict(r) for r in all_risks}
+        tpo_dict = {t["id"]: dict(t) for t in all_tpos}
+        
+        # Outgoing edges (for propagation analysis)
+        outgoing = {}  # node_id -> [(target_id, strength, edge_type)]
+        # Incoming edges (for convergence analysis)
+        incoming = {}  # node_id -> [(source_id, strength, edge_type)]
+        
+        for inf in all_influences:
+            source = inf["source_id"]
+            target = inf["target_id"]
+            strength = strength_values.get(inf["strength"], 2)
+            confidence = inf.get("confidence", 0.8) or 0.8
+            score = strength * confidence
+            
+            if source not in outgoing:
+                outgoing[source] = []
+            outgoing[source].append((target, score, "INFLUENCES"))
+            
+            if target not in incoming:
+                incoming[target] = []
+            incoming[target].append((source, score, "INFLUENCES"))
+        
+        for impact in all_tpo_impacts:
+            source = impact["risk_id"]
+            target = impact["tpo_id"]
+            impact_score = impact_values.get(impact["impact_level"], 2)
+            
+            if source not in outgoing:
+                outgoing[source] = []
+            outgoing[source].append((target, impact_score * 1.5, "IMPACTS_TPO"))  # Boost TPO impacts
+            
+            if target not in incoming:
+                incoming[target] = []
+            incoming[target].append((source, impact_score * 1.5, "IMPACTS_TPO"))
+        
+        # === 1. TOP PROPAGATORS ===
+        # Calculate downstream reachability with decay
+        propagation_scores = {}
+        
+        for risk_id, risk_data in risk_dict.items():
+            score = 0
+            tpos_reached = set()
+            risks_reached = set()
+            paths_to_tpo = []
+            
+            # BFS with score accumulation
+            visited = set()
+            queue = [(risk_id, 1.0, 0, [risk_id])]  # (node, cumulative_strength, depth, path)
+            
+            while queue:
+                current, cum_strength, depth, path = queue.pop(0)
+                
+                if current in visited:
+                    continue
+                visited.add(current)
+                
+                if current != risk_id:
+                    decay = 0.85 ** depth
+                    
+                    if current in tpo_dict:
+                        tpos_reached.add(current)
+                        node_value = 10
+                        score += node_value * cum_strength * decay
+                        paths_to_tpo.append({
+                            "path": path,
+                            "score": cum_strength * decay
+                        })
+                    elif current in risk_dict:
+                        risks_reached.add(current)
+                        node_value = 5 if risk_dict[current]["level"] == "Strategic" else 2
+                        score += node_value * cum_strength * decay
+                
+                # Continue traversal
+                if current in outgoing and depth < 10:
+                    for target, edge_score, edge_type in outgoing[current]:
+                        if target not in visited:
+                            new_strength = cum_strength * (edge_score / 4)  # Normalize
+                            queue.append((target, new_strength, depth + 1, path + [target]))
+            
+            propagation_scores[risk_id] = {
+                "id": risk_id,
+                "name": risk_data["name"],
+                "level": risk_data["level"],
+                "score": round(score, 1),
+                "tpos_reached": len(tpos_reached),
+                "risks_reached": len(risks_reached),
+                "tpo_ids": list(tpos_reached),
+                "paths_to_tpo": sorted(paths_to_tpo, key=lambda x: -x["score"])[:3]
+            }
+        
+        # Sort and get top propagators
+        sorted_propagators = sorted(
+            propagation_scores.values(),
+            key=lambda x: -x["score"]
+        )
+        analysis["top_propagators"] = sorted_propagators[:5]
+        
+        # === 2. CONVERGENCE POINTS ===
+        # Calculate upstream influence convergence
+        convergence_scores = {}
+        
+        # Analyze both strategic risks and TPOs as potential convergence points
+        convergence_candidates = list(risk_dict.keys()) + list(tpo_dict.keys())
+        
+        for node_id in convergence_candidates:
+            if node_id not in incoming:
+                continue
+            
+            score = 0
+            unique_sources = set()
+            path_count = 0
+            source_details = []
+            
+            # BFS upstream
+            visited = set()
+            queue = [(node_id, 1.0, 0)]  # (node, cumulative_strength, depth)
+            
+            while queue:
+                current, cum_strength, depth = queue.pop(0)
+                
+                if current in visited:
+                    continue
+                visited.add(current)
+                
+                if current != node_id and current in risk_dict:
+                    unique_sources.add(current)
+                    source_weight = 1.0 if risk_dict[current]["level"] == "Operational" else 0.7
+                    decay = 0.85 ** depth
+                    score += cum_strength * source_weight * decay
+                    path_count += 1
+                
+                # Continue upstream
+                if current in incoming and depth < 10:
+                    for source, edge_score, edge_type in incoming[current]:
+                        if source not in visited and source in risk_dict:
+                            new_strength = cum_strength * (edge_score / 4)
+                            queue.append((source, new_strength, depth + 1))
+            
+            # Convergence bonus for multiple paths
+            if len(unique_sources) > 0:
+                convergence_multiplier = 1 + (path_count / len(unique_sources)) * 0.2
+                score *= convergence_multiplier
+            
+            is_tpo = node_id in tpo_dict
+            node_data = tpo_dict[node_id] if is_tpo else risk_dict.get(node_id, {})
+            
+            convergence_scores[node_id] = {
+                "id": node_id,
+                "name": node_data.get("reference", "") + ": " + node_data.get("name", "") if is_tpo else node_data.get("name", ""),
+                "level": "TPO" if is_tpo else node_data.get("level", ""),
+                "node_type": "TPO" if is_tpo else "Risk",
+                "score": round(score, 1),
+                "source_count": len(unique_sources),
+                "path_count": path_count,
+                "is_high_convergence": path_count > len(unique_sources) * 1.5 if unique_sources else False
+            }
+        
+        # Sort and get top convergence points
+        sorted_convergence = sorted(
+            [c for c in convergence_scores.values() if c["score"] > 0],
+            key=lambda x: -x["score"]
+        )
+        analysis["convergence_points"] = sorted_convergence[:5]
+        
+        # === 3. CRITICAL PATHS ===
+        # Find strongest paths from operational risks to TPOs
+        critical_paths = []
+        
+        for risk_id, risk_data in risk_dict.items():
+            if risk_data["level"] != "Operational":
+                continue
+            
+            # Find paths to TPOs
+            visited = set()
+            queue = [(risk_id, 1.0, [{"id": risk_id, "name": risk_data["name"], "type": "Operational"}], [])]
+            
+            while queue:
+                current, cum_strength, path_nodes, path_edges = queue.pop(0)
+                
+                if current in visited:
+                    continue
+                visited.add(current)
+                
+                # Check if we reached a TPO
+                if current in tpo_dict and len(path_nodes) > 1:
+                    critical_paths.append({
+                        "path": path_nodes,
+                        "edges": path_edges,
+                        "strength": round(cum_strength, 3),
+                        "length": len(path_nodes) - 1
+                    })
+                    continue
+                
+                # Continue traversal
+                if current in outgoing and len(path_nodes) < 6:
+                    for target, edge_score, edge_type in outgoing[current]:
+                        if target not in visited:
+                            new_strength = cum_strength * (edge_score / 4)
+                            
+                            if target in tpo_dict:
+                                target_info = {"id": target, "name": tpo_dict[target]["reference"], "type": "TPO"}
+                            elif target in risk_dict:
+                                target_info = {"id": target, "name": risk_dict[target]["name"], "type": risk_dict[target]["level"]}
+                            else:
+                                continue
+                            
+                            queue.append((
+                                target,
+                                new_strength,
+                                path_nodes + [target_info],
+                                path_edges + [{"type": edge_type, "score": edge_score}]
+                            ))
+        
+        # Sort by strength and get top paths
+        critical_paths.sort(key=lambda x: -x["strength"])
+        analysis["critical_paths"] = critical_paths[:5]
+        
+        # === 4. BOTTLENECKS ===
+        # Count how often each node appears in paths to TPOs
+        node_path_count = {}
+        total_paths_to_tpo = 0
+        
+        for risk_id, risk_data in risk_dict.items():
+            # Find all paths to TPOs
+            visited_paths = set()
+            queue = [(risk_id, [risk_id])]
+            
+            while queue:
+                current, path = queue.pop(0)
+                path_key = tuple(path)
+                
+                if path_key in visited_paths:
+                    continue
+                visited_paths.add(path_key)
+                
+                if current in tpo_dict and len(path) > 1:
+                    total_paths_to_tpo += 1
+                    for node in path[1:-1]:  # Exclude start and end
+                        if node in risk_dict:
+                            if node not in node_path_count:
+                                node_path_count[node] = 0
+                            node_path_count[node] += 1
+                    continue
+                
+                if current in outgoing and len(path) < 6:
+                    for target, _, _ in outgoing[current]:
+                        if target not in path:
+                            queue.append((target, path + [target]))
+        
+        # Calculate bottleneck scores
+        bottlenecks = []
+        for node_id, count in node_path_count.items():
+            if count >= 2 and node_id in risk_dict:
+                bottlenecks.append({
+                    "id": node_id,
+                    "name": risk_dict[node_id]["name"],
+                    "level": risk_dict[node_id]["level"],
+                    "path_count": count,
+                    "total_paths": total_paths_to_tpo,
+                    "percentage": round(count / max(total_paths_to_tpo, 1) * 100, 1)
+                })
+        
+        bottlenecks.sort(key=lambda x: -x["path_count"])
+        analysis["bottlenecks"] = bottlenecks[:5]
+        
+        # === 5. RISK CLUSTERS ===
+        # Find tightly connected groups using simple connected components
+        # with bidirectional consideration
+        
+        # Build undirected adjacency for clustering
+        undirected = {}
+        for source in outgoing:
+            if source not in risk_dict:
+                continue
+            for target, score, _ in outgoing[source]:
+                if target not in risk_dict:
+                    continue
+                if source not in undirected:
+                    undirected[source] = set()
+                if target not in undirected:
+                    undirected[target] = set()
+                undirected[source].add(target)
+                undirected[target].add(source)
+        
+        # Find connected components
+        visited = set()
+        clusters = []
+        
+        for start_node in undirected:
+            if start_node in visited:
+                continue
+            
+            # BFS to find cluster
+            cluster = set()
+            queue = [start_node]
+            
+            while queue:
+                current = queue.pop(0)
+                if current in visited:
+                    continue
+                visited.add(current)
+                cluster.add(current)
+                
+                for neighbor in undirected.get(current, []):
+                    if neighbor not in visited:
+                        queue.append(neighbor)
+            
+            if len(cluster) >= 2:
+                # Count internal edges
+                internal_edges = 0
+                for node in cluster:
+                    for target, _, _ in outgoing.get(node, []):
+                        if target in cluster:
+                            internal_edges += 1
+                
+                # Determine cluster category
+                levels = [risk_dict[n]["level"] for n in cluster if n in risk_dict]
+                categories = []
+                for n in cluster:
+                    if n in risk_dict:
+                        categories.extend(risk_dict[n].get("categories", []))
+                
+                primary_category = max(set(categories), key=categories.count) if categories else "Mixed"
+                
+                clusters.append({
+                    "nodes": list(cluster),
+                    "node_names": [risk_dict[n]["name"] for n in cluster if n in risk_dict],
+                    "size": len(cluster),
+                    "internal_edges": internal_edges,
+                    "density": round(internal_edges / (len(cluster) * (len(cluster) - 1)) if len(cluster) > 1 else 0, 2),
+                    "primary_category": primary_category,
+                    "levels": {"Strategic": levels.count("Strategic"), "Operational": levels.count("Operational")}
+                })
+        
+        # Sort by size and density
+        clusters.sort(key=lambda x: (-x["size"], -x["density"]))
+        analysis["risk_clusters"] = clusters[:5]
+        
+        return analysis
+    
+    def get_all_edges_scored(self) -> list:
+        """Get all edges with importance scores for progressive disclosure"""
+        strength_values = {"Critical": 4, "Strong": 3, "Moderate": 2, "Weak": 1}
+        impact_values = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
+        
+        scored_edges = []
+        
+        # Get influence edges
+        influences = self.get_all_influences()
+        for inf in influences:
+            strength = strength_values.get(inf["strength"], 2)
+            confidence = inf.get("confidence", 0.8) or 0.8
+            score = strength * confidence
+            
+            scored_edges.append({
+                "source": inf["source_id"],
+                "target": inf["target_id"],
+                "edge_type": "INFLUENCES",
+                "influence_type": inf.get("influence_type", ""),
+                "strength": inf["strength"],
+                "confidence": confidence,
+                "score": score,
+                "description": inf.get("description", "")
+            })
+        
+        # Get TPO impact edges
+        tpo_impacts = self.get_all_tpo_impacts()
+        for impact in tpo_impacts:
+            impact_score = impact_values.get(impact["impact_level"], 2)
+            # TPO impacts get a boost since they're the final targets
+            score = impact_score * 1.2
+            
+            scored_edges.append({
+                "source": impact["risk_id"],
+                "target": impact["tpo_id"],
+                "edge_type": "IMPACTS_TPO",
+                "impact_level": impact["impact_level"],
+                "score": score,
+                "description": impact.get("description", "")
+            })
+        
+        # Sort by score descending
+        scored_edges.sort(key=lambda x: -x["score"])
+        
+        return scored_edges
+    
     def export_to_excel(self, filepath: str):
         """Exports risks, influences, TPOs and TPO impacts to Excel"""
         risks = self.get_all_risks()
@@ -2063,7 +2480,219 @@ def wrap_label(text: str, max_width: int = 20) -> str:
     
     return '\n'.join(lines)
 
-def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enabled: bool = True, positions: dict = None, capture_positions: bool = False, highlighted_node_id: str = None):
+
+def render_influence_analysis_panel(manager, on_node_select=None):
+    """
+    Renders the influence analysis panel with:
+    - Top Propagators
+    - Convergence Points
+    - Critical Paths
+    - Bottlenecks
+    - Risk Clusters
+    
+    Args:
+        manager: RiskGraphManager instance
+        on_node_select: Callback function when a node is selected for exploration
+    """
+    
+    # Cache analysis results in session state
+    if "influence_analysis_cache" not in st.session_state:
+        st.session_state.influence_analysis_cache = None
+        st.session_state.influence_analysis_timestamp = None
+    
+    # Handle pending node selection (set before widgets are created)
+    if "pending_explore_node" in st.session_state and st.session_state.pending_explore_node:
+        pending = st.session_state.pending_explore_node
+        st.session_state.pending_explore_node = None
+        st.session_state.selected_node_id = pending["node_id"]
+        st.session_state.influence_explorer_enabled = True
+        # Note: We can't set influence_direction here as the widget may already exist
+        # Instead, we store it as a pending value that will be used on next rerun
+        st.session_state.pending_direction = pending.get("direction", "both")
+        st.rerun()
+    
+    # Check if we need to refresh (every 30 seconds or on demand)
+    import time
+    current_time = time.time()
+    cache_valid = (
+        st.session_state.influence_analysis_cache is not None and
+        st.session_state.influence_analysis_timestamp is not None and
+        (current_time - st.session_state.influence_analysis_timestamp) < 30
+    )
+    
+    with st.expander("📊 Influence Analysis", expanded=False):
+        col_refresh, col_spacer = st.columns([1, 4])
+        with col_refresh:
+            if st.button("🔄 Refresh Analysis", key="refresh_analysis", use_container_width=True):
+                st.session_state.influence_analysis_cache = None
+                cache_valid = False
+        
+        # Get or compute analysis
+        if not cache_valid:
+            with st.spinner("Analyzing influence network..."):
+                try:
+                    analysis = manager.get_influence_analysis()
+                    st.session_state.influence_analysis_cache = analysis
+                    st.session_state.influence_analysis_timestamp = current_time
+                except Exception as e:
+                    st.error(f"Analysis error: {e}")
+                    return
+        
+        analysis = st.session_state.influence_analysis_cache
+        
+        if not analysis:
+            st.info("No data available for analysis. Create some risks and influences first.")
+            return
+        
+        # Create tabs for different analysis views
+        analysis_tabs = st.tabs([
+            "🎯 Top Propagators",
+            "⚠️ Convergence Points", 
+            "🔥 Critical Paths",
+            "🚧 Bottlenecks",
+            "📦 Risk Clusters"
+        ])
+        
+        # === TAB 1: TOP PROPAGATORS ===
+        with analysis_tabs[0]:
+            st.markdown("**Risks with highest downstream impact** - Mitigate here for global effect")
+            
+            if analysis["top_propagators"]:
+                for i, prop in enumerate(analysis["top_propagators"][:3], 1):
+                    level_icon = "🟣" if prop["level"] == "Strategic" else "🔵"
+                    node_id = prop["id"]
+                    
+                    col_info, col_btn = st.columns([4, 1])
+                    with col_info:
+                        st.markdown(f"**{i}. {level_icon} {prop['name']}**")
+                        st.caption(
+                            f"Propagation Score: **{prop['score']}** | "
+                            f"Reaches: {prop['tpos_reached']} TPOs, {prop['risks_reached']} Risks"
+                        )
+                    with col_btn:
+                        if st.button("🔍", key=f"btn_propagator_{node_id}", help="Explore in graph"):
+                            st.session_state.pending_explore_node = {
+                                "node_id": node_id,
+                                "direction": "downstream"
+                            }
+                            st.rerun()
+            else:
+                st.info("No propagation data available.")
+        
+        # === TAB 2: CONVERGENCE POINTS ===
+        with analysis_tabs[1]:
+            st.markdown("**Risks/TPOs where multiple influences converge** - Require transverse management")
+            
+            if analysis["convergence_points"]:
+                for i, conv in enumerate(analysis["convergence_points"][:3], 1):
+                    if conv["node_type"] == "TPO":
+                        level_icon = "🟡"
+                    elif conv["level"] == "Strategic":
+                        level_icon = "🟣"
+                    else:
+                        level_icon = "🔵"
+                    
+                    node_id = conv["id"]
+                    
+                    col_info, col_btn = st.columns([4, 1])
+                    with col_info:
+                        st.markdown(f"**{i}. {level_icon} {conv['name']}**")
+                        convergence_warning = " ⚡ High convergence" if conv["is_high_convergence"] else ""
+                        st.caption(
+                            f"Influence Score: **{conv['score']}** | "
+                            f"Sources: {conv['source_count']} risks ({conv['path_count']} paths)"
+                            f"{convergence_warning}"
+                        )
+                        if conv["is_high_convergence"]:
+                            st.caption("💡 *Mitigate upstream rather than directly*")
+                    with col_btn:
+                        if st.button("🔍", key=f"btn_convergence_{node_id}", help="Explore in graph"):
+                            st.session_state.pending_explore_node = {
+                                "node_id": node_id,
+                                "direction": "upstream"
+                            }
+                            st.rerun()
+            else:
+                st.info("No convergence data available.")
+        
+        # === TAB 3: CRITICAL PATHS ===
+        with analysis_tabs[2]:
+            st.markdown("**Strongest influence chains from operational risks to TPOs**")
+            
+            if analysis["critical_paths"]:
+                for i, path in enumerate(analysis["critical_paths"][:3], 1):
+                    # Build path string
+                    path_parts = []
+                    for j, node in enumerate(path["path"]):
+                        if node["type"] == "TPO":
+                            icon = "🟡"
+                        elif node["type"] == "Strategic":
+                            icon = "🟣"
+                        else:
+                            icon = "🔵"
+                        path_parts.append(f"{icon} {node['name']}")
+                    
+                    path_str = " → ".join(path_parts)
+                    
+                    st.markdown(f"**{i}. Path Strength: {path['strength']:.2f}**")
+                    st.caption(path_str)
+                    st.markdown("---")
+            else:
+                st.info("No critical paths found. Ensure risks are connected to TPOs.")
+        
+        # === TAB 4: BOTTLENECKS ===
+        with analysis_tabs[3]:
+            st.markdown("**Nodes appearing in many paths to TPOs** - Single points of failure")
+            
+            if analysis["bottlenecks"]:
+                for i, bn in enumerate(analysis["bottlenecks"][:3], 1):
+                    level_icon = "🟣" if bn["level"] == "Strategic" else "🔵"
+                    node_id = bn["id"]
+                    
+                    col_info, col_btn = st.columns([4, 1])
+                    with col_info:
+                        st.markdown(f"**{i}. {level_icon} {bn['name']}**")
+                        st.caption(
+                            f"Appears in **{bn['path_count']}** of {bn['total_paths']} paths to TPOs "
+                            f"({bn['percentage']}%)"
+                        )
+                        if bn["percentage"] > 50:
+                            st.caption("🚨 *Critical bottleneck - high impact if this risk materializes*")
+                    with col_btn:
+                        if st.button("🔍", key=f"btn_bottleneck_{node_id}", help="Explore in graph"):
+                            st.session_state.pending_explore_node = {
+                                "node_id": node_id,
+                                "direction": "both"
+                            }
+                            st.rerun()
+            else:
+                st.info("No bottlenecks identified.")
+        
+        # === TAB 5: RISK CLUSTERS ===
+        with analysis_tabs[4]:
+            st.markdown("**Tightly interconnected risk groups** - Consider managing as units")
+            
+            if analysis["risk_clusters"]:
+                for i, cluster in enumerate(analysis["risk_clusters"][:3], 1):
+                    st.markdown(f"**{i}. Cluster: {cluster['primary_category']}** ({cluster['size']} risks)")
+                    
+                    # Show level breakdown
+                    level_str = f"🟣 {cluster['levels']['Strategic']} Strategic, 🔵 {cluster['levels']['Operational']} Operational"
+                    st.caption(f"{level_str} | {cluster['internal_edges']} internal links | Density: {cluster['density']}")
+                    
+                    # Show node names (truncated)
+                    node_names = cluster["node_names"][:5]
+                    if len(cluster["node_names"]) > 5:
+                        node_names.append(f"... +{len(cluster['node_names']) - 5} more")
+                    st.caption("Includes: " + ", ".join(node_names))
+                    st.markdown("---")
+            else:
+                st.info("No risk clusters identified.")
+
+
+def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enabled: bool = True, 
+                 positions: dict = None, capture_positions: bool = False, highlighted_node_id: str = None,
+                 max_edges: int = None, edge_scores: dict = None):
     """Generates and displays the interactive graph with PyVis (with optional positions)
     
     Args:
@@ -2074,10 +2703,32 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
         positions: Dict of node positions
         capture_positions: Enable position capture UI
         highlighted_node_id: ID of node to highlight (selected node)
+        max_edges: Maximum number of edges to display (None for all)
+        edge_scores: Dict mapping (source, target) to score for filtering
     """
     if not nodes:
         st.info("No risks to display. Create your first risk!")
         return None
+    
+    # Filter edges if max_edges is specified
+    filtered_edges = edges
+    if max_edges is not None and max_edges < len(edges):
+        if edge_scores:
+            # Sort edges by score and take top N
+            scored = [(e, edge_scores.get((e["source"], e["target"]), 0)) for e in edges]
+            scored.sort(key=lambda x: -x[1])
+            filtered_edges = [e for e, s in scored[:max_edges]]
+        else:
+            # Fallback: prioritize by strength/impact
+            def edge_priority(e):
+                strength_order = {"Critical": 4, "Strong": 3, "Moderate": 2, "Weak": 1}
+                impact_order = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
+                if e.get("edge_type") == "IMPACTS_TPO":
+                    return impact_order.get(e.get("impact_level", "Medium"), 2)
+                return strength_order.get(e.get("strength", "Moderate"), 2)
+            
+            sorted_edges = sorted(edges, key=edge_priority, reverse=True)
+            filtered_edges = sorted_edges[:max_edges]
     
     # If physics is disabled and no positions provided, generate an automatic layout
     if not physics_enabled and not positions:
@@ -2273,7 +2924,7 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
         
         net.add_node(node["id"], **node_config)
     
-    for edge in edges:
+    for edge in filtered_edges:
         edge_type = edge.get("edge_type", "INFLUENCES")
         
         if edge_type == "IMPACTS_TPO":
@@ -2965,10 +3616,19 @@ def main():
                         st.session_state.selected_node_id = None
                     
                     if st.session_state.selected_node_id:
+                        # Check if there's a pending direction from the analysis panel
+                        default_direction_idx = 0  # "both" is at index 0
+                        if "pending_direction" in st.session_state and st.session_state.pending_direction:
+                            direction_map = {"both": 0, "upstream": 1, "downstream": 2}
+                            default_direction_idx = direction_map.get(st.session_state.pending_direction, 0)
+                            # Clear the pending direction after using it
+                            st.session_state.pending_direction = None
+                        
                         # Direction control
                         direction = st.radio(
                             "Direction",
                             ["both", "upstream", "downstream"],
+                            index=default_direction_idx,
                             format_func=lambda x: {
                                 "upstream": "⬆️ Upstream (influences this node)",
                                 "downstream": "⬇️ Downstream (influenced by this node)",
@@ -3030,6 +3690,52 @@ def main():
                 value=True,
                 help="Uncheck to freeze nodes after positioning them"
             )
+            
+            # ===== EDGE VISIBILITY CONTROL =====
+            st.markdown("#### 📊 Edge Visibility")
+            
+            # Get total edge count for reference
+            if "edge_count_cache" not in st.session_state:
+                st.session_state.edge_count_cache = 0
+            
+            edge_visibility_mode = st.radio(
+                "Display mode",
+                ["all", "progressive"],
+                format_func=lambda x: "Show all edges" if x == "all" else "Progressive disclosure",
+                horizontal=True,
+                key="edge_visibility_mode"
+            )
+            
+            max_edges_to_show = None
+            if edge_visibility_mode == "progressive":
+                # Get edge count
+                try:
+                    all_scored_edges = manager.get_all_edges_scored()
+                    total_edges = len(all_scored_edges)
+                    st.session_state.edge_count_cache = total_edges
+                except:
+                    total_edges = st.session_state.edge_count_cache or 50
+                
+                if total_edges > 0:
+                    edge_percentage = st.slider(
+                        "Edge visibility",
+                        min_value=0,
+                        max_value=100,
+                        value=50,
+                        step=5,
+                        format="%d%%",
+                        help="Show only the most important edges",
+                        key="edge_visibility_slider"
+                    )
+                    
+                    max_edges_to_show = max(1, int(total_edges * edge_percentage / 100))
+                    
+                    # Show info about filtering
+                    strength_labels = {100: "All", 75: "Critical + Strong + Moderate", 50: "Critical + Strong", 25: "Critical only"}
+                    approx_label = strength_labels.get(edge_percentage, f"Top {edge_percentage}%")
+                    st.caption(f"Showing {max_edges_to_show} of {total_edges} edges ({approx_label})")
+            
+            st.markdown("---")
             
             # Capture mode checkbox
             capture_mode = st.checkbox(
@@ -3178,6 +3884,25 @@ def main():
                 st.rerun()
         
         with col_display:
+            # === INFLUENCE ANALYSIS PANEL ===
+            render_influence_analysis_panel(manager)
+            
+            # Get edge visibility settings
+            edge_visibility_mode = st.session_state.get("edge_visibility_mode", "all")
+            max_edges_to_show = None
+            edge_scores = None
+            
+            if edge_visibility_mode == "progressive":
+                edge_percentage = st.session_state.get("edge_visibility_slider", 100)
+                try:
+                    all_scored_edges = manager.get_all_edges_scored()
+                    total_edges = len(all_scored_edges)
+                    max_edges_to_show = max(1, int(total_edges * edge_percentage / 100))
+                    # Build score dict for filtering
+                    edge_scores = {(e["source"], e["target"]): e["score"] for e in all_scored_edges}
+                except:
+                    pass
+            
             # Check if influence explorer is active
             if (st.session_state.get("influence_explorer_enabled", False) and 
                 st.session_state.get("selected_node_id")):
@@ -3236,7 +3961,8 @@ def main():
                         st.info(f"📍 Active layout: **{layout_name}**")
             
             render_graph(nodes, edges, color_by, physics_enabled, positions, 
-                        capture_positions=capture_mode, highlighted_node_id=highlighted_node_id)
+                        capture_positions=capture_mode, highlighted_node_id=highlighted_node_id,
+                        max_edges=max_edges_to_show, edge_scores=edge_scores)
     
     # === RISKS TAB ===
     with tab_risks:
