@@ -1,4 +1,4 @@
-# 🎯 Risk Influence Map (RIM) - Phase 1
+# 🎯 Risk Influence Map (RIM)
 
 A dynamic risk management visualization system built with Streamlit and Neo4j, designed for strategic and operational risk mapping in complex programs like SMR (Small Modular Reactor) nuclear projects.
 
@@ -9,7 +9,7 @@ A dynamic risk management visualization system built with Streamlit and Neo4j, d
 
 ## 📋 Overview
 
-The Risk Influence Map (RIM) is an innovative methodology for visualizing and managing the complex relationships between risks in large-scale programs. It distinguishes between:
+The Risk Influence Map (RIM) is an innovative methodology for visualizing and managing the complex relationships between risks in large-scale programs. It transforms static risk registers into dynamic risk intelligence by distinguishing between:
 
 - **Strategic Risks**: Consequence-oriented risks managed by program leadership
 - **Operational Risks**: Cause-oriented risks managed by functional teams
@@ -70,8 +70,17 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
 - Physics toggle for node arrangement
 
 ### Filter System
+- **Collapsible filter sections** for a cleaner interface:
+  - ⚡ Quick Presets
+  - 🎯 Risk Filters (Level, Categories, Status, Origin)
+  - 🏆 TPO Filters
+  - 🛡️ Mitigation Filters
+  - 🎨 Display Options
+  - 🔍 Influence Explorer
+  - ⚙️ Graph Options
+  - 💾 Layout Management
 - Quick filter presets:
-  - 🌐 Full View
+  - 🌐 Full View (risks + TPOs, no mitigations)
   - 🟣 Strategic Focus
   - 🔵 Operational Focus
   - ✅ Active Risks Only
@@ -81,11 +90,21 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
   - 📜 Legacy Risks Only
   - 🛡️ Risks + Mitigations
   - 🗺️ Full Map (everything)
-- Multi-select filters with All/None buttons
+- **All/None buttons** for quick multi-select control
 - **Origin filter** (New/Legacy)
 - **Mitigation filters** (by type and status)
 - Filter validation and summary display
+- **Refresh button** for visualization updates
 - Persistent filter state
+
+### User Interface
+- **Collapsible Statistics Dashboard** at the top of the main view
+- **Comprehensive Legend** in sidebar with collapsible sections:
+  - Node Types (risks, TPOs, mitigations)
+  - Link Types (influences, impacts, mitigates)
+  - Edge Thickness meanings
+- **Default view shows all elements** (risks, TPOs, and mitigations)
+- Responsive layout with filter panel on left, visualization on right
 
 ### Import/Export
 - Excel import/export with detailed logging
@@ -229,20 +248,32 @@ rim-alpha/
 
 ### Visualizing Mitigations
 
-1. In the **📊 Visualization** tab sidebar
-2. Enable "🟢 Show Mitigations" checkbox
+By default, the application displays all elements including mitigations. To customize:
+
+1. In the **📊 Visualization** tab, expand the **🛡️ Mitigation Filters** section
+2. Toggle "🟢 Show Mitigations" checkbox to show/hide
 3. Optionally filter by mitigation type and status
-4. Or use the "🛡️ Risks + Mitigations" or "🗺️ Full Map" preset
+4. Or use Quick Presets:
+   - 🗺️ Full Map: Shows everything
+   - 🛡️ Risks + Mitigations: Risks and mitigations without TPOs
+   - 🌐 Full View: Risks and TPOs without mitigations
 
 ### Using Layouts
 
-1. In the **📊 Visualization** tab, arrange nodes as desired
+1. In the **📊 Visualization** tab, expand the **⚙️ Graph Options** section
 2. Disable physics to freeze positions
-3. Enable "Position capture"
-4. Click "📍 Capture Positions" on the graph
-5. Click "📋 Copy to Clipboard"
-6. Paste in the sidebar text area
-7. Name and save your layout
+3. Arrange nodes as desired by dragging
+4. Enable "📍 Enable position capture"
+5. Click "📍 Capture Positions" on the graph
+6. Click "📋 Copy to Clipboard"
+7. Expand the **💾 Layout Management** section
+8. Paste in the Position Data text area
+9. Name and save your layout
+
+Predefined layouts available:
+- **Layered**: TPO at top, Strategic middle, Operational bottom
+- **Categories**: 2×2 grid grouping by category
+- **TPO Clusters**: Group risks by their TPO cluster associations
 
 ### Import/Export
 
@@ -270,7 +301,7 @@ Default connection settings:
 Built-in presets:
 | Preset | Description |
 |--------|-------------|
-| 🌐 Full View | All risks and TPOs |
+| 🌐 Full View | All risks and TPOs (no mitigations) |
 | 🟣 Strategic Focus | Strategic risks + TPOs only |
 | 🔵 Operational Focus | Operational risks only |
 | ✅ Active Risks Only | Excludes contingent risks |
@@ -280,6 +311,8 @@ Built-in presets:
 | 📜 Legacy Risks Only | Inherited/Enterprise level risks |
 | 🛡️ Risks + Mitigations | Show risks with mitigations (no TPOs) |
 | 🗺️ Full Map | Everything: Risks, TPOs, and Mitigations |
+
+**Note:** At application startup, the default view displays all elements (equivalent to 🗺️ Full Map).
 
 ## 📊 Data Model
 

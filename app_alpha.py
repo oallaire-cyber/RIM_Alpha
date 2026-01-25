@@ -1,7 +1,7 @@
 """
-Risk Influence Map - Phase 1
-Streamlit application for risk management with strategic/operational approach
-Now includes Top Program Objectives (TPO) support
+Risk Influence Map (RIM)
+Dynamic risk management visualization system for strategic and operational risk mapping
+Supports TPOs, Mitigations, Influence Analysis, and more
 """
 
 import streamlit as st
@@ -16,7 +16,7 @@ from pathlib import Path
 
 # Page configuration
 st.set_page_config(
-    page_title="Risk Influence Map - Phase 1",
+    page_title="Risk Influence Map (RIM)",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -152,7 +152,7 @@ class FilterManager:
     PRESETS = {
         "full_view": {
             "name": "🌐 Full View",
-            "description": "Show all risks and TPOs",
+            "description": "Show all risks and TPOs (no mitigations)",
             "config": {
                 "risks": {
                     "levels": RISK_LEVELS.copy(),
@@ -163,6 +163,11 @@ class FilterManager:
                 "tpos": {
                     "enabled": True,
                     "clusters": TPO_CLUSTERS.copy()
+                },
+                "mitigations": {
+                    "enabled": False,
+                    "types": [],
+                    "statuses": []
                 }
             }
         },
@@ -353,7 +358,7 @@ class FilterManager:
         self.reset_to_default()
     
     def reset_to_default(self):
-        """Reset filters to default (full view)"""
+        """Reset filters to show everything (full map view)"""
         self.filters = {
             "risks": {
                 "levels": RISK_LEVELS.copy(),
@@ -366,7 +371,7 @@ class FilterManager:
                 "clusters": TPO_CLUSTERS.copy()
             },
             "mitigations": {
-                "enabled": False,
+                "enabled": True,
                 "types": MITIGATION_TYPES.copy(),
                 "statuses": MITIGATION_STATUSES.copy()
             }
@@ -4198,97 +4203,147 @@ def connection_sidebar():
     if st.session_state.connected:
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 🎨 Legend")
-        st.sidebar.markdown("""
-        **Node Types:**
-        - 🟣 Strategic Risk
-        - 🔵 Operational Risk
-        - ⬜ Contingent (dashed border)
-        - 🟡 TPO (hexagon)
         
-        **Influence Links:**
-        - 🔴 Op → Strat (Level 1)
-        - 🟣 Strat → Strat (Level 2)
-        - 🔵 Op → Op (Level 3)
-        - 🔵 ╌╌ Risk → TPO (dashed blue)
-        """)
+        with st.sidebar.expander("📊 Node Types", expanded=True):
+            st.markdown("""
+            - 🟣 **Strategic Risk** (circle)
+            - 🔵 **Operational Risk** (circle)
+            - ⬜ **Contingent** (dashed border)
+            - 📜 **Legacy** (gray dashed, [L] prefix)
+            - 🟡 **TPO** (hexagon)
+            - 🟢 **Mitigation** (rectangle)
+              - 🎯 Dedicated (green)
+              - 📥 Inherited (blue)
+              - 📐 Baseline (purple)
+            """)
+        
+        with st.sidebar.expander("🔗 Link Types", expanded=True):
+            st.markdown("""
+            **Influence Links:**
+            - 🔴 Op → Strat (Level 1)
+            - 🟣 Strat → Strat (Level 2)
+            - 🔵 Op → Op (Level 3)
+            
+            **Impact Links:**
+            - 🔵 ╌╌ Risk → TPO (dashed blue)
+            
+            **Mitigation Links:**
+            - 🟢 ╌╌ Mitigation → Risk (dashed green)
+            """)
+        
+        with st.sidebar.expander("📏 Edge Thickness", expanded=False):
+            st.markdown("""
+            **Influence Strength:**
+            - Thin → Weak
+            - Medium → Moderate
+            - Thick → Strong
+            - Very thick → Critical
+            
+            **Mitigation Effectiveness:**
+            - Thin → Low
+            - Medium → Medium
+            - Thick → High
+            - Very thick → Critical
+            """)
 
 
 def main():
     """Main application function"""
     init_session_state()
     
-    st.markdown('<p class="main-header">🎯 Risk Influence Map - Phase 1</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Dynamic mapping system for strategic and operational risks</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">🎯 Risk Influence Map (RIM)</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">Dynamic visualization system for strategic and operational risk management</p>', unsafe_allow_html=True)
     
     connection_sidebar()
     
     if not st.session_state.connected:
         st.info("👈 Please connect to Neo4j via the sidebar to get started.")
         
-        with st.expander("📖 Phase 1 Instructions", expanded=True):
+        with st.expander("📖 About Risk Influence Map", expanded=True):
             st.markdown("""
-            ### Phase 1 Features
+            ### What is RIM?
             
-            ✨ **Two-level Architecture**
-            - **Strategic** risks (business consequence-oriented)
-            - **Operational** risks (cause-oriented)
+            The **Risk Influence Map (RIM)** is an innovative methodology for visualizing and managing 
+            complex relationships between risks in large-scale programs. It transforms static risk registers 
+            into dynamic risk intelligence.
             
-            🔗 **Three Types of Influence Links**
-            - Level 1: Operational → Strategic
-            - Level 2: Strategic → Strategic
-            - Level 3: Operational → Operational
+            ---
             
-            🎯 **Top Program Objectives (TPO)**
-            - Link Strategic Risks to TPOs
-            - Cluster-based organization
-            - Yellow hexagon visualization
+            ### ✨ Key Features
             
-            ⚠️ **Contingent Risk Management**
+            **🎯 Two-Level Risk Architecture**
+            - **Strategic Risks**: Consequence-oriented, managed by program leadership
+            - **Operational Risks**: Cause-oriented, managed by functional teams
+            - **Origin Tracking**: Distinguish between New (program-specific) and Legacy (inherited) risks
+            
+            **🔗 Influence Mapping**
+            - Level 1: Operational → Strategic influences
+            - Level 2: Strategic → Strategic influences
+            - Level 3: Operational → Operational influences
+            - Configurable strength and confidence scoring
+            
+            **🏆 Top Program Objectives (TPOs)**
+            - Link strategic risks to program objectives
+            - Cluster-based organization (Product, Business, Industrial, Safety, Sustainability)
+            - Impact level tracking with visual indicators
+            
+            **🛡️ Mitigation Management**
+            - **Dedicated**: Program-owned mitigations
+            - **Inherited**: From corporate or other programs
+            - **Baseline**: Standards, regulations, best practices
+            - Effectiveness tracking and many-to-many risk relationships
+            
+            **⚠️ Contingent Risk Support**
             - Future risks linked to structural decisions
-            - Decision timeline
-            - Dashed visualization
+            - Decision timeline and activation conditions
+            - Visual distinction with dashed borders
             
-            🏷️ **Multi-categorization**
-            - Programme, Product, Industrial, Supply Chain
-            - Multi-criteria filters
+            **🔍 Advanced Analysis**
+            - Influence Explorer for network traversal
+            - Top propagators and convergence points identification
+            - Critical path analysis
+            - Risk clustering by category
             
-            📊 **Excel Import/Export**
-            - Simplified initial data loading
-            - Save and share
+            **📊 Import/Export**
+            - Full Excel import/export capability
+            - Cypher templates for bulk operations
+            - Layout save/load for presentations
             """)
         return
     
     manager = st.session_state.manager
     
-    # Statistics at top
+    # Statistics section (collapsible)
     stats = manager.get_statistics()
-    # First row of metrics
-    col1, col2, col3, col4, col5 = st.columns(5)
     
-    with col1:
-        st.metric("🎯 Total Risks", stats["total_risks"])
-    with col2:
-        st.metric("🟣 Strategic", stats["strategic_risks"])
-    with col3:
-        st.metric("🔵 Operational", stats["operational_risks"])
-    with col4:
-        st.metric("🆕 New", stats.get("new_risks", 0))
-    with col5:
-        st.metric("📜 Legacy", stats.get("legacy_risks", 0))
-    
-    # Second row of metrics
-    col6, col7, col8, col9, col10 = st.columns(5)
-    
-    with col6:
-        st.metric("🟡 TPOs", stats["total_tpos"])
-    with col7:
-        st.metric("🛡️ Mitigations", stats.get("total_mitigations", 0))
-    with col8:
-        st.metric("🔗 Influences", stats["total_influences"])
-    with col9:
-        st.metric("📌 TPO Impacts", stats["total_tpo_impacts"])
-    with col10:
-        st.metric("💊 Mitigates", stats.get("total_mitigates", 0))
+    with st.expander("📊 Statistics Dashboard", expanded=True):
+        # First row of metrics
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
+            st.metric("🎯 Total Risks", stats["total_risks"])
+        with col2:
+            st.metric("🟣 Strategic", stats["strategic_risks"])
+        with col3:
+            st.metric("🔵 Operational", stats["operational_risks"])
+        with col4:
+            st.metric("🆕 New", stats.get("new_risks", 0))
+        with col5:
+            st.metric("📜 Legacy", stats.get("legacy_risks", 0))
+        
+        # Second row of metrics
+        col6, col7, col8, col9, col10 = st.columns(5)
+        
+        with col6:
+            st.metric("🟡 TPOs", stats["total_tpos"])
+        with col7:
+            st.metric("🛡️ Mitigations", stats.get("total_mitigations", 0))
+        with col8:
+            st.metric("🔗 Influences", stats["total_influences"])
+        with col9:
+            st.metric("📌 TPO Impacts", stats["total_tpo_impacts"])
+        with col10:
+            st.metric("💊 Mitigates", stats.get("total_mitigates", 0))
     
     st.markdown("---")
     
@@ -4311,6 +4366,12 @@ def main():
         with col_filters:
             st.markdown("### 🎛️ Filters")
             
+            # Refresh button at the top
+            if st.button("🔄 Refresh Visualization", use_container_width=True, type="primary"):
+                st.rerun()
+            
+            st.markdown("---")
+            
             # Initialize filter manager in session state
             if "filter_manager" not in st.session_state:
                 st.session_state.filter_manager = FilterManager()
@@ -4330,168 +4391,221 @@ def main():
                             help=preset_data["description"]
                         ):
                             filter_mgr.apply_preset(preset_key)
+                            # Force widget state update
+                            for key in ["level_filter", "category_filter", "status_filter", "origin_filter", 
+                                       "tpo_cluster_filter", "mit_type_filter", "mit_status_filter",
+                                       "show_tpos", "show_mitigations"]:
+                                if key in st.session_state:
+                                    del st.session_state[key]
                             st.rerun()
                     col_idx += 1
             
             # ===== RISK FILTERS =====
-            st.markdown("#### 🎯 Risk Filters")
-            
-            # Level filter with select all/none buttons
-            col_level_btns = st.columns([1, 1])
-            with col_level_btns[0]:
-                if st.button("All", key="level_all", use_container_width=True):
-                    filter_mgr.select_all_levels()
-                    st.rerun()
-            with col_level_btns[1]:
-                if st.button("None", key="level_none", use_container_width=True):
-                    filter_mgr.deselect_all_levels()
-                    st.rerun()
-            
-            level_filter = st.multiselect(
-                "Level",
-                RISK_LEVELS,
-                default=filter_mgr.filters["risks"]["levels"],
-                key="level_filter"
-            )
-            filter_mgr.set_risk_levels(level_filter)
-            
-            # Category filter with select all/none buttons
-            col_cat_btns = st.columns([1, 1])
-            with col_cat_btns[0]:
-                if st.button("All", key="cat_all", use_container_width=True):
-                    filter_mgr.select_all_categories()
-                    st.rerun()
-            with col_cat_btns[1]:
-                if st.button("None", key="cat_none", use_container_width=True):
-                    filter_mgr.deselect_all_categories()
-                    st.rerun()
-            
-            category_filter = st.multiselect(
-                "Categories",
-                RISK_CATEGORIES,
-                default=filter_mgr.filters["risks"]["categories"],
-                key="category_filter"
-            )
-            filter_mgr.set_risk_categories(category_filter)
-            
-            # Status filter with select all/none buttons
-            col_status_btns = st.columns([1, 1])
-            with col_status_btns[0]:
-                if st.button("All", key="status_all", use_container_width=True):
-                    filter_mgr.select_all_statuses()
-                    st.rerun()
-            with col_status_btns[1]:
-                if st.button("None", key="status_none", use_container_width=True):
-                    filter_mgr.deselect_all_statuses()
-                    st.rerun()
-            
-            status_filter = st.multiselect(
-                "Status",
-                RISK_STATUSES,
-                default=filter_mgr.filters["risks"]["statuses"],
-                key="status_filter"
-            )
-            filter_mgr.set_risk_statuses(status_filter)
-            
-            # Origin filter with select all/none buttons
-            col_origin_btns = st.columns([1, 1])
-            with col_origin_btns[0]:
-                if st.button("All", key="origin_all", use_container_width=True):
-                    filter_mgr.select_all_origins()
-                    st.rerun()
-            with col_origin_btns[1]:
-                if st.button("None", key="origin_none", use_container_width=True):
-                    filter_mgr.deselect_all_origins()
-                    st.rerun()
-            
-            origin_filter = st.multiselect(
-                "Origin",
-                RISK_ORIGINS,
-                default=filter_mgr.filters["risks"].get("origins", RISK_ORIGINS.copy()),
-                key="origin_filter",
-                help="New: Program-specific risks | Legacy: Inherited/Enterprise level risks"
-            )
-            filter_mgr.set_risk_origins(origin_filter)
-            
-            # ===== TPO FILTERS =====
-            st.markdown("#### 🏆 TPO Filters")
-            
-            show_tpos = st.checkbox(
-                "🟡 Show TPOs",
-                value=filter_mgr.filters["tpos"]["enabled"],
-                key="show_tpos"
-            )
-            filter_mgr.set_tpo_enabled(show_tpos)
-            
-            if show_tpos:
-                col_tpo_btns = st.columns([1, 1])
-                with col_tpo_btns[0]:
-                    if st.button("All", key="tpo_all", use_container_width=True):
-                        filter_mgr.select_all_clusters()
+            with st.expander("🎯 Risk Filters", expanded=True):
+                # Level filter
+                st.markdown("**Level**")
+                col_level_btns = st.columns([1, 1])
+                with col_level_btns[0]:
+                    if st.button("All", key="level_all", use_container_width=True):
+                        filter_mgr.select_all_levels()
+                        if "level_filter" in st.session_state:
+                            del st.session_state["level_filter"]
                         st.rerun()
-                with col_tpo_btns[1]:
-                    if st.button("None", key="tpo_none", use_container_width=True):
-                        filter_mgr.deselect_all_clusters()
+                with col_level_btns[1]:
+                    if st.button("None", key="level_none", use_container_width=True):
+                        filter_mgr.deselect_all_levels()
+                        if "level_filter" in st.session_state:
+                            del st.session_state["level_filter"]
                         st.rerun()
                 
-                tpo_cluster_filter = st.multiselect(
-                    "TPO Clusters",
-                    TPO_CLUSTERS,
-                    default=filter_mgr.filters["tpos"]["clusters"],
-                    key="tpo_cluster_filter"
+                level_filter = st.multiselect(
+                    "Level",
+                    RISK_LEVELS,
+                    default=filter_mgr.filters["risks"]["levels"],
+                    key="level_filter",
+                    label_visibility="collapsed"
                 )
-                filter_mgr.set_tpo_clusters(tpo_cluster_filter)
-            
-            # ===== MITIGATION FILTERS =====
-            st.markdown("#### 🛡️ Mitigation Filters")
-            
-            show_mitigations = st.checkbox(
-                "🟢 Show Mitigations",
-                value=filter_mgr.filters.get("mitigations", {}).get("enabled", False),
-                key="show_mitigations",
-                help="Display mitigations and their links to risks"
-            )
-            filter_mgr.set_mitigations_enabled(show_mitigations)
-            
-            if show_mitigations:
-                # Type filter
-                col_mit_type_btns = st.columns([1, 1])
-                with col_mit_type_btns[0]:
-                    if st.button("All", key="mit_type_all", use_container_width=True):
-                        filter_mgr.select_all_mitigation_types()
+                filter_mgr.set_risk_levels(level_filter)
+                
+                st.markdown("---")
+                
+                # Category filter
+                st.markdown("**Categories**")
+                col_cat_btns = st.columns([1, 1])
+                with col_cat_btns[0]:
+                    if st.button("All", key="cat_all", use_container_width=True):
+                        filter_mgr.select_all_categories()
+                        if "category_filter" in st.session_state:
+                            del st.session_state["category_filter"]
                         st.rerun()
-                with col_mit_type_btns[1]:
-                    if st.button("None", key="mit_type_none", use_container_width=True):
-                        filter_mgr.deselect_all_mitigation_types()
+                with col_cat_btns[1]:
+                    if st.button("None", key="cat_none", use_container_width=True):
+                        filter_mgr.deselect_all_categories()
+                        if "category_filter" in st.session_state:
+                            del st.session_state["category_filter"]
                         st.rerun()
                 
-                mit_type_filter = st.multiselect(
-                    "Mitigation Types",
-                    MITIGATION_TYPES,
-                    default=filter_mgr.filters.get("mitigations", {}).get("types", MITIGATION_TYPES.copy()),
-                    key="mit_type_filter",
-                    help="Dedicated: Program-owned | Inherited: From other entities | Baseline: Standards/Requirements"
+                category_filter = st.multiselect(
+                    "Categories",
+                    RISK_CATEGORIES,
+                    default=filter_mgr.filters["risks"]["categories"],
+                    key="category_filter",
+                    label_visibility="collapsed"
                 )
-                filter_mgr.set_mitigation_types(mit_type_filter)
+                filter_mgr.set_risk_categories(category_filter)
+                
+                st.markdown("---")
                 
                 # Status filter
-                col_mit_status_btns = st.columns([1, 1])
-                with col_mit_status_btns[0]:
-                    if st.button("All", key="mit_status_all", use_container_width=True):
-                        filter_mgr.select_all_mitigation_statuses()
+                st.markdown("**Status**")
+                col_status_btns = st.columns([1, 1])
+                with col_status_btns[0]:
+                    if st.button("All", key="status_all", use_container_width=True):
+                        filter_mgr.select_all_statuses()
+                        if "status_filter" in st.session_state:
+                            del st.session_state["status_filter"]
                         st.rerun()
-                with col_mit_status_btns[1]:
-                    if st.button("None", key="mit_status_none", use_container_width=True):
-                        filter_mgr.deselect_all_mitigation_statuses()
+                with col_status_btns[1]:
+                    if st.button("None", key="status_none", use_container_width=True):
+                        filter_mgr.deselect_all_statuses()
+                        if "status_filter" in st.session_state:
+                            del st.session_state["status_filter"]
                         st.rerun()
                 
-                mit_status_filter = st.multiselect(
-                    "Mitigation Status",
-                    MITIGATION_STATUSES,
-                    default=filter_mgr.filters.get("mitigations", {}).get("statuses", MITIGATION_STATUSES.copy()),
-                    key="mit_status_filter"
+                status_filter = st.multiselect(
+                    "Status",
+                    RISK_STATUSES,
+                    default=filter_mgr.filters["risks"]["statuses"],
+                    key="status_filter",
+                    label_visibility="collapsed"
                 )
-                filter_mgr.set_mitigation_statuses(mit_status_filter)
+                filter_mgr.set_risk_statuses(status_filter)
+                
+                st.markdown("---")
+                
+                # Origin filter
+                st.markdown("**Origin**")
+                col_origin_btns = st.columns([1, 1])
+                with col_origin_btns[0]:
+                    if st.button("All", key="origin_all", use_container_width=True):
+                        filter_mgr.select_all_origins()
+                        if "origin_filter" in st.session_state:
+                            del st.session_state["origin_filter"]
+                        st.rerun()
+                with col_origin_btns[1]:
+                    if st.button("None", key="origin_none", use_container_width=True):
+                        filter_mgr.deselect_all_origins()
+                        if "origin_filter" in st.session_state:
+                            del st.session_state["origin_filter"]
+                        st.rerun()
+                
+                origin_filter = st.multiselect(
+                    "Origin",
+                    RISK_ORIGINS,
+                    default=filter_mgr.filters["risks"].get("origins", RISK_ORIGINS.copy()),
+                    key="origin_filter",
+                    help="New: Program-specific risks | Legacy: Inherited/Enterprise level risks",
+                    label_visibility="collapsed"
+                )
+                filter_mgr.set_risk_origins(origin_filter)
+            
+            # ===== TPO FILTERS =====
+            with st.expander("🏆 TPO Filters", expanded=True):
+                show_tpos = st.checkbox(
+                    "🟡 Show TPOs",
+                    value=filter_mgr.filters["tpos"]["enabled"],
+                    key="show_tpos"
+                )
+                filter_mgr.set_tpo_enabled(show_tpos)
+                
+                if show_tpos:
+                    st.markdown("**Clusters**")
+                    col_tpo_btns = st.columns([1, 1])
+                    with col_tpo_btns[0]:
+                        if st.button("All", key="tpo_all", use_container_width=True):
+                            filter_mgr.select_all_clusters()
+                            if "tpo_cluster_filter" in st.session_state:
+                                del st.session_state["tpo_cluster_filter"]
+                            st.rerun()
+                    with col_tpo_btns[1]:
+                        if st.button("None", key="tpo_none", use_container_width=True):
+                            filter_mgr.deselect_all_clusters()
+                            if "tpo_cluster_filter" in st.session_state:
+                                del st.session_state["tpo_cluster_filter"]
+                            st.rerun()
+                    
+                    tpo_cluster_filter = st.multiselect(
+                        "TPO Clusters",
+                        TPO_CLUSTERS,
+                        default=filter_mgr.filters["tpos"]["clusters"],
+                        key="tpo_cluster_filter",
+                        label_visibility="collapsed"
+                    )
+                    filter_mgr.set_tpo_clusters(tpo_cluster_filter)
+            
+            # ===== MITIGATION FILTERS =====
+            with st.expander("🛡️ Mitigation Filters", expanded=True):
+                show_mitigations = st.checkbox(
+                    "🟢 Show Mitigations",
+                    value=filter_mgr.filters.get("mitigations", {}).get("enabled", True),
+                    key="show_mitigations",
+                    help="Display mitigations and their links to risks"
+                )
+                filter_mgr.set_mitigations_enabled(show_mitigations)
+                
+                if show_mitigations:
+                    # Type filter
+                    st.markdown("**Types**")
+                    col_mit_type_btns = st.columns([1, 1])
+                    with col_mit_type_btns[0]:
+                        if st.button("All", key="mit_type_all", use_container_width=True):
+                            filter_mgr.select_all_mitigation_types()
+                            if "mit_type_filter" in st.session_state:
+                                del st.session_state["mit_type_filter"]
+                            st.rerun()
+                    with col_mit_type_btns[1]:
+                        if st.button("None", key="mit_type_none", use_container_width=True):
+                            filter_mgr.deselect_all_mitigation_types()
+                            if "mit_type_filter" in st.session_state:
+                                del st.session_state["mit_type_filter"]
+                            st.rerun()
+                    
+                    mit_type_filter = st.multiselect(
+                        "Mitigation Types",
+                        MITIGATION_TYPES,
+                        default=filter_mgr.filters.get("mitigations", {}).get("types", MITIGATION_TYPES.copy()),
+                        key="mit_type_filter",
+                        help="Dedicated: Program-owned | Inherited: From other entities | Baseline: Standards/Requirements",
+                        label_visibility="collapsed"
+                    )
+                    filter_mgr.set_mitigation_types(mit_type_filter)
+                    
+                    st.markdown("---")
+                    
+                    # Status filter
+                    st.markdown("**Status**")
+                    col_mit_status_btns = st.columns([1, 1])
+                    with col_mit_status_btns[0]:
+                        if st.button("All", key="mit_status_all", use_container_width=True):
+                            filter_mgr.select_all_mitigation_statuses()
+                            if "mit_status_filter" in st.session_state:
+                                del st.session_state["mit_status_filter"]
+                            st.rerun()
+                    with col_mit_status_btns[1]:
+                        if st.button("None", key="mit_status_none", use_container_width=True):
+                            filter_mgr.deselect_all_mitigation_statuses()
+                            if "mit_status_filter" in st.session_state:
+                                del st.session_state["mit_status_filter"]
+                            st.rerun()
+                    
+                    mit_status_filter = st.multiselect(
+                        "Mitigation Status",
+                        MITIGATION_STATUSES,
+                        default=filter_mgr.filters.get("mitigations", {}).get("statuses", MITIGATION_STATUSES.copy()),
+                        key="mit_status_filter",
+                        label_visibility="collapsed"
+                    )
+                    filter_mgr.set_mitigation_statuses(mit_status_filter)
             
             # Filter validation
             is_valid, validation_msg = filter_mgr.validate()
@@ -4506,202 +4620,211 @@ def main():
             st.markdown("---")
             
             # ===== DISPLAY OPTIONS =====
-            st.markdown("#### 🎨 Display Options")
+            with st.expander("🎨 Display Options", expanded=False):
+                color_by = st.radio(
+                    "Color by:",
+                    ["level", "exposure"],
+                    format_func=lambda x: "Level" if x == "level" else "Exposure"
+                )
             
-            color_by = st.radio(
-                "Color by:",
-                ["level", "exposure"],
-                format_func=lambda x: "Level" if x == "level" else "Exposure"
-            )
-            
-            st.markdown("---")
+            # Store color_by in session state for use outside expander
+            if "color_by" not in st.session_state:
+                st.session_state.color_by = "level"
+            if 'color_by' in dir():
+                st.session_state.color_by = color_by
             
             # ===== INFLUENCE EXPLORER =====
-            st.markdown("### 🔍 Influence Explorer")
-            
-            # Initialize session state for influence explorer
-            if "influence_explorer_enabled" not in st.session_state:
-                st.session_state.influence_explorer_enabled = False
-            if "selected_node_id" not in st.session_state:
-                st.session_state.selected_node_id = None
-            
-            influence_explorer_enabled = st.checkbox(
-                "🔍 Enable Influence Explorer",
-                value=st.session_state.influence_explorer_enabled,
-                help="Select a node to see its influence network"
-            )
-            st.session_state.influence_explorer_enabled = influence_explorer_enabled
-            
-            if influence_explorer_enabled:
-                # Node selection dropdown
-                all_nodes = manager.get_all_nodes_for_selection()
+            with st.expander("🔍 Influence Explorer", expanded=False):
+                # Initialize session state for influence explorer
+                if "influence_explorer_enabled" not in st.session_state:
+                    st.session_state.influence_explorer_enabled = False
+                if "selected_node_id" not in st.session_state:
+                    st.session_state.selected_node_id = None
                 
-                if all_nodes:
-                    node_options = {n["id"]: n["label"] for n in all_nodes}
-                    node_ids = [""] + list(node_options.keys())
-                    node_labels = ["-- Select a node --"] + [node_options[nid] for nid in node_ids[1:]]
+                influence_explorer_enabled = st.checkbox(
+                    "🔍 Enable Influence Explorer",
+                    value=st.session_state.influence_explorer_enabled,
+                    help="Select a node to see its influence network"
+                )
+                st.session_state.influence_explorer_enabled = influence_explorer_enabled
+                
+                if influence_explorer_enabled:
+                    # Node selection dropdown
+                    all_nodes = manager.get_all_nodes_for_selection()
                     
-                    # Find current selection index
-                    current_idx = 0
-                    if st.session_state.selected_node_id and st.session_state.selected_node_id in node_ids:
-                        current_idx = node_ids.index(st.session_state.selected_node_id)
-                    
-                    selected_idx = st.selectbox(
-                        "Select node to explore",
-                        range(len(node_labels)),
-                        index=current_idx,
-                        format_func=lambda i: node_labels[i],
-                        key="node_selector"
-                    )
-                    
-                    if selected_idx > 0:
-                        st.session_state.selected_node_id = node_ids[selected_idx]
-                    else:
-                        st.session_state.selected_node_id = None
-                    
-                    if st.session_state.selected_node_id:
-                        # Check if there's a pending direction from the analysis panel
-                        default_direction_idx = 0  # "both" is at index 0
-                        if "pending_direction" in st.session_state and st.session_state.pending_direction:
-                            direction_map = {"both": 0, "upstream": 1, "downstream": 2}
-                            default_direction_idx = direction_map.get(st.session_state.pending_direction, 0)
-                            # Clear the pending direction after using it
-                            st.session_state.pending_direction = None
+                    if all_nodes:
+                        node_options = {n["id"]: n["label"] for n in all_nodes}
+                        node_ids = [""] + list(node_options.keys())
+                        node_labels = ["-- Select a node --"] + [node_options[nid] for nid in node_ids[1:]]
                         
-                        # Direction control
-                        direction = st.radio(
-                            "Direction",
-                            ["both", "upstream", "downstream"],
-                            index=default_direction_idx,
-                            format_func=lambda x: {
-                                "upstream": "⬆️ Upstream (influences this node)",
-                                "downstream": "⬇️ Downstream (influenced by this node)",
-                                "both": "↕️ Both directions"
-                            }[x],
-                            horizontal=True,
-                            key="influence_direction"
+                        # Find current selection index
+                        current_idx = 0
+                        if st.session_state.selected_node_id and st.session_state.selected_node_id in node_ids:
+                            current_idx = node_ids.index(st.session_state.selected_node_id)
+                        
+                        selected_idx = st.selectbox(
+                            "Select node to explore",
+                            range(len(node_labels)),
+                            index=current_idx,
+                            format_func=lambda i: node_labels[i],
+                            key="node_selector"
                         )
                         
-                        # Depth control
-                        col_depth1, col_depth2 = st.columns([2, 1])
-                        with col_depth1:
-                            max_depth = st.slider(
-                                "Max depth",
-                                min_value=1,
-                                max_value=10,
-                                value=5,
-                                help="Maximum levels of influence to traverse",
-                                key="influence_depth"
-                            )
-                        with col_depth2:
-                            unlimited_depth = st.checkbox("Unlimited", value=False, key="unlimited_depth")
-                        
-                        if unlimited_depth:
-                            max_depth = None
-                        
-                        # Level filter for influence chain
-                        level_filter = st.radio(
-                            "Show risk levels",
-                            ["all", "Strategic", "Operational"],
-                            format_func=lambda x: {
-                                "all": "All levels",
-                                "Strategic": "🟣 Strategic only",
-                                "Operational": "🔵 Operational only"
-                            }[x],
-                            horizontal=True,
-                            key="influence_level_filter"
-                        )
-                        
-                        # TPO toggle
-                        include_tpos = st.checkbox(
-                            "🟡 Include TPOs",
-                            value=True,
-                            help="Show TPOs impacted by risks in the network",
-                            key="influence_include_tpos"
-                        )
-                        
-                        # Clear selection button
-                        if st.button("🔄 Clear selection", use_container_width=True):
+                        if selected_idx > 0:
+                            st.session_state.selected_node_id = node_ids[selected_idx]
+                        else:
                             st.session_state.selected_node_id = None
-                            st.rerun()
-                else:
-                    st.info("No nodes available. Create some risks first!")
+                        
+                        if st.session_state.selected_node_id:
+                            # Check if there's a pending direction from the analysis panel
+                            default_direction_idx = 0  # "both" is at index 0
+                            if "pending_direction" in st.session_state and st.session_state.pending_direction:
+                                direction_map = {"both": 0, "upstream": 1, "downstream": 2}
+                                default_direction_idx = direction_map.get(st.session_state.pending_direction, 0)
+                                # Clear the pending direction after using it
+                                st.session_state.pending_direction = None
+                            
+                            # Direction control
+                            direction = st.radio(
+                                "Direction",
+                                ["both", "upstream", "downstream"],
+                                index=default_direction_idx,
+                                format_func=lambda x: {
+                                    "upstream": "⬆️ Upstream (influences this node)",
+                                    "downstream": "⬇️ Downstream (influenced by this node)",
+                                    "both": "↕️ Both directions"
+                                }[x],
+                                horizontal=True,
+                                key="influence_direction"
+                            )
+                            
+                            # Depth control
+                            col_depth1, col_depth2 = st.columns([2, 1])
+                            with col_depth1:
+                                max_depth = st.slider(
+                                    "Max depth",
+                                    min_value=1,
+                                    max_value=10,
+                                    value=5,
+                                    help="Maximum levels of influence to traverse",
+                                    key="influence_depth"
+                                )
+                            with col_depth2:
+                                unlimited_depth = st.checkbox("Unlimited", value=False, key="unlimited_depth")
+                            
+                            if unlimited_depth:
+                                max_depth = None
+                            
+                            # Level filter for influence chain
+                            level_filter = st.radio(
+                                "Show risk levels",
+                                ["all", "Strategic", "Operational"],
+                                format_func=lambda x: {
+                                    "all": "All levels",
+                                    "Strategic": "🟣 Strategic only",
+                                    "Operational": "🔵 Operational only"
+                                }[x],
+                                horizontal=True,
+                                key="influence_level_filter"
+                            )
+                            
+                            # TPO toggle
+                            include_tpos = st.checkbox(
+                                "🟡 Include TPOs",
+                                value=True,
+                                help="Show TPOs impacted by risks in the network",
+                                key="influence_include_tpos"
+                            )
+                            
+                            # Clear selection button
+                            if st.button("🔄 Clear selection", use_container_width=True):
+                                st.session_state.selected_node_id = None
+                                st.rerun()
+                    else:
+                        st.info("No nodes available. Create some risks first!")
             
-            st.markdown("---")
-            
-            physics_enabled = st.checkbox(
-                "🔄 Physics enabled",
-                value=True,
-                help="Uncheck to freeze nodes after positioning them"
-            )
-            
-            # ===== EDGE VISIBILITY CONTROL =====
-            st.markdown("#### 📊 Edge Visibility")
-            
-            # Get total edge count for reference
-            if "edge_count_cache" not in st.session_state:
-                st.session_state.edge_count_cache = 0
-            
-            edge_visibility_mode = st.radio(
-                "Display mode",
-                ["all", "progressive"],
-                format_func=lambda x: "Show all edges" if x == "all" else "Progressive disclosure",
-                horizontal=True,
-                key="edge_visibility_mode"
-            )
-            
-            max_edges_to_show = None
-            if edge_visibility_mode == "progressive":
-                # Get edge count
-                try:
-                    all_scored_edges = manager.get_all_edges_scored()
-                    total_edges = len(all_scored_edges)
-                    st.session_state.edge_count_cache = total_edges
-                except:
-                    total_edges = st.session_state.edge_count_cache or 50
+            # ===== VISUALIZATION OPTIONS =====
+            with st.expander("⚙️ Graph Options", expanded=False):
+                physics_enabled = st.checkbox(
+                    "🔄 Physics enabled",
+                    value=True,
+                    help="Uncheck to freeze nodes after positioning them"
+                )
                 
-                if total_edges > 0:
-                    edge_percentage = st.slider(
-                        "Edge visibility",
-                        min_value=0,
-                        max_value=100,
-                        value=50,
-                        step=5,
-                        format="%d%%",
-                        help="Show only the most important edges",
-                        key="edge_visibility_slider"
-                    )
+                # Store in session state
+                st.session_state.physics_enabled = physics_enabled
+                
+                st.markdown("---")
+                
+                # ===== EDGE VISIBILITY CONTROL =====
+                st.markdown("**📊 Edge Visibility**")
+                
+                # Get total edge count for reference
+                if "edge_count_cache" not in st.session_state:
+                    st.session_state.edge_count_cache = 0
+                
+                edge_visibility_mode = st.radio(
+                    "Display mode",
+                    ["all", "progressive"],
+                    format_func=lambda x: "Show all edges" if x == "all" else "Progressive disclosure",
+                    horizontal=True,
+                    key="edge_visibility_mode"
+                )
+                
+                max_edges_to_show = None
+                if edge_visibility_mode == "progressive":
+                    # Get edge count
+                    try:
+                        all_scored_edges = manager.get_all_edges_scored()
+                        total_edges = len(all_scored_edges)
+                        st.session_state.edge_count_cache = total_edges
+                    except:
+                        total_edges = st.session_state.edge_count_cache or 50
                     
-                    max_edges_to_show = max(1, int(total_edges * edge_percentage / 100))
-                    
-                    # Show info about filtering
-                    strength_labels = {100: "All", 75: "Critical + Strong + Moderate", 50: "Critical + Strong", 25: "Critical only"}
-                    approx_label = strength_labels.get(edge_percentage, f"Top {edge_percentage}%")
-                    st.caption(f"Showing {max_edges_to_show} of {total_edges} edges ({approx_label})")
+                    if total_edges > 0:
+                        edge_percentage = st.slider(
+                            "Edge visibility",
+                            min_value=0,
+                            max_value=100,
+                            value=50,
+                            step=5,
+                            format="%d%%",
+                            help="Show only the most important edges",
+                            key="edge_visibility_slider"
+                        )
+                        
+                        max_edges_to_show = max(1, int(total_edges * edge_percentage / 100))
+                        
+                        # Show info about filtering
+                        strength_labels = {100: "All", 75: "Critical + Strong + Moderate", 50: "Critical + Strong", 25: "Critical only"}
+                        approx_label = strength_labels.get(edge_percentage, f"Top {edge_percentage}%")
+                        st.caption(f"Showing {max_edges_to_show} of {total_edges} edges ({approx_label})")
+                
+                st.markdown("---")
+                
+                # Capture mode checkbox
+                capture_mode = st.checkbox(
+                    "📍 Enable position capture",
+                    value=False,
+                    help="Enable to show capture buttons on the graph"
+                )
+                
+                # Store in session state
+                st.session_state.capture_mode = capture_mode
+                
+                if capture_mode:
+                    st.info("💡 **How to save a custom layout:**\n1. Disable physics\n2. Drag nodes to desired positions\n3. Click '📍 Capture Positions' on the graph\n4. Click '📋 Copy to Clipboard'\n5. Paste in the field below and click Save")
             
-            st.markdown("---")
-            
-            # Capture mode checkbox
-            capture_mode = st.checkbox(
-                "📍 Enable position capture",
-                value=False,
-                help="Enable to show capture buttons on the graph"
-            )
-            
-            if capture_mode:
-                st.info("💡 **How to save a custom layout:**\n1. Disable physics\n2. Drag nodes to desired positions\n3. Click '📍 Capture Positions' on the graph\n4. Click '📋 Copy to Clipboard'\n5. Paste in the field below and click Save")
-            
-            st.markdown("---")
-            st.markdown("### 💾 Layout Management")
-            
-            # Initialize layout manager
-            if "layout_manager" not in st.session_state:
-                st.session_state.layout_manager = LayoutManager()
-            
-            layout_mgr = st.session_state.layout_manager
-            
-            # Save section
-            with st.expander("💾 Save current layout", expanded=capture_mode):
+            # ===== LAYOUT MANAGEMENT =====
+            with st.expander("💾 Layout Management", expanded=False):
+                # Initialize layout manager
+                if "layout_manager" not in st.session_state:
+                    st.session_state.layout_manager = LayoutManager()
+                
+                layout_mgr = st.session_state.layout_manager
+                
+                # Save section
+                st.markdown("**💾 Save Layout**")
                 layout_name = st.text_input(
                     "Layout name",
                     value=f"layout_{datetime.now().strftime('%Y%m%d_%H%M')}",
@@ -4709,11 +4832,11 @@ def main():
                 )
                 
                 # Manual position input area
-                st.markdown("##### 📋 Position Data (paste captured positions here)")
+                st.markdown("📋 Position Data (paste captured positions here)")
                 position_data = st.text_area(
                     "Position JSON",
-                    height=150,
-                    placeholder='{\n  "node-id-1": {"x": 100, "y": 200},\n  "node-id-2": {"x": 300, "y": 400}\n}',
+                    height=100,
+                    placeholder='{\n  "node-id-1": {"x": 100, "y": 200}\n}',
                     key="position_data_input",
                     label_visibility="collapsed"
                 )
@@ -4721,33 +4844,35 @@ def main():
                 col_save_1, col_save_2 = st.columns(2)
                 
                 with col_save_1:
-                    if st.button("💾 Save Manual Layout", key="save_manual", use_container_width=True, type="primary"):
+                    if st.button("💾 Save Manual", key="save_manual", use_container_width=True, type="primary"):
                         if position_data and position_data.strip():
                             try:
                                 positions = json.loads(position_data)
                                 if isinstance(positions, dict) and len(positions) > 0:
                                     layout_mgr.save_layout(layout_name, positions)
                                     st.session_state.selected_layout_name = layout_name
-                                    st.success(f"✅ Layout '{layout_name}' saved with {len(positions)} nodes!")
+                                    st.success(f"✅ Saved with {len(positions)} nodes!")
                                     st.rerun()
                                 else:
-                                    st.error("Invalid position data: must be a non-empty JSON object")
+                                    st.error("Invalid: must be a non-empty JSON object")
                             except json.JSONDecodeError as e:
-                                st.error(f"Invalid JSON format: {e}")
+                                st.error(f"Invalid JSON: {e}")
                         else:
-                            st.warning("⚠️ Please paste position data first (use 'Capture Positions' button on the graph)")
+                            st.warning("⚠️ Paste position data first")
                 
                 with col_save_2:
-                    if st.button("🎨 Save as Layered", key="save_layered", use_container_width=True):
+                    if st.button("🎨 Layered", key="save_layered", use_container_width=True):
                         nodes, _ = manager.get_graph_data({"show_tpos": True})
                         positions = generate_layered_layout(nodes)
                         layout_mgr.save_layout(layout_name, positions)
                         st.session_state.selected_layout_name = layout_name
-                        st.success(f"✅ Layout '{layout_name}' saved!")
+                        st.success(f"✅ Layout saved!")
                         st.rerun()
-            
-            # Load section
-            with st.expander("📂 Load a layout"):
+                
+                st.markdown("---")
+                
+                # Load section
+                st.markdown("**📂 Load Layout**")
                 saved_layouts = layout_mgr.list_layouts()
                 
                 if saved_layouts:
@@ -4764,7 +4889,7 @@ def main():
                     with col_load_1:
                         if st.button("📂 Load", key="load_layout", use_container_width=True):
                             st.session_state.selected_layout_name = selected_layout
-                            st.success(f"✅ Layout '{selected_layout}' loaded!")
+                            st.success(f"✅ Loaded!")
                             st.rerun()
                     
                     with col_load_2:
@@ -4773,18 +4898,15 @@ def main():
                             if "selected_layout_name" in st.session_state:
                                 if st.session_state.selected_layout_name == selected_layout:
                                     del st.session_state.selected_layout_name
-                            st.success(f"✅ Layout '{selected_layout}' deleted!")
+                            st.success(f"✅ Deleted!")
                             st.rerun()
-                    
-                    # Show current layout info
-                    if selected_layout:
-                        layout_info = saved_layouts[selected_layout]
-                        st.caption(f"📅 Saved: {layout_info['saved_at'][:16]}")
                 else:
-                    st.info("No saved layouts. Create one above!")
-            
-            # Predefined layouts section
-            with st.expander("🎨 Predefined layouts"):
+                    st.info("No saved layouts.")
+                
+                st.markdown("---")
+                
+                # Predefined layouts section
+                st.markdown("**🎨 Predefined Layouts**")
                 col_preset_1, col_preset_2 = st.columns(2)
                 
                 with col_preset_1:
@@ -4794,38 +4916,37 @@ def main():
                         auto_name = f"layered_{datetime.now().strftime('%Y%m%d_%H%M')}"
                         layout_mgr.save_layout(auto_name, positions)
                         st.session_state.selected_layout_name = auto_name
-                        st.success("✅ Layered layout applied!")
+                        st.success("✅ Applied!")
                         st.rerun()
                 
                 with col_preset_2:
-                    if st.button("🗂️ By categories", key="preset_categories", use_container_width=True, help="Grouping by categories in grid"):
+                    if st.button("🗂️ Categories", key="preset_categories", use_container_width=True, help="Grouping by categories in grid"):
                         nodes, _ = manager.get_graph_data({"show_tpos": True})
                         positions = generate_category_layout(nodes)
                         auto_name = f"categories_{datetime.now().strftime('%Y%m%d_%H%M')}"
                         layout_mgr.save_layout(auto_name, positions)
                         st.session_state.selected_layout_name = auto_name
-                        st.success("✅ Category layout applied!")
+                        st.success("✅ Applied!")
                         st.rerun()
                 
-                if st.button("🏆 By TPO Clusters", key="preset_tpo_clusters", use_container_width=True, help="Group by TPO clusters"):
-                    nodes, _ = manager.get_graph_data({"show_tpos": True})
-                    positions = generate_tpo_cluster_layout(nodes)
-                    auto_name = f"tpo_clusters_{datetime.now().strftime('%Y%m%d_%H%M')}"
-                    layout_mgr.save_layout(auto_name, positions)
-                    st.session_state.selected_layout_name = auto_name
-                    st.success("✅ TPO Cluster layout applied!")
-                    st.rerun()
+                col_preset_3, col_preset_4 = st.columns(2)
                 
-                if st.button("🔄 Reset (auto)", key="reset_layout", use_container_width=True, help="Return to automatic organization"):
-                    if "selected_layout_name" in st.session_state:
-                        del st.session_state.selected_layout_name
-                    st.success("✅ Layout reset!")
-                    st.rerun()
-            
-            st.markdown("---")
-            
-            if st.button("🔄 Refresh", use_container_width=True):
-                st.rerun()
+                with col_preset_3:
+                    if st.button("🏆 TPO Clusters", key="preset_tpo_clusters", use_container_width=True, help="Group by TPO clusters"):
+                        nodes, _ = manager.get_graph_data({"show_tpos": True})
+                        positions = generate_tpo_cluster_layout(nodes)
+                        auto_name = f"tpo_clusters_{datetime.now().strftime('%Y%m%d_%H%M')}"
+                        layout_mgr.save_layout(auto_name, positions)
+                        st.session_state.selected_layout_name = auto_name
+                        st.success("✅ Applied!")
+                        st.rerun()
+                
+                with col_preset_4:
+                    if st.button("🔄 Reset", key="reset_layout", use_container_width=True, help="Return to automatic"):
+                        if "selected_layout_name" in st.session_state:
+                            del st.session_state.selected_layout_name
+                        st.success("✅ Reset!")
+                        st.rerun()
         
         with col_display:
             # === INFLUENCE ANALYSIS PANEL ===
@@ -4904,8 +5025,13 @@ def main():
                     if positions:
                         st.info(f"📍 Active layout: **{layout_name}**")
             
-            render_graph(nodes, edges, color_by, physics_enabled, positions, 
-                        capture_positions=capture_mode, highlighted_node_id=highlighted_node_id,
+            # Get display settings from session state
+            color_by_val = st.session_state.get("color_by", "level")
+            physics_enabled_val = st.session_state.get("physics_enabled", True)
+            capture_mode_val = st.session_state.get("capture_mode", False)
+            
+            render_graph(nodes, edges, color_by_val, physics_enabled_val, positions, 
+                        capture_positions=capture_mode_val, highlighted_node_id=highlighted_node_id,
                         max_edges=max_edges_to_show, edge_scores=edge_scores)
     
     # === RISKS TAB ===
