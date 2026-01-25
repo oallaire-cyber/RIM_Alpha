@@ -64,6 +64,48 @@ st.markdown("""
         border-radius: 4px;
         font-size: 0.8em;
     }
+    .legacy-badge {
+        background-color: #95a5a6;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+    }
+    .new-badge {
+        background-color: #27ae60;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+    }
+    .mitigation-badge {
+        background-color: #2ecc71;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+    }
+    .mitigation-dedicated {
+        background-color: #27ae60;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+    }
+    .mitigation-inherited {
+        background-color: #3498db;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+    }
+    .mitigation-baseline {
+        background-color: #9b59b6;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -86,6 +128,18 @@ RISK_LEVELS = ["Strategic", "Operational"]
 # Risk Statuses constants
 RISK_STATUSES = ["Active", "Contingent", "Archived"]
 
+# Risk Origins constants
+RISK_ORIGINS = ["New", "Legacy"]
+
+# Mitigation Types constants
+MITIGATION_TYPES = ["Dedicated", "Inherited", "Baseline"]
+
+# Mitigation Statuses constants
+MITIGATION_STATUSES = ["Proposed", "In Progress", "Implemented", "Deferred"]
+
+# Mitigation Effectiveness levels
+MITIGATION_EFFECTIVENESS = ["Low", "Medium", "High", "Critical"]
+
 
 # ============================================================================
 # FILTER MANAGER CLASS
@@ -103,7 +157,8 @@ class FilterManager:
                 "risks": {
                     "levels": RISK_LEVELS.copy(),
                     "categories": RISK_CATEGORIES.copy(),
-                    "statuses": ["Active", "Contingent"]
+                    "statuses": ["Active", "Contingent"],
+                    "origins": RISK_ORIGINS.copy()
                 },
                 "tpos": {
                     "enabled": True,
@@ -118,7 +173,8 @@ class FilterManager:
                 "risks": {
                     "levels": ["Strategic"],
                     "categories": RISK_CATEGORIES.copy(),
-                    "statuses": ["Active", "Contingent"]
+                    "statuses": ["Active", "Contingent"],
+                    "origins": RISK_ORIGINS.copy()
                 },
                 "tpos": {
                     "enabled": True,
@@ -133,7 +189,8 @@ class FilterManager:
                 "risks": {
                     "levels": ["Operational"],
                     "categories": RISK_CATEGORIES.copy(),
-                    "statuses": ["Active", "Contingent"]
+                    "statuses": ["Active", "Contingent"],
+                    "origins": RISK_ORIGINS.copy()
                 },
                 "tpos": {
                     "enabled": False,
@@ -148,7 +205,8 @@ class FilterManager:
                 "risks": {
                     "levels": RISK_LEVELS.copy(),
                     "categories": RISK_CATEGORIES.copy(),
-                    "statuses": ["Active"]
+                    "statuses": ["Active"],
+                    "origins": RISK_ORIGINS.copy()
                 },
                 "tpos": {
                     "enabled": True,
@@ -163,7 +221,8 @@ class FilterManager:
                 "risks": {
                     "levels": RISK_LEVELS.copy(),
                     "categories": RISK_CATEGORIES.copy(),
-                    "statuses": ["Contingent"]
+                    "statuses": ["Contingent"],
+                    "origins": RISK_ORIGINS.copy()
                 },
                 "tpos": {
                     "enabled": False,
@@ -178,11 +237,112 @@ class FilterManager:
                 "risks": {
                     "levels": RISK_LEVELS.copy(),
                     "categories": RISK_CATEGORIES.copy(),
-                    "statuses": ["Active", "Contingent"]
+                    "statuses": ["Active", "Contingent"],
+                    "origins": RISK_ORIGINS.copy()
                 },
                 "tpos": {
                     "enabled": False,
                     "clusters": []
+                }
+            }
+        },
+        "new_risks_only": {
+            "name": "🆕 New Risks Only",
+            "description": "Program-specific new risks",
+            "config": {
+                "risks": {
+                    "levels": RISK_LEVELS.copy(),
+                    "categories": RISK_CATEGORIES.copy(),
+                    "statuses": ["Active", "Contingent"],
+                    "origins": ["New"]
+                },
+                "tpos": {
+                    "enabled": True,
+                    "clusters": TPO_CLUSTERS.copy()
+                }
+            }
+        },
+        "legacy_risks_only": {
+            "name": "📜 Legacy Risks Only",
+            "description": "Inherited/Enterprise level risks",
+            "config": {
+                "risks": {
+                    "levels": RISK_LEVELS.copy(),
+                    "categories": RISK_CATEGORIES.copy(),
+                    "statuses": ["Active", "Contingent"],
+                    "origins": ["Legacy"]
+                },
+                "tpos": {
+                    "enabled": True,
+                    "clusters": TPO_CLUSTERS.copy()
+                },
+                "mitigations": {
+                    "enabled": False,
+                    "types": [],
+                    "statuses": []
+                }
+            }
+        },
+        "with_mitigations": {
+            "name": "🛡️ Risks + Mitigations",
+            "description": "Show risks with their mitigations",
+            "config": {
+                "risks": {
+                    "levels": RISK_LEVELS.copy(),
+                    "categories": RISK_CATEGORIES.copy(),
+                    "statuses": ["Active", "Contingent"],
+                    "origins": RISK_ORIGINS.copy()
+                },
+                "tpos": {
+                    "enabled": False,
+                    "clusters": []
+                },
+                "mitigations": {
+                    "enabled": True,
+                    "types": MITIGATION_TYPES.copy(),
+                    "statuses": MITIGATION_STATUSES.copy()
+                }
+            }
+        },
+        "mitigations_focus": {
+            "name": "🛡️ Mitigations Focus",
+            "description": "Focus on mitigations and mitigated risks",
+            "config": {
+                "risks": {
+                    "levels": RISK_LEVELS.copy(),
+                    "categories": RISK_CATEGORIES.copy(),
+                    "statuses": ["Active", "Contingent"],
+                    "origins": RISK_ORIGINS.copy()
+                },
+                "tpos": {
+                    "enabled": False,
+                    "clusters": []
+                },
+                "mitigations": {
+                    "enabled": True,
+                    "types": MITIGATION_TYPES.copy(),
+                    "statuses": ["Implemented", "In Progress"]
+                }
+            }
+        },
+        "full_map": {
+            "name": "🗺️ Full Map",
+            "description": "Everything: Risks, TPOs, and Mitigations",
+            "config": {
+                "risks": {
+                    "levels": RISK_LEVELS.copy(),
+                    "categories": RISK_CATEGORIES.copy(),
+                    "statuses": ["Active", "Contingent"],
+                    "origins": RISK_ORIGINS.copy()
+                },
+                "tpos": {
+                    "enabled": True,
+                    "clusters": TPO_CLUSTERS.copy()
+                },
+                "mitigations": {
+                    "enabled": True,
+                    "types": MITIGATION_TYPES.copy(),
+                    "statuses": MITIGATION_STATUSES.copy()
                 }
             }
         }
@@ -198,11 +358,17 @@ class FilterManager:
             "risks": {
                 "levels": RISK_LEVELS.copy(),
                 "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Active", "Contingent"]
+                "statuses": ["Active", "Contingent"],
+                "origins": RISK_ORIGINS.copy()
             },
             "tpos": {
                 "enabled": True,
                 "clusters": TPO_CLUSTERS.copy()
+            },
+            "mitigations": {
+                "enabled": False,
+                "types": MITIGATION_TYPES.copy(),
+                "statuses": MITIGATION_STATUSES.copy()
             }
         }
     
@@ -215,11 +381,17 @@ class FilterManager:
                 "risks": {
                     "levels": preset_config["risks"]["levels"].copy(),
                     "categories": preset_config["risks"]["categories"].copy(),
-                    "statuses": preset_config["risks"]["statuses"].copy()
+                    "statuses": preset_config["risks"]["statuses"].copy(),
+                    "origins": preset_config["risks"].get("origins", RISK_ORIGINS.copy()).copy()
                 },
                 "tpos": {
                     "enabled": preset_config["tpos"]["enabled"],
                     "clusters": preset_config["tpos"]["clusters"].copy()
+                },
+                "mitigations": {
+                    "enabled": preset_config.get("mitigations", {}).get("enabled", False),
+                    "types": preset_config.get("mitigations", {}).get("types", MITIGATION_TYPES.copy()).copy() if preset_config.get("mitigations", {}).get("types") else MITIGATION_TYPES.copy(),
+                    "statuses": preset_config.get("mitigations", {}).get("statuses", MITIGATION_STATUSES.copy()).copy() if preset_config.get("mitigations", {}).get("statuses") else MITIGATION_STATUSES.copy()
                 }
             }
             return True
@@ -236,6 +408,10 @@ class FilterManager:
     def set_risk_statuses(self, statuses: list):
         """Set risk status filter"""
         self.filters["risks"]["statuses"] = statuses
+    
+    def set_risk_origins(self, origins: list):
+        """Set risk origin filter"""
+        self.filters["risks"]["origins"] = origins
     
     def set_tpo_enabled(self, enabled: bool):
         """Enable or disable TPO display"""
@@ -271,6 +447,14 @@ class FilterManager:
         """Deselect all risk statuses"""
         self.filters["risks"]["statuses"] = []
     
+    def select_all_origins(self):
+        """Select all risk origins"""
+        self.filters["risks"]["origins"] = RISK_ORIGINS.copy()
+    
+    def deselect_all_origins(self):
+        """Deselect all risk origins"""
+        self.filters["risks"]["origins"] = []
+    
     def select_all_clusters(self):
         """Select all TPO clusters"""
         self.filters["tpos"]["clusters"] = TPO_CLUSTERS.copy()
@@ -279,10 +463,42 @@ class FilterManager:
         """Deselect all TPO clusters"""
         self.filters["tpos"]["clusters"] = []
     
+    def set_mitigations_enabled(self, enabled: bool):
+        """Enable or disable mitigation display"""
+        self.filters["mitigations"]["enabled"] = enabled
+        if not enabled:
+            self.filters["mitigations"]["types"] = []
+            self.filters["mitigations"]["statuses"] = []
+    
+    def set_mitigation_types(self, types: list):
+        """Set mitigation type filter"""
+        self.filters["mitigations"]["types"] = types
+    
+    def set_mitigation_statuses(self, statuses: list):
+        """Set mitigation status filter"""
+        self.filters["mitigations"]["statuses"] = statuses
+    
+    def select_all_mitigation_types(self):
+        """Select all mitigation types"""
+        self.filters["mitigations"]["types"] = MITIGATION_TYPES.copy()
+    
+    def deselect_all_mitigation_types(self):
+        """Deselect all mitigation types"""
+        self.filters["mitigations"]["types"] = []
+    
+    def select_all_mitigation_statuses(self):
+        """Select all mitigation statuses"""
+        self.filters["mitigations"]["statuses"] = MITIGATION_STATUSES.copy()
+    
+    def deselect_all_mitigation_statuses(self):
+        """Deselect all mitigation statuses"""
+        self.filters["mitigations"]["statuses"] = []
+    
     def get_filters_for_query(self) -> dict:
         """Convert filters to format expected by get_graph_data()"""
         query_filters = {
-            "show_tpos": self.filters["tpos"]["enabled"]
+            "show_tpos": self.filters["tpos"]["enabled"],
+            "show_mitigations": self.filters.get("mitigations", {}).get("enabled", False)
         }
         
         if self.filters["risks"]["levels"]:
@@ -294,8 +510,18 @@ class FilterManager:
         if self.filters["risks"]["statuses"]:
             query_filters["status"] = self.filters["risks"]["statuses"]
         
+        if self.filters["risks"].get("origins"):
+            query_filters["origins"] = self.filters["risks"]["origins"]
+        
         if self.filters["tpos"]["enabled"] and self.filters["tpos"]["clusters"]:
             query_filters["tpo_clusters"] = self.filters["tpos"]["clusters"]
+        
+        # Mitigation filters
+        if self.filters.get("mitigations", {}).get("enabled"):
+            if self.filters["mitigations"].get("types"):
+                query_filters["mitigation_types"] = self.filters["mitigations"]["types"]
+            if self.filters["mitigations"].get("statuses"):
+                query_filters["mitigation_statuses"] = self.filters["mitigations"]["statuses"]
         
         return query_filters
     
@@ -319,6 +545,15 @@ class FilterManager:
         else:
             parts.append("No categories")
         
+        # Risk origins
+        origins = self.filters["risks"].get("origins", RISK_ORIGINS.copy())
+        if len(origins) == len(RISK_ORIGINS):
+            pass  # Don't show if all selected (default)
+        elif origins:
+            parts.append(f"Origins: {', '.join(origins)}")
+        else:
+            parts.append("No origins selected")
+        
         # TPOs
         if self.filters["tpos"]["enabled"]:
             if len(self.filters["tpos"]["clusters"]) == len(TPO_CLUSTERS):
@@ -330,15 +565,28 @@ class FilterManager:
         else:
             parts.append("TPOs hidden")
         
+        # Mitigations
+        if self.filters.get("mitigations", {}).get("enabled"):
+            mit_types = self.filters["mitigations"].get("types", [])
+            mit_statuses = self.filters["mitigations"].get("statuses", [])
+            if len(mit_types) == len(MITIGATION_TYPES) and len(mit_statuses) == len(MITIGATION_STATUSES):
+                parts.append("All Mitigations")
+            else:
+                parts.append(f"{len(mit_types)} mit. types, {len(mit_statuses)} statuses")
+        else:
+            parts.append("Mitigations hidden")
+        
         return " | ".join(parts)
     
     def validate(self) -> tuple:
         """Validate current filter configuration. Returns (is_valid, message)"""
         # Check if at least something is selected
+        origins = self.filters["risks"].get("origins", RISK_ORIGINS.copy())
         has_risks = (
             len(self.filters["risks"]["levels"]) > 0 and
             len(self.filters["risks"]["categories"]) > 0 and
-            len(self.filters["risks"]["statuses"]) > 0
+            len(self.filters["risks"]["statuses"]) > 0 and
+            len(origins) > 0
         )
         has_tpos = (
             self.filters["tpos"]["enabled"] and
@@ -393,7 +641,8 @@ class RiskGraphManager:
     def create_risk(self, name: str, level: str, categories: list, description: str,
                     status: str, activation_condition: str = None, 
                     activation_decision_date: str = None, owner: str = "",
-                    probability: float = None, impact: float = None) -> bool:
+                    probability: float = None, impact: float = None,
+                    origin: str = "New") -> bool:
         """Creates a new risk node with Phase 1 model"""
         query = """
         CREATE (r:Risk {
@@ -402,6 +651,7 @@ class RiskGraphManager:
             description: $description,
             level: $level,
             status: $status,
+            origin: $origin,
             activation_condition: $activation_condition,
             activation_decision_date: $activation_decision_date,
             categories: $categories,
@@ -437,6 +687,7 @@ class RiskGraphManager:
                 "categories": categories,
                 "description": description,
                 "status": status,
+                "origin": origin,
                 "activation_condition": activation_condition,
                 "activation_decision_date": activation_decision_date,
                 "owner": owner,
@@ -452,7 +703,7 @@ class RiskGraphManager:
             st.error(f"Creation error: {e}")
             return False
     
-    def get_all_risks(self, level_filter=None, category_filter=None, status_filter=None) -> list:
+    def get_all_risks(self, level_filter=None, category_filter=None, status_filter=None, origin_filter=None) -> list:
         """Retrieves all risks with optional filters"""
         conditions = []
         params = {}
@@ -469,6 +720,10 @@ class RiskGraphManager:
             conditions.append("r.status = $status")
             params["status"] = status_filter
         
+        if origin_filter:
+            conditions.append("r.origin = $origin")
+            params["origin"] = origin_filter
+        
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         
         query = f"""
@@ -476,7 +731,8 @@ class RiskGraphManager:
         {where_clause}
         RETURN r.id as id, r.name as name, r.level as level,
                r.categories as categories, r.description as description,
-               r.status as status, r.activation_condition as activation_condition,
+               r.status as status, r.origin as origin,
+               r.activation_condition as activation_condition,
                r.activation_decision_date as activation_decision_date,
                r.owner as owner, r.probability as probability,
                r.impact as impact, r.exposure as exposure,
@@ -491,7 +747,8 @@ class RiskGraphManager:
         MATCH (r:Risk {id: $id})
         RETURN r.id as id, r.name as name, r.level as level,
                r.categories as categories, r.description as description,
-               r.status as status, r.activation_condition as activation_condition,
+               r.status as status, r.origin as origin,
+               r.activation_condition as activation_condition,
                r.activation_decision_date as activation_decision_date,
                r.owner as owner, r.probability as probability,
                r.impact as impact, r.exposure as exposure
@@ -502,7 +759,7 @@ class RiskGraphManager:
     def update_risk(self, risk_id: str, name: str, level: str, categories: list,
                     description: str, status: str, activation_condition: str,
                     activation_decision_date: str, owner: str,
-                    probability: float, impact: float) -> bool:
+                    probability: float, impact: float, origin: str = "New") -> bool:
         """Updates an existing risk"""
         exposure = (probability * impact) if (probability and impact) else None
         
@@ -513,6 +770,7 @@ class RiskGraphManager:
             r.categories = $categories,
             r.description = $description,
             r.status = $status,
+            r.origin = $origin,
             r.activation_condition = $activation_condition,
             r.activation_decision_date = $activation_decision_date,
             r.owner = $owner,
@@ -530,6 +788,7 @@ class RiskGraphManager:
                 "categories": categories,
                 "description": description,
                 "status": status,
+                "origin": origin,
                 "activation_condition": activation_condition,
                 "activation_decision_date": activation_decision_date,
                 "owner": owner,
@@ -825,10 +1084,218 @@ class RiskGraphManager:
             st.error(f"TPO impact deletion error: {e}")
             return False
     
+    # --- MITIGATION MANAGEMENT (NODES) ---
+    
+    def create_mitigation(self, name: str, mitigation_type: str, status: str,
+                          description: str = "", owner: str = "",
+                          source_entity: str = "") -> bool:
+        """Creates a new mitigation node"""
+        query = """
+        CREATE (m:Mitigation {
+            id: randomUUID(),
+            name: $name,
+            type: $type,
+            status: $status,
+            description: $description,
+            owner: $owner,
+            source_entity: $source_entity,
+            created_at: datetime(),
+            updated_at: datetime()
+        })
+        RETURN m.id as id
+        """
+        try:
+            result = self.execute_query(query, {
+                "name": name,
+                "type": mitigation_type,
+                "status": status,
+                "description": description,
+                "owner": owner,
+                "source_entity": source_entity
+            })
+            return len(result) > 0
+        except Exception as e:
+            st.error(f"Mitigation creation error: {e}")
+            return False
+    
+    def get_all_mitigations(self, type_filter: list = None, status_filter: list = None) -> list:
+        """Retrieves all mitigations with optional filters"""
+        conditions = []
+        params = {}
+        
+        if type_filter and len(type_filter) > 0:
+            conditions.append("m.type IN $types")
+            params["types"] = type_filter
+        
+        if status_filter and len(status_filter) > 0:
+            conditions.append("m.status IN $statuses")
+            params["statuses"] = status_filter
+        
+        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+        
+        query = f"""
+        MATCH (m:Mitigation)
+        {where_clause}
+        RETURN m.id as id, m.name as name, m.type as type,
+               m.status as status, m.description as description,
+               m.owner as owner, m.source_entity as source_entity
+        ORDER BY m.name
+        """
+        return self.execute_query(query, params)
+    
+    def get_mitigation_by_id(self, mitigation_id: str) -> dict:
+        """Retrieves a mitigation by its ID"""
+        query = """
+        MATCH (m:Mitigation {id: $id})
+        RETURN m.id as id, m.name as name, m.type as type,
+               m.status as status, m.description as description,
+               m.owner as owner, m.source_entity as source_entity
+        """
+        result = self.execute_query(query, {"id": mitigation_id})
+        return dict(result[0]) if result else None
+    
+    def update_mitigation(self, mitigation_id: str, name: str, mitigation_type: str,
+                          status: str, description: str, owner: str,
+                          source_entity: str) -> bool:
+        """Updates an existing mitigation"""
+        query = """
+        MATCH (m:Mitigation {id: $id})
+        SET m.name = $name,
+            m.type = $type,
+            m.status = $status,
+            m.description = $description,
+            m.owner = $owner,
+            m.source_entity = $source_entity,
+            m.updated_at = datetime()
+        RETURN m.id
+        """
+        try:
+            result = self.execute_query(query, {
+                "id": mitigation_id,
+                "name": name,
+                "type": mitigation_type,
+                "status": status,
+                "description": description,
+                "owner": owner,
+                "source_entity": source_entity
+            })
+            return len(result) > 0
+        except Exception as e:
+            st.error(f"Mitigation update error: {e}")
+            return False
+    
+    def delete_mitigation(self, mitigation_id: str) -> bool:
+        """Deletes a mitigation and all its relationships"""
+        query = """
+        MATCH (m:Mitigation {id: $id})
+        DETACH DELETE m
+        """
+        try:
+            self.execute_query(query, {"id": mitigation_id})
+            return True
+        except Exception as e:
+            st.error(f"Mitigation deletion error: {e}")
+            return False
+    
+    # --- MITIGATES RELATIONSHIP MANAGEMENT ---
+    
+    def create_mitigates_relationship(self, mitigation_id: str, risk_id: str,
+                                       effectiveness: str, description: str = "") -> bool:
+        """Creates a MITIGATES relationship from a Mitigation to a Risk"""
+        query = """
+        MATCH (m:Mitigation {id: $mitigation_id})
+        MATCH (r:Risk {id: $risk_id})
+        CREATE (m)-[rel:MITIGATES {
+            id: randomUUID(),
+            effectiveness: $effectiveness,
+            description: $description,
+            created_at: datetime()
+        }]->(r)
+        RETURN rel.id as id
+        """
+        try:
+            result = self.execute_query(query, {
+                "mitigation_id": mitigation_id,
+                "risk_id": risk_id,
+                "effectiveness": effectiveness,
+                "description": description
+            })
+            return len(result) > 0
+        except Exception as e:
+            st.error(f"MITIGATES relationship creation error: {e}")
+            return False
+    
+    def get_all_mitigates_relationships(self) -> list:
+        """Retrieves all MITIGATES relationships"""
+        query = """
+        MATCH (m:Mitigation)-[rel:MITIGATES]->(r:Risk)
+        RETURN rel.id as id, m.id as mitigation_id, m.name as mitigation_name,
+               m.type as mitigation_type, r.id as risk_id, r.name as risk_name,
+               r.level as risk_level, rel.effectiveness as effectiveness,
+               rel.description as description
+        ORDER BY m.name, r.name
+        """
+        return self.execute_query(query)
+    
+    def get_mitigations_for_risk(self, risk_id: str) -> list:
+        """Retrieves all mitigations that mitigate a specific risk"""
+        query = """
+        MATCH (m:Mitigation)-[rel:MITIGATES]->(r:Risk {id: $risk_id})
+        RETURN m.id as id, m.name as name, m.type as type,
+               m.status as status, m.owner as owner,
+               rel.effectiveness as effectiveness, rel.description as rel_description
+        ORDER BY rel.effectiveness DESC
+        """
+        return self.execute_query(query, {"risk_id": risk_id})
+    
+    def get_risks_for_mitigation(self, mitigation_id: str) -> list:
+        """Retrieves all risks mitigated by a specific mitigation"""
+        query = """
+        MATCH (m:Mitigation {id: $mitigation_id})-[rel:MITIGATES]->(r:Risk)
+        RETURN r.id as id, r.name as name, r.level as level,
+               r.status as status, r.exposure as exposure,
+               rel.effectiveness as effectiveness, rel.description as rel_description
+        ORDER BY r.exposure DESC
+        """
+        return self.execute_query(query, {"mitigation_id": mitigation_id})
+    
+    def update_mitigates_relationship(self, relationship_id: str,
+                                       effectiveness: str, description: str) -> bool:
+        """Updates a MITIGATES relationship"""
+        query = """
+        MATCH ()-[rel:MITIGATES {id: $id}]->()
+        SET rel.effectiveness = $effectiveness,
+            rel.description = $description
+        RETURN rel.id
+        """
+        try:
+            result = self.execute_query(query, {
+                "id": relationship_id,
+                "effectiveness": effectiveness,
+                "description": description
+            })
+            return len(result) > 0
+        except Exception as e:
+            st.error(f"MITIGATES relationship update error: {e}")
+            return False
+    
+    def delete_mitigates_relationship(self, relationship_id: str) -> bool:
+        """Deletes a MITIGATES relationship"""
+        query = """
+        MATCH ()-[rel:MITIGATES {id: $id}]->()
+        DELETE rel
+        """
+        try:
+            self.execute_query(query, {"id": relationship_id})
+            return True
+        except Exception as e:
+            st.error(f"MITIGATES relationship deletion error: {e}")
+            return False
+    
     # --- STATISTICS AND GRAPH ---
     
     def get_statistics(self) -> dict:
-        """Retrieves graph statistics including TPOs"""
+        """Retrieves graph statistics including TPOs and Mitigations"""
         stats = {
             "total_risks": 0,
             "strategic_risks": 0,
@@ -840,7 +1307,13 @@ class RiskGraphManager:
             "avg_exposure": 0,
             "categories": {},
             "tpo_clusters": {},
-            "by_level": {}
+            "by_level": {},
+            "new_risks": 0,
+            "legacy_risks": 0,
+            "total_mitigations": 0,
+            "total_mitigates": 0,
+            "mitigations_by_type": {},
+            "mitigations_by_status": {}
         }
         
         # Total risks
@@ -859,6 +1332,14 @@ class RiskGraphManager:
         result = self.execute_query("MATCH (r:Risk {status: 'Contingent'}) RETURN count(r) as count")
         stats["contingent_risks"] = result[0]["count"] if result else 0
         
+        # New risks
+        result = self.execute_query("MATCH (r:Risk {origin: 'New'}) RETURN count(r) as count")
+        stats["new_risks"] = result[0]["count"] if result else 0
+        
+        # Legacy risks
+        result = self.execute_query("MATCH (r:Risk {origin: 'Legacy'}) RETURN count(r) as count")
+        stats["legacy_risks"] = result[0]["count"] if result else 0
+        
         # Influences
         result = self.execute_query("MATCH ()-[i:INFLUENCES]->() RETURN count(i) as count")
         stats["total_influences"] = result[0]["count"] if result else 0
@@ -870,6 +1351,30 @@ class RiskGraphManager:
         # TPO Impacts
         result = self.execute_query("MATCH ()-[i:IMPACTS_TPO]->() RETURN count(i) as count")
         stats["total_tpo_impacts"] = result[0]["count"] if result else 0
+        
+        # Mitigations
+        result = self.execute_query("MATCH (m:Mitigation) RETURN count(m) as count")
+        stats["total_mitigations"] = result[0]["count"] if result else 0
+        
+        # MITIGATES relationships
+        result = self.execute_query("MATCH ()-[rel:MITIGATES]->() RETURN count(rel) as count")
+        stats["total_mitigates"] = result[0]["count"] if result else 0
+        
+        # Mitigations by type
+        result = self.execute_query("""
+            MATCH (m:Mitigation)
+            RETURN m.type as type, count(m) as count
+            ORDER BY count DESC
+        """)
+        stats["mitigations_by_type"] = {r["type"]: r["count"] for r in result if r["type"]}
+        
+        # Mitigations by status
+        result = self.execute_query("""
+            MATCH (m:Mitigation)
+            RETURN m.status as status, count(m) as count
+            ORDER BY count DESC
+        """)
+        stats["mitigations_by_status"] = {r["status"]: r["count"] for r in result if r["status"]}
         
         # Average exposure
         result = self.execute_query("""
@@ -899,7 +1404,7 @@ class RiskGraphManager:
         return stats
     
     def get_graph_data(self, filters: dict = None) -> tuple:
-        """Retrieves data for graph visualization including TPOs"""
+        """Retrieves data for graph visualization including TPOs and Mitigations"""
         # Build filter conditions for risks
         conditions = []
         params = {}
@@ -923,6 +1428,12 @@ class RiskGraphManager:
             if status_list and len(status_list) > 0:
                 conditions.append("r.status IN $statuses")
                 params["statuses"] = status_list
+            
+            # Filter by origin (New/Legacy)
+            origin_list = filters.get("origins")
+            if origin_list and len(origin_list) > 0:
+                conditions.append("(r.origin IN $origins OR r.origin IS NULL)")
+                params["origins"] = origin_list
         
         # Build WHERE clause for risks
         where_clause = "WHERE " + " AND ".join(conditions) if len(conditions) > 0 else ""
@@ -932,7 +1443,7 @@ class RiskGraphManager:
             {where_clause}
             RETURN r.id as id, r.name as name, r.level as level,
                    r.categories as categories, r.status as status,
-                   r.exposure as exposure, r.owner as owner,
+                   r.origin as origin, r.exposure as exposure, r.owner as owner,
                    'Risk' as node_type
         """
         risk_nodes = self.execute_query(nodes_query, params)
@@ -962,9 +1473,43 @@ class RiskGraphManager:
             """
             tpo_nodes = self.execute_query(tpo_query, tpo_params)
         
+        # Get Mitigation nodes if display is enabled
+        mitigation_nodes = []
+        show_mitigations = filters.get("show_mitigations", False) if filters else False
+        
+        if show_mitigations:
+            mit_conditions = []
+            mit_params = {}
+            
+            # Filter mitigations by type
+            type_list = filters.get("mitigation_types") if filters else None
+            if type_list and len(type_list) > 0:
+                mit_conditions.append("m.type IN $types")
+                mit_params["types"] = type_list
+            
+            # Filter mitigations by status
+            status_list = filters.get("mitigation_statuses") if filters else None
+            if status_list and len(status_list) > 0:
+                mit_conditions.append("m.status IN $statuses")
+                mit_params["statuses"] = status_list
+            
+            mit_where = "WHERE " + " AND ".join(mit_conditions) if mit_conditions else ""
+            
+            mit_query = f"""
+                MATCH (m:Mitigation)
+                {mit_where}
+                RETURN m.id as id, m.name as name, m.type as type,
+                       m.status as status, m.owner as owner,
+                       m.source_entity as source_entity,
+                       m.description as description,
+                       'Mitigation' as node_type
+            """
+            mitigation_nodes = self.execute_query(mit_query, mit_params)
+        
         # Combine nodes
         nodes = list(risk_nodes) if risk_nodes else []
         nodes.extend(tpo_nodes if tpo_nodes else [])
+        nodes.extend(mitigation_nodes if mitigation_nodes else [])
         
         # Retrieve only links between filtered risk nodes
         edges = []
@@ -998,9 +1543,29 @@ class RiskGraphManager:
                     "tpo_ids": tpo_ids
                 })
         
+        # Retrieve MITIGATES edges (only if mitigations are shown)
+        mitigates_edges = []
+        if show_mitigations and mitigation_nodes and len(mitigation_nodes) > 0:
+            mit_ids = [n["id"] for n in mitigation_nodes]
+            risk_ids = [n["id"] for n in risk_nodes] if risk_nodes else []
+            
+            if risk_ids:
+                mitigates_query = """
+                    MATCH (m:Mitigation)-[rel:MITIGATES]->(r:Risk)
+                    WHERE m.id IN $mit_ids AND r.id IN $risk_ids
+                    RETURN m.id as source, r.id as target,
+                           rel.effectiveness as effectiveness, rel.description as description,
+                           'MITIGATES' as edge_type
+                """
+                mitigates_edges = self.execute_query(mitigates_query, {
+                    "mit_ids": mit_ids,
+                    "risk_ids": risk_ids
+                })
+        
         # Combine edges
         all_edges = list(edges) if edges else []
         all_edges.extend(tpo_edges if tpo_edges else [])
+        all_edges.extend(mitigates_edges if mitigates_edges else [])
         
         return nodes if nodes else [], all_edges if all_edges else []
     
@@ -1697,16 +2262,20 @@ class RiskGraphManager:
         return scored_edges
     
     def export_to_excel(self, filepath: str):
-        """Exports risks, influences, TPOs and TPO impacts to Excel"""
+        """Exports risks, influences, TPOs, TPO impacts, mitigations and mitigates relationships to Excel"""
         risks = self.get_all_risks()
         influences = self.get_all_influences()
         tpos = self.get_all_tpos()
         tpo_impacts = self.get_all_tpo_impacts()
+        mitigations = self.get_all_mitigations()
+        mitigates_rels = self.get_all_mitigates_relationships()
         
         df_risks = pd.DataFrame([dict(r) for r in risks])
         df_influences = pd.DataFrame([dict(i) for i in influences])
         df_tpos = pd.DataFrame([dict(t) for t in tpos])
         df_tpo_impacts = pd.DataFrame([dict(i) for i in tpo_impacts])
+        df_mitigations = pd.DataFrame([dict(m) for m in mitigations])
+        df_mitigates = pd.DataFrame([dict(rel) for rel in mitigates_rels])
         
         with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
             if not df_risks.empty:
@@ -1717,9 +2286,13 @@ class RiskGraphManager:
                 df_tpos.to_excel(writer, sheet_name='TPOs', index=False)
             if not df_tpo_impacts.empty:
                 df_tpo_impacts.to_excel(writer, sheet_name='TPO_Impacts', index=False)
+            if not df_mitigations.empty:
+                df_mitigations.to_excel(writer, sheet_name='Mitigations', index=False)
+            if not df_mitigates.empty:
+                df_mitigates.to_excel(writer, sheet_name='Mitigates', index=False)
     
     def import_from_excel(self, filepath: str) -> dict:
-        """Imports risks, influences, TPOs and TPO impacts from Excel with detailed logging"""
+        """Imports risks, influences, TPOs, TPO impacts, mitigations and mitigates relationships from Excel with detailed logging"""
         import logging
         from datetime import datetime
         
@@ -1732,6 +2305,10 @@ class RiskGraphManager:
             "tpos_skipped": 0,
             "tpo_impacts_created": 0,
             "tpo_impacts_skipped": 0,
+            "mitigations_created": 0,
+            "mitigations_skipped": 0,
+            "mitigates_created": 0,
+            "mitigates_skipped": 0,
             "errors": [],
             "warnings": [],
             "logs": []
@@ -1795,6 +2372,13 @@ class RiskGraphManager:
                             status = 'Active'
                             result["warnings"].append(f"Row {row_num} ({risk_name}): Invalid status, defaulting to 'Active'")
                         
+                        # Handle origin field
+                        origin = row.get('origin', 'New')
+                        if pd.isna(origin) or origin not in ['New', 'Legacy']:
+                            origin = 'New'
+                            if not pd.isna(row.get('origin')):
+                                result["warnings"].append(f"Row {row_num} ({risk_name}): Invalid origin '{row.get('origin')}', defaulting to 'New'")
+                        
                         activation_condition = row.get('activation_condition')
                         if pd.isna(activation_condition):
                             activation_condition = None
@@ -1843,7 +2427,8 @@ class RiskGraphManager:
                             activation_decision_date=activation_decision_date,
                             owner=owner,
                             probability=probability,
-                            impact=impact
+                            impact=impact,
+                            origin=origin
                         ):
                             result["risks_created"] += 1
                             log(f"Created risk: {risk_name}")
@@ -2073,6 +2658,142 @@ class RiskGraphManager:
                     raise e
             except Exception as e:
                 log(f"TPO_Impacts sheet not found or error: {str(e)}", "WARNING")
+            
+            # ============ IMPORT MITIGATIONS ============
+            log("Processing Mitigations sheet...")
+            mitigation_name_to_id = {}  # name -> new_id
+            
+            try:
+                df_mitigations = pd.read_excel(filepath, sheet_name='Mitigations')
+                log(f"Found {len(df_mitigations)} mitigations in Excel file")
+                
+                for idx, row in df_mitigations.iterrows():
+                    row_num = idx + 2
+                    try:
+                        mit_name = row.get('name', 'Unknown')
+                        
+                        if pd.isna(row.get('name')):
+                            result["warnings"].append(f"Mitigation Row {row_num}: Missing name, skipped")
+                            result["mitigations_skipped"] += 1
+                            continue
+                        
+                        mit_type = row.get('type', 'Dedicated')
+                        if pd.isna(mit_type) or mit_type not in ['Dedicated', 'Inherited', 'Baseline']:
+                            mit_type = 'Dedicated'
+                            result["warnings"].append(f"Mitigation Row {row_num} ({mit_name}): Invalid type, defaulting to 'Dedicated'")
+                        
+                        mit_status = row.get('status', 'Proposed')
+                        if pd.isna(mit_status) or mit_status not in ['Proposed', 'In Progress', 'Implemented', 'Deferred']:
+                            mit_status = 'Proposed'
+                            result["warnings"].append(f"Mitigation Row {row_num} ({mit_name}): Invalid status, defaulting to 'Proposed'")
+                        
+                        description = row.get('description', '')
+                        if pd.isna(description):
+                            description = ''
+                        
+                        owner = row.get('owner', '')
+                        if pd.isna(owner):
+                            owner = ''
+                        
+                        source_entity = row.get('source_entity', '')
+                        if pd.isna(source_entity):
+                            source_entity = ''
+                        
+                        if self.create_mitigation(
+                            name=mit_name,
+                            mitigation_type=mit_type,
+                            status=mit_status,
+                            description=description,
+                            owner=owner,
+                            source_entity=source_entity
+                        ):
+                            result["mitigations_created"] += 1
+                            log(f"Created mitigation: {mit_name}")
+                        else:
+                            result["mitigations_skipped"] += 1
+                            result["warnings"].append(f"Mitigation Row {row_num} ({mit_name}): Failed to create in database")
+                            
+                    except Exception as e:
+                        result["mitigations_skipped"] += 1
+                        result["errors"].append(f"Mitigation Row {row_num} - Error '{row.get('name', 'unknown')}': {str(e)}")
+                        log(f"Error processing mitigation row {row_num}: {str(e)}", "ERROR")
+                        
+            except ValueError as e:
+                if "Worksheet" in str(e):
+                    log("No 'Mitigations' sheet found in Excel file", "WARNING")
+                else:
+                    raise e
+            except Exception as e:
+                log(f"Mitigations sheet not found or error: {str(e)}", "WARNING")
+            
+            # Build mitigation name to ID mapping from database
+            log("Building mitigation name mapping from database...")
+            all_mitigations = self.get_all_mitigations()
+            for mit in all_mitigations:
+                mitigation_name_to_id[mit['name']] = mit['id']
+            log(f"Mapped {len(mitigation_name_to_id)} mitigations by name")
+            
+            # ============ IMPORT MITIGATES RELATIONSHIPS ============
+            log("Processing Mitigates sheet...")
+            try:
+                df_mitigates = pd.read_excel(filepath, sheet_name='Mitigates')
+                log(f"Found {len(df_mitigates)} mitigates relationships in Excel file")
+                
+                for idx, row in df_mitigates.iterrows():
+                    row_num = idx + 2
+                    try:
+                        mitigation_name = row.get('mitigation_name')
+                        risk_name = row.get('risk_name')
+                        
+                        if pd.isna(mitigation_name) or pd.isna(risk_name):
+                            result["warnings"].append(f"Mitigates Row {row_num}: Missing mitigation_name or risk_name, skipped")
+                            result["mitigates_skipped"] += 1
+                            continue
+                        
+                        mitigation_id = mitigation_name_to_id.get(mitigation_name)
+                        risk_id = risk_name_to_id.get(risk_name)
+                        
+                        if not mitigation_id:
+                            result["warnings"].append(f"Mitigates Row {row_num}: Mitigation '{mitigation_name}' not found, skipped")
+                            result["mitigates_skipped"] += 1
+                            continue
+                            
+                        if not risk_id:
+                            result["warnings"].append(f"Mitigates Row {row_num}: Risk '{risk_name}' not found, skipped")
+                            result["mitigates_skipped"] += 1
+                            continue
+                        
+                        effectiveness = row.get('effectiveness', 'Medium')
+                        if pd.isna(effectiveness) or effectiveness not in ['Low', 'Medium', 'High', 'Critical']:
+                            effectiveness = 'Medium'
+                        
+                        description = row.get('description', '')
+                        if pd.isna(description):
+                            description = ''
+                        
+                        if self.create_mitigates_relationship(
+                            mitigation_id=mitigation_id,
+                            risk_id=risk_id,
+                            effectiveness=effectiveness,
+                            description=description
+                        ):
+                            result["mitigates_created"] += 1
+                            log(f"Created mitigates relationship: {mitigation_name} → {risk_name}")
+                        else:
+                            result["mitigates_skipped"] += 1
+                            
+                    except Exception as e:
+                        result["mitigates_skipped"] += 1
+                        result["errors"].append(f"Mitigates Row {row_num} - Error: {str(e)}")
+                        log(f"Error processing mitigates row {row_num}: {str(e)}", "ERROR")
+                        
+            except ValueError as e:
+                if "Worksheet" in str(e):
+                    log("No 'Mitigates' sheet found in Excel file", "WARNING")
+                else:
+                    raise e
+            except Exception as e:
+                log(f"Mitigates sheet not found or error: {str(e)}", "WARNING")
                 
         except Exception as e:
             result["errors"].append(f"Global import error: {str(e)}")
@@ -2085,6 +2806,8 @@ class RiskGraphManager:
         log(f"  TPOs: {result['tpos_created']} created, {result['tpos_skipped']} skipped")
         log(f"  Influences: {result['influences_created']} created, {result['influences_skipped']} skipped")
         log(f"  TPO Impacts: {result['tpo_impacts_created']} created, {result['tpo_impacts_skipped']} skipped")
+        log(f"  Mitigations: {result['mitigations_created']} created, {result['mitigations_skipped']} skipped")
+        log(f"  Mitigates: {result['mitigates_created']} created, {result['mitigates_skipped']} skipped")
         log(f"  Errors: {len(result['errors'])}, Warnings: {len(result['warnings'])}")
         
         return result
@@ -2842,11 +3565,99 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
                 "font": {"color": "#333333", "size": 16, "face": "Arial", "bold": True},
                 "shadow": {"enabled": True, "color": shadow_color, "size": 15 if is_highlighted else 10}
             }
+        
+        elif node_type == "Mitigation":
+            # Mitigation Node - Green Rectangle
+            mit_type = node.get("type", "Dedicated")
+            mit_status = node.get("status", "Proposed")
+            
+            # Color based on mitigation type
+            type_colors = {
+                "Dedicated": "#27ae60",   # Green
+                "Inherited": "#3498db",   # Blue
+                "Baseline": "#9b59b6"     # Purple
+            }
+            color = type_colors.get(mit_type, "#27ae60")
+            
+            # Lighter color for non-implemented mitigations
+            if mit_status in ["Proposed", "Deferred"]:
+                # Make color lighter/more transparent
+                color = color + "99"  # Add some transparency
+            
+            shape = "box"
+            size = 30
+            
+            # Highlight styling for selected node
+            if is_highlighted:
+                border_color = "#e74c3c"  # Red border for selection
+                border_width = 6
+                shadow_color = "#e74c3c"
+            else:
+                border_color = "#1e8449"  # Darker green border
+                border_width = 2
+                shadow_color = "rgba(0,0,0,0.2)"
+            
+            # Status indicator emoji
+            status_emoji = {
+                "Proposed": "📋",
+                "In Progress": "🔄",
+                "Implemented": "✅",
+                "Deferred": "⏸️"
+            }
+            
+            # Type indicator emoji
+            type_emoji = {
+                "Dedicated": "🎯",
+                "Inherited": "📥",
+                "Baseline": "📐"
+            }
+            
+            # Plain text tooltip
+            title_parts = [
+                f"🛡️ {node['name']}",
+                f"Type: {mit_type} {type_emoji.get(mit_type, '')}",
+                f"Status: {mit_status} {status_emoji.get(mit_status, '')}",
+                f"Owner: {node.get('owner', 'N/A')}"
+            ]
+            if node.get('source_entity'):
+                title_parts.append(f"Source: {node['source_entity']}")
+            if node.get('description'):
+                title_parts.append(f"Description: {node['description']}")
+            if is_highlighted:
+                title_parts.append("★ SELECTED NODE")
+            title = "\n".join(title_parts)
+            
+            # Wrap long labels for better display
+            label = wrap_label(node["name"], max_width=18)
+            if is_highlighted:
+                label = f"★ {label}"
+            
+            # Add type indicator
+            label = f"🛡️ {label}"
+            
+            node_config = {
+                "label": label,
+                "title": title,
+                "color": {
+                    "background": color,
+                    "border": border_color,
+                    "highlight": {"background": "#2ecc71", "border": "#e74c3c"}
+                },
+                "size": size + (10 if is_highlighted else 0),
+                "shape": shape,
+                "borderWidth": border_width,
+                "borderWidthSelected": 6,
+                "font": {"color": "#ffffff", "size": 14, "face": "Arial"},
+                "shadow": {"enabled": True, "color": shadow_color, "size": 15 if is_highlighted else 10},
+                "shapeProperties": {"borderDashes": [3, 3] if mit_status == "Proposed" else False}
+            }
+        
         else:
             # Risk Node
             exposure = node.get("exposure") or 0
             level = node.get("level", "Operational")
             status = node.get("status", "Active")
+            origin = node.get("origin", "New")
             
             if color_by == "level":
                 base_color = get_color_by_level(level)
@@ -2859,10 +3670,8 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
             # Style for contingent
             if status == "Contingent":
                 shape = "box"
-                border_style = "dashes"
             else:
                 shape = "dot"
-                border_style = None
             
             # Highlight styling for selected node
             if is_highlighted:
@@ -2871,8 +3680,13 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
                 shadow_color = "#e74c3c"
                 size += 10  # Make selected node larger
             else:
-                border_color = base_color
-                border_width = 2
+                # Different border styling for Legacy vs New risks
+                if origin == "Legacy":
+                    border_color = "#7f8c8d"  # Gray border for legacy
+                    border_width = 4  # Thicker border
+                else:
+                    border_color = base_color
+                    border_width = 2
                 shadow_color = "rgba(0,0,0,0.2)"
             
             categories_str = ", ".join(node.get("categories", [])) if node.get("categories") else "N/A"
@@ -2884,6 +3698,7 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
             title_parts = [
                 f"{node['name']}",
                 f"Level: {level}",
+                f"Origin: {origin}",
                 f"Status: {status}",
                 f"Categories: {categories_str}",
                 f"Exposure: {exposure_str}",
@@ -2898,6 +3713,10 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
             if is_highlighted:
                 label = f"★ {label}"
             
+            # Add origin indicator to label for Legacy risks
+            if origin == "Legacy":
+                label = f"[L] {label}"
+            
             node_config = {
                 "label": label,
                 "title": title,
@@ -2911,7 +3730,8 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
                 "borderWidth": border_width,
                 "borderWidthSelected": 6,
                 "font": {"color": "#333333", "size": 16, "face": "Arial"},
-                "shadow": {"enabled": True, "color": shadow_color, "size": 15 if is_highlighted else 10}
+                "shadow": {"enabled": True, "color": shadow_color, "size": 15 if is_highlighted else 10},
+                "shapeProperties": {"borderDashes": [5, 5] if origin == "Legacy" else False}
             }
         
         # If positions are provided, apply them as initial positions
@@ -2957,6 +3777,44 @@ def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enab
                 color=color,
                 dashes=dashes
             )
+        
+        elif edge_type == "MITIGATES":
+            # Mitigation Edge - Green Dashed Line
+            effectiveness = edge.get("effectiveness", "Medium")
+            
+            # Color based on effectiveness
+            effectiveness_colors = {
+                "Critical": "#145a32",    # Dark green
+                "High": "#1e8449",        # Medium green
+                "Medium": "#27ae60",      # Light green
+                "Low": "#7dcea0"          # Very light green
+            }
+            color = effectiveness_colors.get(effectiveness, "#27ae60")
+            
+            # Width based on effectiveness
+            effectiveness_widths = {
+                "Critical": 4,
+                "High": 3,
+                "Medium": 2,
+                "Low": 1.5
+            }
+            width = effectiveness_widths.get(effectiveness, 2)
+            
+            # Plain text tooltip
+            title = f"🛡️ Mitigates ({effectiveness})"
+            if edge.get("description"):
+                title += f"\n{edge['description']}"
+            
+            net.add_edge(
+                edge["source"],
+                edge["target"],
+                title=title,
+                width=width,
+                color=color,
+                dashes=[5, 5],  # Dashed line for mitigations
+                arrows={"to": {"enabled": True, "scaleFactor": 0.8}}
+            )
+        
         else:
             # Regular Influence Edge
             strength = edge.get("strength", "Moderate")
@@ -3404,7 +4262,8 @@ def main():
     
     # Statistics at top
     stats = manager.get_statistics()
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    # First row of metrics
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         st.metric("🎯 Total Risks", stats["total_risks"])
@@ -3413,21 +4272,35 @@ def main():
     with col3:
         st.metric("🔵 Operational", stats["operational_risks"])
     with col4:
-        st.metric("⚠️ Contingent", stats["contingent_risks"])
+        st.metric("🆕 New", stats.get("new_risks", 0))
     with col5:
-        st.metric("🟡 TPOs", stats["total_tpos"])
+        st.metric("📜 Legacy", stats.get("legacy_risks", 0))
+    
+    # Second row of metrics
+    col6, col7, col8, col9, col10 = st.columns(5)
+    
     with col6:
-        st.metric("🔗 Links", stats["total_influences"] + stats["total_tpo_impacts"])
+        st.metric("🟡 TPOs", stats["total_tpos"])
+    with col7:
+        st.metric("🛡️ Mitigations", stats.get("total_mitigations", 0))
+    with col8:
+        st.metric("🔗 Influences", stats["total_influences"])
+    with col9:
+        st.metric("📌 TPO Impacts", stats["total_tpo_impacts"])
+    with col10:
+        st.metric("💊 Mitigates", stats.get("total_mitigates", 0))
     
     st.markdown("---")
     
     # Main tabs
-    tab_viz, tab_risks, tab_tpos, tab_influences, tab_tpo_impacts, tab_import = st.tabs([
+    tab_viz, tab_risks, tab_tpos, tab_mitigations, tab_influences, tab_tpo_impacts, tab_risk_mitigations, tab_import = st.tabs([
         "📊 Visualization",
         "🎯 Risks",
         "🏆 TPOs",
+        "🛡️ Mitigations",
         "🔗 Influences",
         "📌 TPO Impacts",
+        "💊 Risk Mitigations",
         "📥 Import/Export"
     ])
     
@@ -3520,6 +4393,26 @@ def main():
             )
             filter_mgr.set_risk_statuses(status_filter)
             
+            # Origin filter with select all/none buttons
+            col_origin_btns = st.columns([1, 1])
+            with col_origin_btns[0]:
+                if st.button("All", key="origin_all", use_container_width=True):
+                    filter_mgr.select_all_origins()
+                    st.rerun()
+            with col_origin_btns[1]:
+                if st.button("None", key="origin_none", use_container_width=True):
+                    filter_mgr.deselect_all_origins()
+                    st.rerun()
+            
+            origin_filter = st.multiselect(
+                "Origin",
+                RISK_ORIGINS,
+                default=filter_mgr.filters["risks"].get("origins", RISK_ORIGINS.copy()),
+                key="origin_filter",
+                help="New: Program-specific risks | Legacy: Inherited/Enterprise level risks"
+            )
+            filter_mgr.set_risk_origins(origin_filter)
+            
             # ===== TPO FILTERS =====
             st.markdown("#### 🏆 TPO Filters")
             
@@ -3548,6 +4441,57 @@ def main():
                     key="tpo_cluster_filter"
                 )
                 filter_mgr.set_tpo_clusters(tpo_cluster_filter)
+            
+            # ===== MITIGATION FILTERS =====
+            st.markdown("#### 🛡️ Mitigation Filters")
+            
+            show_mitigations = st.checkbox(
+                "🟢 Show Mitigations",
+                value=filter_mgr.filters.get("mitigations", {}).get("enabled", False),
+                key="show_mitigations",
+                help="Display mitigations and their links to risks"
+            )
+            filter_mgr.set_mitigations_enabled(show_mitigations)
+            
+            if show_mitigations:
+                # Type filter
+                col_mit_type_btns = st.columns([1, 1])
+                with col_mit_type_btns[0]:
+                    if st.button("All", key="mit_type_all", use_container_width=True):
+                        filter_mgr.select_all_mitigation_types()
+                        st.rerun()
+                with col_mit_type_btns[1]:
+                    if st.button("None", key="mit_type_none", use_container_width=True):
+                        filter_mgr.deselect_all_mitigation_types()
+                        st.rerun()
+                
+                mit_type_filter = st.multiselect(
+                    "Mitigation Types",
+                    MITIGATION_TYPES,
+                    default=filter_mgr.filters.get("mitigations", {}).get("types", MITIGATION_TYPES.copy()),
+                    key="mit_type_filter",
+                    help="Dedicated: Program-owned | Inherited: From other entities | Baseline: Standards/Requirements"
+                )
+                filter_mgr.set_mitigation_types(mit_type_filter)
+                
+                # Status filter
+                col_mit_status_btns = st.columns([1, 1])
+                with col_mit_status_btns[0]:
+                    if st.button("All", key="mit_status_all", use_container_width=True):
+                        filter_mgr.select_all_mitigation_statuses()
+                        st.rerun()
+                with col_mit_status_btns[1]:
+                    if st.button("None", key="mit_status_none", use_container_width=True):
+                        filter_mgr.deselect_all_mitigation_statuses()
+                        st.rerun()
+                
+                mit_status_filter = st.multiselect(
+                    "Mitigation Status",
+                    MITIGATION_STATUSES,
+                    default=filter_mgr.filters.get("mitigations", {}).get("statuses", MITIGATION_STATUSES.copy()),
+                    key="mit_status_filter"
+                )
+                filter_mgr.set_mitigation_statuses(mit_status_filter)
             
             # Filter validation
             is_valid, validation_msg = filter_mgr.validate()
@@ -3974,7 +4918,12 @@ def main():
             with st.form("create_risk_form", clear_on_submit=True):
                 name = st.text_input("Risk name *", placeholder="E.g.: Fuel delivery delay")
                 
-                level = st.selectbox("Level *", ["Strategic", "Operational"])
+                col_level_origin = st.columns(2)
+                with col_level_origin[0]:
+                    level = st.selectbox("Level *", ["Strategic", "Operational"])
+                with col_level_origin[1]:
+                    origin = st.selectbox("Origin *", ["New", "Legacy"], 
+                                         help="New: Program-specific risk | Legacy: Inherited/Enterprise level risk")
                 
                 categories = st.multiselect(
                     "Categories *",
@@ -4015,7 +4964,8 @@ def main():
                             name, level, categories, description, status,
                             activation_condition, activation_decision_date, owner,
                             probability if probability > 0 else None,
-                            impact if impact > 0 else None
+                            impact if impact > 0 else None,
+                            origin
                         ):
                             st.success(f"Risk '{name}' created successfully!")
                             st.rerun()
@@ -4031,20 +4981,26 @@ def main():
                 for risk in risks:
                     level_badge = "strategic-badge" if risk['level'] == "Strategic" else "operational-badge"
                     contingent_badge = " <span class='contingent-badge'>CONTINGENT</span>" if risk['status'] == "Contingent" else ""
+                    origin = risk.get('origin', 'New')
+                    origin_indicator = "📜" if origin == "Legacy" else "🆕"
                     
                     title = f"{risk['name']}{contingent_badge}"
                     
-                    with st.expander(f"{'🟣' if risk['level'] == 'Strategic' else '🔵'} {risk['name']}", expanded=False):
-                        st.markdown(f"**Level:** {risk['level']}")
+                    with st.expander(f"{'🟣' if risk['level'] == 'Strategic' else '🔵'} {origin_indicator} {risk['name']}", expanded=False):
+                        col_info1, col_info2 = st.columns(2)
+                        with col_info1:
+                            st.markdown(f"**Level:** {risk['level']}")
+                            st.markdown(f"**Origin:** {origin}")
+                        with col_info2:
+                            st.markdown(f"**Status:** {risk['status']}")
+                            if risk.get('exposure'):
+                                st.markdown(f"**Exposure:** {risk['exposure']:.2f}")
+                        
                         st.markdown(f"**Categories:** {', '.join(risk['categories'])}")
-                        st.markdown(f"**Status:** {risk['status']}")
                         
                         if risk['status'] == "Contingent":
                             st.markdown(f"**Condition:** {risk.get('activation_condition', 'N/A')}")
                             st.markdown(f"**Decision:** {risk.get('activation_decision_date', 'N/A')}")
-                        
-                        if risk.get('exposure'):
-                            st.markdown(f"**Exposure:** {risk['exposure']:.2f}")
                         
                         st.markdown(f"**Owner:** {risk.get('owner', 'Not defined')}")
                         
@@ -4122,6 +5078,180 @@ def main():
                                             st.rerun()
             else:
                 st.info("No TPOs created.")
+    
+    # === MITIGATIONS TAB ===
+    with tab_mitigations:
+        col_form, col_list = st.columns([1, 1])
+        
+        with col_form:
+            st.markdown("### ➕ Create a Mitigation")
+            
+            with st.form("create_mitigation_form", clear_on_submit=True):
+                mit_name = st.text_input("Mitigation name *", placeholder="E.g.: Dual sourcing strategy")
+                
+                col_type_status = st.columns(2)
+                with col_type_status[0]:
+                    mit_type = st.selectbox("Type *", MITIGATION_TYPES,
+                                           help="Dedicated: Program-owned | Inherited: From other entities | Baseline: Standards/Requirements")
+                with col_type_status[1]:
+                    mit_status = st.selectbox("Status *", MITIGATION_STATUSES)
+                
+                mit_description = st.text_area("Description", placeholder="Detailed mitigation description...")
+                
+                mit_owner = st.text_input("Owner", placeholder="Mitigation owner")
+                
+                # Show source entity field for Inherited and Baseline types
+                mit_source_entity = ""
+                if mit_type in ["Inherited", "Baseline"]:
+                    mit_source_entity = st.text_input(
+                        "Source Entity" if mit_type == "Inherited" else "Standard/Requirement Reference",
+                        placeholder="E.g.: Corporate ERM" if mit_type == "Inherited" else "E.g.: ISO 27001 A.12.3"
+                    )
+                
+                submitted = st.form_submit_button("Create Mitigation", type="primary", use_container_width=True)
+                
+                if submitted:
+                    if mit_name and mit_type and mit_status:
+                        if manager.create_mitigation(
+                            name=mit_name,
+                            mitigation_type=mit_type,
+                            status=mit_status,
+                            description=mit_description,
+                            owner=mit_owner,
+                            source_entity=mit_source_entity
+                        ):
+                            st.success(f"Mitigation '{mit_name}' created successfully!")
+                            st.rerun()
+                    else:
+                        st.error("Name, type, and status are required")
+        
+        with col_list:
+            st.markdown("### 📋 Existing Mitigations")
+            
+            mitigations = manager.get_all_mitigations()
+            
+            if mitigations:
+                # Group by type
+                type_icons = {
+                    "Dedicated": "🎯",
+                    "Inherited": "📥",
+                    "Baseline": "📐"
+                }
+                status_icons = {
+                    "Proposed": "📋",
+                    "In Progress": "🔄",
+                    "Implemented": "✅",
+                    "Deferred": "⏸️"
+                }
+                
+                for mit in mitigations:
+                    type_icon = type_icons.get(mit.get('type', 'Dedicated'), '🛡️')
+                    status_icon = status_icons.get(mit.get('status', 'Proposed'), '❓')
+                    
+                    with st.expander(f"{type_icon} {mit['name']} {status_icon}", expanded=False):
+                        col_info1, col_info2 = st.columns(2)
+                        with col_info1:
+                            st.markdown(f"**Type:** {mit.get('type', 'N/A')}")
+                            st.markdown(f"**Status:** {mit.get('status', 'N/A')}")
+                        with col_info2:
+                            st.markdown(f"**Owner:** {mit.get('owner', 'Not defined')}")
+                            if mit.get('source_entity'):
+                                st.markdown(f"**Source:** {mit['source_entity']}")
+                        
+                        if mit.get('description'):
+                            st.markdown(f"**Description:** {mit['description']}")
+                        
+                        # Show risks this mitigation addresses
+                        mitigated_risks = manager.get_risks_for_mitigation(mit['id'])
+                        if mitigated_risks:
+                            st.markdown(f"**Mitigates {len(mitigated_risks)} risk(s):**")
+                            for risk in mitigated_risks[:5]:  # Show first 5
+                                st.caption(f"  • {risk['name']} ({risk['effectiveness']})")
+                            if len(mitigated_risks) > 5:
+                                st.caption(f"  ... and {len(mitigated_risks) - 5} more")
+                        
+                        col_edit, col_del = st.columns(2)
+                        
+                        with col_del:
+                            if st.button("🗑️ Delete", key=f"del_mit_{mit['id']}", use_container_width=True):
+                                if manager.delete_mitigation(mit['id']):
+                                    st.success("Mitigation deleted")
+                                    st.rerun()
+            else:
+                st.info("No mitigations created.")
+    
+    # === RISK MITIGATIONS TAB ===
+    with tab_risk_mitigations:
+        col_form, col_list = st.columns([1, 1])
+        
+        # Get available mitigations and risks
+        mitigations = manager.get_all_mitigations()
+        mitigation_options = {f"🛡️ {m['name']} [{m['type']}]": m['id'] for m in mitigations}
+        
+        risks = manager.get_all_risks()
+        risk_options_for_mit = {f"{r['name']} [{r['level']}]": r['id'] for r in risks}
+        
+        with col_form:
+            st.markdown("### ➕ Link Mitigation to Risk")
+            st.markdown("*Define how a mitigation addresses a risk*")
+            
+            if len(mitigations) == 0:
+                st.warning("You need at least 1 mitigation to create a link.")
+            elif len(risks) == 0:
+                st.warning("You need at least 1 risk to create a link.")
+            else:
+                with st.form("create_mitigates_form", clear_on_submit=True):
+                    mitigation_name = st.selectbox("Mitigation", list(mitigation_options.keys()))
+                    risk_name = st.selectbox("Risk to mitigate", list(risk_options_for_mit.keys()))
+                    
+                    effectiveness = st.selectbox("Effectiveness", 
+                                                 MITIGATION_EFFECTIVENESS,
+                                                 index=1,  # Default to Medium
+                                                 help="How effective is this mitigation against this risk?")
+                    
+                    rel_description = st.text_area("Description",
+                        placeholder="Describe how this mitigation addresses the risk...")
+                    
+                    submitted = st.form_submit_button("Create Link", type="primary", use_container_width=True)
+                    
+                    if submitted:
+                        mitigation_id = mitigation_options[mitigation_name]
+                        risk_id = risk_options_for_mit[risk_name]
+                        
+                        if manager.create_mitigates_relationship(mitigation_id, risk_id, effectiveness, rel_description):
+                            st.success("Mitigation link created!")
+                            st.rerun()
+        
+        with col_list:
+            st.markdown("### 📋 Existing Mitigation Links")
+            
+            mitigates_rels = manager.get_all_mitigates_relationships()
+            
+            if mitigates_rels:
+                effectiveness_icons = {
+                    "Critical": "🔴",
+                    "High": "🟠",
+                    "Medium": "🟡",
+                    "Low": "🟢"
+                }
+                
+                for rel in mitigates_rels:
+                    eff_icon = effectiveness_icons.get(rel['effectiveness'], "⚪")
+                    
+                    with st.expander(f"{eff_icon} {rel['mitigation_name']} → {rel['risk_name']}"):
+                        st.markdown(f"**Mitigation:** {rel['mitigation_name']} ({rel.get('mitigation_type', 'N/A')})")
+                        st.markdown(f"**Risk:** {rel['risk_name']} ({rel.get('risk_level', 'N/A')})")
+                        st.markdown(f"**Effectiveness:** {rel['effectiveness']}")
+                        
+                        if rel.get('description'):
+                            st.markdown(f"**Description:** {rel['description']}")
+                        
+                        if st.button("🗑️ Delete", key=f"del_mit_rel_{rel['id']}", use_container_width=True):
+                            if manager.delete_mitigates_relationship(rel['id']):
+                                st.success("Mitigation link deleted")
+                                st.rerun()
+            else:
+                st.info("No mitigation links created.")
     
     # === INFLUENCES TAB ===
     with tab_influences:

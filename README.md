@@ -14,12 +14,16 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
 - **Strategic Risks**: Consequence-oriented risks managed by program leadership
 - **Operational Risks**: Cause-oriented risks managed by functional teams
 - **Top Program Objectives (TPOs)**: Key program goals that risks may impact
+- **Mitigations**: Actions and controls that address identified risks
 
 ## ✨ Features
 
 ### Risk Management
 - Two-level risk architecture (Strategic/Operational)
 - Multi-category classification (Programme, Produit, Industriel, Supply Chain)
+- **Risk Origin tracking** (New vs Legacy):
+  - **New**: Program-specific risks identified and managed within the program
+  - **Legacy**: Inherited risks from other programs or Enterprise-level risk registers
 - Contingent risk support with activation conditions and decision dates
 - Probability × Impact exposure calculation
 
@@ -37,78 +41,61 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
 - Impact level tracking (Low/Medium/High/Critical)
 - Yellow hexagon visualization
 
+### Mitigation Management
+- **Mitigation Types**:
+  - **Dedicated**: Program-owned mitigations created specifically for identified risks
+  - **Inherited**: Mitigations inherited from other entities or programs
+  - **Baseline**: Standard controls from requirements, regulations, or industry standards
+- **Mitigation Status tracking**: Proposed, In Progress, Implemented, Deferred
+- **Effectiveness scoring**: Low, Medium, High, Critical
+- **Many-to-many relationships**: One mitigation can address multiple risks
+- Source entity tracking for inherited/baseline mitigations
+- Green rectangle visualization with dashed edges to risks
+
 ### Visualization
 - Interactive graph powered by PyVis
 - Color coding by level or exposure
-- **Fullscreen mode** for detailed graph exploration (press F or click button)
+- **Visual distinction for risk origins**:
+  - New risks: Standard border
+  - Legacy risks: Gray dashed border with [L] prefix
+- **Mitigation visualization**:
+  - Green rectangles (color varies by type)
+  - Dashed green edges showing mitigation relationships
+  - Edge thickness indicates effectiveness
 - Multiple layout algorithms:
   - Layered (TPO → Strategic → Operational)
   - Category-based (2×2 grid)
   - TPO Cluster grouping
-  - **Auto-spread layout** with size-aware node spacing
 - Manual layout save/load with position capture
 - Physics toggle for node arrangement
-- Draggable nodes when physics is disabled
-
-### 📊 Edge Visibility Control (New)
-- **Progressive disclosure**: Show only the most important edges
-- **Slider control**: Adjust from 0% to 100% of edges displayed
-- **Smart ranking**: Edges ranked by strength × confidence
-- **Reduces clutter**: Makes complex graphs more readable
-
-### 🔍 Influence Explorer
-- **Select any node** to explore its influence network
-- **Direction control**: 
-  - Upstream (what influences this node)
-  - Downstream (what this node influences)
-  - Both directions
-- **Depth control**: Limit traversal depth (1-10 levels) or unlimited
-- **Level filter**: Show All / Strategic only / Operational only
-- **TPO inclusion**: Toggle to show impacted TPOs
-- **Visual highlighting**: Selected node highlighted with red border and ★ symbol
-- **Network statistics**: Count of risks, TPOs, and connections displayed
-
-### 📊 Influence Analysis Panel (New)
-A comprehensive analysis toolkit to identify key risks for mitigation:
-
-#### 🎯 Top Propagators
-- Identifies risks with **highest downstream impact**
-- Shows propagation score, TPOs reached, and risks influenced
-- **Use case**: "Mitigate here for global effect"
-- Click 🔍 to explore the node in the graph
-
-#### ⚠️ Convergence Points
-- Identifies risks/TPOs where **multiple influences converge**
-- Shows influence score, source count, and path count
-- Flags "High convergence" nodes requiring transverse management
-- **Use case**: "Mitigate upstream rather than directly"
-
-#### 🔥 Critical Paths
-- Shows **strongest influence chains** from Operational risks to TPOs
-- Displays full path with visual icons (🔵→🟣→🟡)
-- Shows path strength score
-- **Use case**: Identify key risk propagation routes
-
-#### 🚧 Bottlenecks
-- Identifies nodes appearing in **many paths to TPOs**
-- Shows path count and percentage of total paths
-- Flags critical bottlenecks (>50%)
-- **Use case**: "Single points of failure"
-
-#### 📦 Risk Clusters
-- Identifies **tightly interconnected risk groups**
-- Shows size, level breakdown, internal links, and density
-- Lists included risks
-- **Use case**: "Consider managing as units"
 
 ### Filter System
-- Quick filter presets (Full View, Strategic Focus, Operational Focus, etc.)
+- Quick filter presets:
+  - 🌐 Full View
+  - 🟣 Strategic Focus
+  - 🔵 Operational Focus
+  - ✅ Active Risks Only
+  - ⚠️ Contingent Risks
+  - 🎯 Risks Only
+  - 🆕 New Risks Only
+  - 📜 Legacy Risks Only
+  - 🛡️ Risks + Mitigations
+  - 🗺️ Full Map (everything)
 - Multi-select filters with All/None buttons
+- **Origin filter** (New/Legacy)
+- **Mitigation filters** (by type and status)
 - Filter validation and summary display
 - Persistent filter state
 
 ### Import/Export
 - Excel import/export with detailed logging
+- **Sheets exported/imported**:
+  - Risks (including origin)
+  - TPOs
+  - Influences
+  - TPO_Impacts
+  - Mitigations
+  - Mitigates (mitigation-to-risk links)
 - Name-based relationship matching for re-import capability
 - Comprehensive error reporting and warnings
 - Cypher templates for bulk database operations
@@ -159,6 +146,17 @@ A comprehensive analysis toolkit to identify key risks for mitigation:
    - Enter your Neo4j credentials in the sidebar
    - Click "Connect"
 
+### Migration for Existing Data
+
+If you have existing risks without the `origin` property, run this Cypher query to set a default:
+
+```cypher
+MATCH (r:Risk)
+WHERE r.origin IS NULL
+SET r.origin = 'New'
+RETURN count(r) as updated_risks
+```
+
 ## 📁 Project Structure
 
 ```
@@ -168,7 +166,7 @@ rim-alpha/
 ├── demo_data_loader.cypher  # Cypher script to load demo data
 ├── bulk_import_template.cypher  # Template for bulk data imports
 ├── graph_layouts.json       # Saved layout positions (auto-generated)
-└── README.md                # This file
+└── README.md               # This file
 ```
 
 ## 🎮 Usage
@@ -179,6 +177,7 @@ rim-alpha/
 2. Fill in the risk details:
    - Name (required)
    - Level: Strategic or Operational
+   - **Origin: New (program-specific) or Legacy (inherited)**
    - Categories (multi-select)
    - Description
    - Status: Active, Contingent, or Archived
@@ -208,66 +207,54 @@ rim-alpha/
 3. Set impact level
 4. Click "Create Impact"
 
-### Using the Influence Analysis Panel
+### Creating Mitigations
 
-1. In the **📊 Visualization** tab, expand the "📊 Influence Analysis" section
-2. Click "🔄 Refresh Analysis" to update the analysis
-3. Browse the five analysis tabs:
-   - **🎯 Top Propagators**: Risks to mitigate for maximum global effect
-   - **⚠️ Convergence Points**: Risks requiring transverse management
-   - **🔥 Critical Paths**: Strongest influence chains to TPOs
-   - **🚧 Bottlenecks**: Single points of failure in your risk network
-   - **📦 Risk Clusters**: Tightly connected risk groups
-4. Click 🔍 on any risk to explore it in the Influence Explorer
+1. Navigate to the **🛡️ Mitigations** tab
+2. Fill in mitigation details:
+   - Name (required)
+   - Type: Dedicated, Inherited, or Baseline
+   - Status: Proposed, In Progress, Implemented, or Deferred
+   - Owner
+   - Source Entity (for Inherited/Baseline types)
+   - Description
+3. Click "Create Mitigation"
 
-### Using the Influence Explorer
+### Linking Mitigations to Risks
 
-1. In the **📊 Visualization** tab, enable "🔍 Enable Influence Explorer"
-2. Select a node from the dropdown (shows [Strat], [Oper], or [TPO] prefixes)
-3. Choose direction: Upstream, Downstream, or Both
-4. Adjust depth limit or check "Unlimited"
-5. Filter by risk level if needed
-6. Toggle "Include TPOs" to show/hide impacted objectives
-7. The graph displays only the influence network around your selected node
-8. Click "Clear selection" to return to normal view
+1. Navigate to the **💊 Risk Mitigations** tab
+2. Select a mitigation and a risk
+3. Set effectiveness level (Low/Medium/High/Critical)
+4. Add description of how the mitigation addresses the risk
+5. Click "Create Link"
 
-### Using Edge Visibility Control
+### Visualizing Mitigations
 
-1. In the sidebar under "📊 Edge Visibility", select "Progressive disclosure"
-2. Use the slider to control what percentage of edges are shown
-3. Edges are ranked by importance (strength × confidence)
-4. Start with fewer edges (e.g., 25%) to see only critical connections
-5. Gradually increase to reveal more connections as needed
-
-### Using Fullscreen Mode
-
-1. Click the **⛶ Fullscreen** button on the graph (top-left corner)
-2. Or press **F** key to toggle fullscreen
-3. Press **ESC** to exit fullscreen
-4. Use mouse wheel to zoom, drag to pan
+1. In the **📊 Visualization** tab sidebar
+2. Enable "🟢 Show Mitigations" checkbox
+3. Optionally filter by mitigation type and status
+4. Or use the "🛡️ Risks + Mitigations" or "🗺️ Full Map" preset
 
 ### Using Layouts
 
 1. In the **📊 Visualization** tab, arrange nodes as desired
-2. Disable physics to freeze positions (nodes auto-spread with size-aware spacing)
-3. Drag nodes to fine-tune positions
-4. Enable "Position capture"
-5. Click "📍 Capture Positions" on the graph
-6. Click "📋 Copy to Clipboard"
-7. Paste in the sidebar text area
-8. Name and save your layout
+2. Disable physics to freeze positions
+3. Enable "Position capture"
+4. Click "📍 Capture Positions" on the graph
+5. Click "📋 Copy to Clipboard"
+6. Paste in the sidebar text area
+7. Name and save your layout
 
 ### Import/Export
 
 **Export:**
 1. Go to **📥 Import/Export** tab
 2. Click "Generate export"
-3. Download the Excel file
+3. Download the Excel file (now includes Mitigations and Mitigates sheets)
 
 **Import:**
-1. Prepare an Excel file with sheets: Risks, TPOs, Influences, TPO_Impacts
+1. Prepare an Excel file with sheets: Risks, TPOs, Influences, TPO_Impacts, Mitigations, Mitigates
 2. Upload the file
-3. Review the detailed import log (errors, warnings, and full trace)
+3. Review the detailed import log
 
 ## 🔧 Configuration
 
@@ -289,6 +276,10 @@ Built-in presets:
 | ✅ Active Risks Only | Excludes contingent risks |
 | ⚠️ Contingent Risks | Future/contingent risks only |
 | 🎯 Risks Only | All risks, no TPOs |
+| 🆕 New Risks Only | Program-specific new risks |
+| 📜 Legacy Risks Only | Inherited/Enterprise level risks |
+| 🛡️ Risks + Mitigations | Show risks with mitigations (no TPOs) |
+| 🗺️ Full Map | Everything: Risks, TPOs, and Mitigations |
 
 ## 📊 Data Model
 
@@ -298,6 +289,7 @@ Built-in presets:
 - `id`: UUID
 - `name`: String
 - `level`: "Strategic" | "Operational"
+- `origin`: "New" | "Legacy"
 - `categories`: List of strings
 - `status`: "Active" | "Contingent" | "Archived"
 - `probability`: Float (0-1)
@@ -315,6 +307,17 @@ Built-in presets:
 - `cluster`: String
 - `description`: String
 
+**Mitigation**
+- `id`: UUID
+- `name`: String
+- `type`: "Dedicated" | "Inherited" | "Baseline"
+- `status`: "Proposed" | "In Progress" | "Implemented" | "Deferred"
+- `description`: String
+- `owner`: String
+- `source_entity`: String (for inherited/baseline mitigations)
+- `created_at`: DateTime
+- `updated_at`: DateTime
+
 ### Relationships
 
 **INFLUENCES** (Risk → Risk)
@@ -327,33 +330,36 @@ Built-in presets:
 - `impact_level`: "Low" | "Medium" | "High" | "Critical"
 - `description`: String
 
-## 📈 Analysis Algorithms
+**MITIGATES** (Mitigation → Risk)
+- `id`: UUID
+- `effectiveness`: "Low" | "Medium" | "High" | "Critical"
+- `description`: String
+- `created_at`: DateTime
 
-### Propagation Score
-Measures downstream impact using weighted reachability:
-- TPO reached: 10 points × impact level
-- Strategic risk reached: 5 points
-- Operational risk reached: 2 points
-- Decay factor: 0.85^depth (closer = more impact)
+## 🎨 Visual Legend
 
-### Convergence Score
-Measures upstream influence concentration:
-- Counts unique source risks and paths
-- Weights by source type (Operational = 1.0, Strategic = 0.7)
-- Bonus multiplier for multiple independent paths
-- Flags high convergence when paths > sources × 1.5
+### Node Shapes & Colors
 
-### Bottleneck Detection
-Identifies single points of failure:
-- Counts appearances in all paths to TPOs
-- Calculates percentage of total paths
-- Critical threshold: >50%
+| Element | Shape | Color | Notes |
+|---------|-------|-------|-------|
+| Strategic Risk | Circle | Purple | Size varies by exposure |
+| Operational Risk | Circle | Blue | Size varies by exposure |
+| Contingent Risk | Square | Level color | Dashed border |
+| Legacy Risk | Circle | Level color | Gray dashed border, [L] prefix |
+| TPO | Hexagon | Yellow | Reference as label |
+| Mitigation (Dedicated) | Rectangle | Green | 🛡️ prefix |
+| Mitigation (Inherited) | Rectangle | Blue | 🛡️ prefix |
+| Mitigation (Baseline) | Rectangle | Purple | 🛡️ prefix |
 
-### Cluster Detection
-Finds tightly interconnected groups:
-- Uses connected component analysis
-- Calculates density (internal edges / possible edges)
-- Groups by primary category
+### Edge Types
+
+| Relationship | Color | Style | Notes |
+|--------------|-------|-------|-------|
+| Level 1 (Op→Strat) | Red | Solid | Width by strength |
+| Level 2 (Strat→Strat) | Purple | Solid | Width by strength |
+| Level 3 (Op→Op) | Blue | Solid | Width by strength |
+| TPO Impact | Blue | Dashed | Width by impact level |
+| Mitigates | Green | Dashed | Width by effectiveness |
 
 ## 🤝 Contributing
 
