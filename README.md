@@ -103,6 +103,9 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
   - Node Types (risks, TPOs, mitigations)
   - Link Types (influences, impacts, mitigates)
   - Edge Thickness meanings
+- **Analysis Panels** in the visualization area:
+  - 📊 Influence Analysis (Top Propagators, Convergence Points, Critical Paths, Bottlenecks, Clusters)
+  - 🛡️ Mitigation Analysis (Risk Treatment, Mitigation Impact, Coverage Gaps)
 - **Default view shows all elements** (risks, TPOs, and mitigations)
 - Responsive layout with filter panel on left, visualization on right
 
@@ -118,6 +121,35 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
 - Name-based relationship matching for re-import capability
 - Comprehensive error reporting and warnings
 - Cypher templates for bulk database operations
+
+### Influence Analysis
+- **Top Propagators**: Risks with highest downstream impact on the network
+- **Convergence Points**: Risks/TPOs where multiple influences converge
+- **Critical Paths**: Strongest influence chains from operational risks to TPOs
+- **Bottlenecks**: Nodes appearing in many paths (single points of failure)
+- **Risk Clusters**: Tightly interconnected risk groups
+- Interactive exploration with "Explore in Graph" buttons
+
+### Mitigation Analysis
+- **Three analysis modes** accessible from the Visualization tab:
+  - **🎯 Risk Treatment Explorer**: Risk-centric view showing mitigation coverage per risk
+  - **🛡️ Mitigation Impact Explorer**: Mitigation-centric view showing all risks addressed
+  - **📊 Coverage Gap Analysis**: Transverse view identifying gaps in mitigation strategy
+- **Coverage statistics**: Real-time metrics on mitigated vs unmitigated risks
+- **Cross-reference with Influence Analysis**:
+  - Flags unmitigated risks that are Top Propagators, Convergence Points, or Bottlenecks
+  - Prioritizes high-impact risks for mitigation decisions
+- **Risk coverage status indicators**:
+  - ⚠️ No Mitigations
+  - 📋 Only Proposed (no implemented)
+  - 🔶 Partially Covered
+  - ✅ Well Covered
+- **Gap analysis views**:
+  - High Priority: Unmitigated risks with high influence scores
+  - Critical Unmitigated: High-exposure risks without mitigations
+  - Proposed Only: Risks awaiting mitigation implementation
+  - Strategic Gaps: Strategic risks without adequate coverage
+  - Coverage by Category: Visual breakdown per risk category
 
 ## 🚀 Getting Started
 
@@ -286,6 +318,52 @@ Predefined layouts available:
 1. Prepare an Excel file with sheets: Risks, TPOs, Influences, TPO_Impacts, Mitigations, Mitigates
 2. Upload the file
 3. Review the detailed import log
+
+### Using Influence Analysis
+
+1. In the **📊 Visualization** tab, expand the **📊 Influence Analysis** panel
+2. Click "🔄 Refresh Analysis" to compute/update the analysis
+3. Navigate through the analysis tabs:
+   - **🎯 Top Propagators**: See which risks have the highest downstream impact
+   - **⚠️ Convergence Points**: Identify risks/TPOs where multiple influences converge
+   - **🔥 Critical Paths**: View the strongest influence chains to TPOs
+   - **🚧 Bottlenecks**: Find single points of failure in the risk network
+   - **📦 Risk Clusters**: Discover tightly interconnected risk groups
+4. Click the **🔍** button next to any risk to explore it in the graph
+
+### Using Mitigation Analysis
+
+The Mitigation Analysis panel provides decision support for risk treatment strategies by combining mitigation coverage data with influence analysis insights.
+
+1. In the **📊 Visualization** tab, expand the **🛡️ Mitigation Analysis** panel
+2. Review the coverage overview metrics at the top
+3. Select an analysis mode:
+
+**Mode 1: Risk Treatment Explorer** 🎯
+- Select a risk from the dropdown to see its mitigation coverage
+- Status indicators show coverage level (⚠️ None, 📋 Proposed, 🔶 Partial, ✅ Well covered)
+- View influence analysis flags (Top Propagator, Convergence Point, Bottleneck)
+- See all mitigations with their type, status, and effectiveness
+- Click "🔍 Visualize in Graph" to explore the risk in context
+
+**Mode 2: Mitigation Impact Explorer** 🛡️
+- Select a mitigation to see all risks it addresses
+- View strategic vs operational risk breakdown
+- See total exposure covered by the mitigation
+- Identify if the mitigation addresses high-priority risks (propagators, convergence points)
+
+**Mode 3: Coverage Gap Analysis** 📊
+- **🚨 High Priority**: Unmitigated risks that are Top Propagators, Convergence Points, or Bottlenecks
+- **⚠️ Unmitigated**: High-exposure risks without any mitigations
+- **📋 Proposed Only**: High-exposure risks with only proposed (not implemented) mitigations
+- **🟣 Strategic Gaps**: Strategic risks without adequate mitigation coverage
+- **📊 By Category**: Visual progress bars showing coverage percentage per risk category
+
+**Best Practices:**
+- Prioritize mitigating risks flagged as "High Priority" first
+- Ensure all Strategic risks have at least one implemented mitigation
+- Monitor category coverage to identify systematic gaps
+- Use the "Visualize in Graph" feature to understand risk context before deciding on mitigation approach
 
 ## 🔧 Configuration
 

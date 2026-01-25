@@ -2220,6 +2220,420 @@ class RiskGraphManager:
         
         return analysis
     
+    # --- MITIGATION ANALYSIS METHODS ---
+    
+    def get_mitigation_analysis(self) -> dict:
+        """
+        Comprehensive mitigation analysis including:
+        - Coverage overview (risks with/without mitigations)
+        - Mitigation effectiveness distribution
+        - Unmitigated high-priority risks
+        - Cross-reference with influence analysis
+        """
+        analysis = {
+            "coverage_stats": {},
+            "unmitigated_risks": [],
+            "partially_mitigated_risks": [],
+            "well_covered_risks": [],
+            "mitigation_effectiveness": {},
+            "high_priority_unmitigated": [],
+            "risk_mitigation_summary": []
+        }
+        
+        # Get all data
+        all_risks = self.get_all_risks()
+        all_mitigations = self.get_all_mitigations()
+        all_mitigates = self.get_all_mitigates_relationships()
+        
+        # Build risk-to-mitigations mapping
+        risk_mitigations = {}  # risk_id -> list of {mitigation, effectiveness}
+        for rel in all_mitigates:
+            risk_id = rel["risk_id"]
+            if risk_id not in risk_mitigations:
+                risk_mitigations[risk_id] = []
+            risk_mitigations[risk_id].append({
+                "mitigation_id": rel["mitigation_id"],
+                "mitigation_name": rel["mitigation_name"],
+                "mitigation_type": rel.get("mitigation_type", "Unknown"),
+                "effectiveness": rel["effectiveness"],
+                "description": rel.get("description", "")
+            })
+        
+        # Build mitigation-to-risks mapping
+        mitigation_risks = {}  # mitigation_id -> list of {risk, effectiveness}
+        for rel in all_mitigates:
+            mit_id = rel["mitigation_id"]
+            if mit_id not in mitigation_risks:
+                mitigation_risks[mit_id] = []
+            mitigation_risks[mit_id].append({
+                "risk_id": rel["risk_id"],
+                "risk_name": rel["risk_name"],
+                "risk_level": rel.get("risk_level", "Unknown"),
+                "effectiveness": rel["effectiveness"]
+            })
+        
+        # Calculate coverage statistics
+        total_risks = len(all_risks)
+        mitigated_risk_ids = set(risk_mitigations.keys())
+        all_risk_ids = set(r["id"] for r in all_risks)
+        unmitigated_risk_ids = all_risk_ids - mitigated_risk_ids
+        
+        analysis["coverage_stats"] = {
+            "total_risks": total_risks,
+            "mitigated_risks": len(mitigated_risk_ids),
+            "unmitigated_risks": len(unmitigated_risk_ids),
+            "coverage_percentage": round(len(mitigated_risk_ids) / total_risks * 100, 1) if total_risks > 0 else 0,
+            "total_mitigations": len(all_mitigations),
+            "total_links": len(all_mitigates)
+        }
+        
+        # Categorize risks by mitigation coverage
+        effectiveness_values = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
+        
+        risk_dict = {r["id"]: dict(r) for r in all_risks}
+        
+        for risk in all_risks:
+            risk_id = risk["id"]
+            mits = risk_mitigations.get(risk_id, [])
+            
+            # Calculate mitigation score
+            mit_score = 0
+            implemented_count = 0
+            proposed_count = 0
+            
+            for mit in mits:
+                eff_value = effectiveness_values.get(mit["effectiveness"], 2)
+                mit_score += eff_value
+            
+            # Check mitigation statuses (need to get from mitigation data)
+            mit_statuses = []
+            for mit in mits:
+                mit_detail = self.get_mitigation_by_id(mit["mitigation_id"])
+                if mit_detail:
+                    mit_statuses.append(mit_detail.get("status", "Unknown"))
+            
+            implemented_count = mit_statuses.count("Implemented")
+            proposed_count = mit_statuses.count("Proposed") + mit_statuses.count("In Progress")
+            
+            risk_summary = {
+                "id": risk_id,
+                "name": risk["name"],
+                "level": risk["level"],
+                "origin": risk.get("origin", "New"),
+                "exposure": risk.get("exposure") or 0,
+                "categories": risk.get("categories", []),
+                "mitigation_count": len(mits),
+                "implemented_count": implemented_count,
+                "proposed_count": proposed_count,
+                "mitigation_score": mit_score,
+                "mitigations": mits
+            }
+            
+            analysis["risk_mitigation_summary"].append(risk_summary)
+            
+            if len(mits) == 0:
+                analysis["unmitigated_risks"].append(risk_summary)
+            elif implemented_count == 0:
+                analysis["partially_mitigated_risks"].append(risk_summary)
+            elif implemented_count >= 2 or (implemented_count >= 1 and mit_score >= 6):
+                analysis["well_covered_risks"].append(risk_summary)
+        
+        # Sort unmitigated by exposure
+        analysis["unmitigated_risks"].sort(key=lambda x: -(x["exposure"] or 0))
+        analysis["partially_mitigated_risks"].sort(key=lambda x: -(x["exposure"] or 0))
+        
+        # Get influence analysis to cross-reference
+        try:
+            influence_analysis = self.get_influence_analysis()
+            
+            # Build set of top propagator IDs
+            top_propagator_ids = set(p["id"] for p in influence_analysis.get("top_propagators", []))
+            convergence_ids = set(c["id"] for c in influence_analysis.get("convergence_points", []) if c.get("node_type") == "Risk")
+            bottleneck_ids = set(b["id"] for b in influence_analysis.get("bottlenecks", []))
+            
+            # High-priority unmitigated = unmitigated AND (top propagator OR convergence point OR bottleneck)
+            high_priority_ids = top_propagator_ids | convergence_ids | bottleneck_ids
+            
+            for risk_summary in analysis["unmitigated_risks"]:
+                if risk_summary["id"] in high_priority_ids:
+                    flags = []
+                    if risk_summary["id"] in top_propagator_ids:
+                        flags.append("Top Propagator")
+                    if risk_summary["id"] in convergence_ids:
+                        flags.append("Convergence Point")
+                    if risk_summary["id"] in bottleneck_ids:
+                        flags.append("Bottleneck")
+                    risk_summary["influence_flags"] = flags
+                    analysis["high_priority_unmitigated"].append(risk_summary)
+            
+            # Also flag partially mitigated high-priority risks
+            for risk_summary in analysis["partially_mitigated_risks"]:
+                if risk_summary["id"] in high_priority_ids:
+                    flags = []
+                    if risk_summary["id"] in top_propagator_ids:
+                        flags.append("Top Propagator")
+                    if risk_summary["id"] in convergence_ids:
+                        flags.append("Convergence Point")
+                    if risk_summary["id"] in bottleneck_ids:
+                        flags.append("Bottleneck")
+                    risk_summary["influence_flags"] = flags
+            
+        except Exception:
+            # If influence analysis fails, continue without it
+            pass
+        
+        # Mitigation effectiveness distribution
+        effectiveness_dist = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
+        for rel in all_mitigates:
+            eff = rel.get("effectiveness", "Medium")
+            if eff in effectiveness_dist:
+                effectiveness_dist[eff] += 1
+        
+        analysis["mitigation_effectiveness"] = effectiveness_dist
+        
+        return analysis
+    
+    def get_risk_mitigation_details(self, risk_id: str) -> dict:
+        """
+        Get detailed mitigation information for a specific risk.
+        Includes cross-reference with influence analysis.
+        """
+        risk = self.get_risk_by_id(risk_id)
+        if not risk:
+            return None
+        
+        mitigations = self.get_mitigations_for_risk(risk_id)
+        
+        # Get influence analysis for this risk
+        influence_info = {}
+        try:
+            influence_analysis = self.get_influence_analysis()
+            
+            # Check if this risk is in any category
+            for prop in influence_analysis.get("top_propagators", []):
+                if prop["id"] == risk_id:
+                    influence_info["is_top_propagator"] = True
+                    influence_info["propagation_score"] = prop["score"]
+                    influence_info["tpos_reached"] = prop["tpos_reached"]
+                    break
+            
+            for conv in influence_analysis.get("convergence_points", []):
+                if conv["id"] == risk_id:
+                    influence_info["is_convergence_point"] = True
+                    influence_info["convergence_score"] = conv["score"]
+                    influence_info["source_count"] = conv["source_count"]
+                    break
+            
+            for bn in influence_analysis.get("bottlenecks", []):
+                if bn["id"] == risk_id:
+                    influence_info["is_bottleneck"] = True
+                    influence_info["path_percentage"] = bn["percentage"]
+                    break
+        except Exception:
+            pass
+        
+        # Calculate coverage assessment
+        effectiveness_values = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
+        total_score = sum(effectiveness_values.get(m.get("effectiveness", "Medium"), 2) for m in mitigations)
+        implemented = [m for m in mitigations if self.get_mitigation_by_id(m["id"]).get("status") == "Implemented"]
+        
+        if len(mitigations) == 0:
+            coverage_status = "unmitigated"
+        elif len(implemented) == 0:
+            coverage_status = "proposed_only"
+        elif len(implemented) >= 2 or total_score >= 6:
+            coverage_status = "well_covered"
+        else:
+            coverage_status = "partially_covered"
+        
+        return {
+            "risk": dict(risk),
+            "mitigations": [dict(m) for m in mitigations],
+            "mitigation_count": len(mitigations),
+            "implemented_count": len(implemented),
+            "total_effectiveness_score": total_score,
+            "coverage_status": coverage_status,
+            "influence_info": influence_info
+        }
+    
+    def get_mitigation_impact_details(self, mitigation_id: str) -> dict:
+        """
+        Get detailed impact information for a specific mitigation.
+        Shows all risks it addresses and their strategic importance.
+        """
+        mitigation = self.get_mitigation_by_id(mitigation_id)
+        if not mitigation:
+            return None
+        
+        risks = self.get_risks_for_mitigation(mitigation_id)
+        
+        # Get influence analysis to check strategic importance
+        strategic_impacts = []
+        try:
+            influence_analysis = self.get_influence_analysis()
+            
+            top_propagator_ids = set(p["id"] for p in influence_analysis.get("top_propagators", []))
+            convergence_ids = set(c["id"] for c in influence_analysis.get("convergence_points", []) if c.get("node_type") == "Risk")
+            bottleneck_ids = set(b["id"] for b in influence_analysis.get("bottlenecks", []))
+            
+            for risk in risks:
+                flags = []
+                if risk["id"] in top_propagator_ids:
+                    flags.append("Top Propagator")
+                if risk["id"] in convergence_ids:
+                    flags.append("Convergence Point")
+                if risk["id"] in bottleneck_ids:
+                    flags.append("Bottleneck")
+                if flags:
+                    strategic_impacts.append({
+                        "risk_id": risk["id"],
+                        "risk_name": risk["name"],
+                        "flags": flags
+                    })
+        except Exception:
+            pass
+        
+        # Count by risk level
+        strategic_count = sum(1 for r in risks if r.get("level") == "Strategic")
+        operational_count = sum(1 for r in risks if r.get("level") == "Operational")
+        
+        # Calculate total exposure covered
+        total_exposure = sum(r.get("exposure") or 0 for r in risks)
+        
+        return {
+            "mitigation": dict(mitigation),
+            "risks": [dict(r) for r in risks],
+            "risk_count": len(risks),
+            "strategic_count": strategic_count,
+            "operational_count": operational_count,
+            "total_exposure_covered": round(total_exposure, 2),
+            "strategic_impacts": strategic_impacts,
+            "addresses_high_priority": len(strategic_impacts) > 0
+        }
+    
+    def get_coverage_gap_analysis(self) -> dict:
+        """
+        Identify coverage gaps in the risk mitigation strategy.
+        Cross-references with influence analysis for prioritization.
+        """
+        gaps = {
+            "critical_unmitigated": [],  # High exposure, no mitigations
+            "high_priority_unmitigated": [],  # Top propagators/convergence without mitigations
+            "proposed_only_high_exposure": [],  # High exposure, only proposed mitigations
+            "strategic_gaps": [],  # Strategic risks without adequate mitigation
+            "category_coverage": {}  # Coverage by category
+        }
+        
+        all_risks = self.get_all_risks()
+        all_mitigates = self.get_all_mitigates_relationships()
+        
+        # Build risk-to-mitigations mapping
+        risk_mitigations = {}
+        for rel in all_mitigates:
+            risk_id = rel["risk_id"]
+            if risk_id not in risk_mitigations:
+                risk_mitigations[risk_id] = []
+            
+            # Get mitigation status
+            mit_detail = self.get_mitigation_by_id(rel["mitigation_id"])
+            mit_status = mit_detail.get("status", "Unknown") if mit_detail else "Unknown"
+            
+            risk_mitigations[risk_id].append({
+                "mitigation_id": rel["mitigation_id"],
+                "mitigation_name": rel["mitigation_name"],
+                "effectiveness": rel["effectiveness"],
+                "status": mit_status
+            })
+        
+        # Get influence analysis
+        try:
+            influence_analysis = self.get_influence_analysis()
+            top_propagator_ids = set(p["id"] for p in influence_analysis.get("top_propagators", []))
+            convergence_ids = set(c["id"] for c in influence_analysis.get("convergence_points", []) if c.get("node_type") == "Risk")
+            bottleneck_ids = set(b["id"] for b in influence_analysis.get("bottlenecks", []))
+            high_priority_ids = top_propagator_ids | convergence_ids | bottleneck_ids
+        except Exception:
+            high_priority_ids = set()
+        
+        # Calculate average exposure for threshold
+        exposures = [r.get("exposure") or 0 for r in all_risks if r.get("exposure")]
+        avg_exposure = sum(exposures) / len(exposures) if exposures else 5.0
+        high_exposure_threshold = avg_exposure * 1.2
+        
+        # Analyze each risk
+        category_stats = {}  # category -> {total, mitigated}
+        
+        for risk in all_risks:
+            risk_id = risk["id"]
+            mits = risk_mitigations.get(risk_id, [])
+            exposure = risk.get("exposure") or 0
+            
+            # Category tracking
+            for cat in risk.get("categories", []):
+                if cat not in category_stats:
+                    category_stats[cat] = {"total": 0, "mitigated": 0}
+                category_stats[cat]["total"] += 1
+                if len(mits) > 0:
+                    category_stats[cat]["mitigated"] += 1
+            
+            risk_info = {
+                "id": risk_id,
+                "name": risk["name"],
+                "level": risk["level"],
+                "exposure": exposure,
+                "categories": risk.get("categories", []),
+                "is_high_priority": risk_id in high_priority_ids
+            }
+            
+            # Unmitigated risks
+            if len(mits) == 0:
+                if risk_id in high_priority_ids:
+                    flags = []
+                    if risk_id in top_propagator_ids:
+                        flags.append("Top Propagator")
+                    if risk_id in convergence_ids:
+                        flags.append("Convergence Point")
+                    if risk_id in bottleneck_ids:
+                        flags.append("Bottleneck")
+                    risk_info["influence_flags"] = flags
+                    gaps["high_priority_unmitigated"].append(risk_info)
+                elif exposure >= high_exposure_threshold:
+                    gaps["critical_unmitigated"].append(risk_info)
+                    
+                if risk["level"] == "Strategic":
+                    gaps["strategic_gaps"].append(risk_info)
+            else:
+                # Check if only proposed mitigations
+                implemented = [m for m in mits if m["status"] == "Implemented"]
+                if len(implemented) == 0 and exposure >= high_exposure_threshold:
+                    risk_info["proposed_mitigations"] = [m["mitigation_name"] for m in mits]
+                    gaps["proposed_only_high_exposure"].append(risk_info)
+                
+                # Strategic risks with weak mitigation
+                if risk["level"] == "Strategic":
+                    effectiveness_values = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
+                    total_eff = sum(effectiveness_values.get(m["effectiveness"], 2) for m in implemented)
+                    if total_eff < 4:  # Less than one "High" effectiveness implemented mitigation
+                        risk_info["implemented_effectiveness"] = total_eff
+                        gaps["strategic_gaps"].append(risk_info)
+        
+        # Sort by exposure
+        gaps["critical_unmitigated"].sort(key=lambda x: -x["exposure"])
+        gaps["proposed_only_high_exposure"].sort(key=lambda x: -x["exposure"])
+        gaps["strategic_gaps"].sort(key=lambda x: -x["exposure"])
+        
+        # Calculate category coverage
+        for cat, stats in category_stats.items():
+            coverage = round(stats["mitigated"] / stats["total"] * 100, 1) if stats["total"] > 0 else 0
+            gaps["category_coverage"][cat] = {
+                "total": stats["total"],
+                "mitigated": stats["mitigated"],
+                "unmitigated": stats["total"] - stats["mitigated"],
+                "coverage_percentage": coverage
+            }
+        
+        return gaps
+    
     def get_all_edges_scored(self) -> list:
         """Get all edges with importance scores for progressive disclosure"""
         strength_values = {"Critical": 4, "Strong": 3, "Moderate": 2, "Weak": 1}
@@ -3416,6 +3830,490 @@ def render_influence_analysis_panel(manager, on_node_select=None):
                     st.markdown("---")
             else:
                 st.info("No risk clusters identified.")
+
+
+def render_mitigation_analysis_panel(manager):
+    """
+    Renders the mitigation analysis panel with:
+    - Mode 1: Risk Treatment Explorer (Risk-centric view)
+    - Mode 2: Mitigation Impact Explorer (Mitigation-centric view)
+    - Mode 3: Coverage Gap Analysis (Transverse view)
+    
+    Args:
+        manager: RiskGraphManager instance
+    """
+    
+    # Cache analysis results in session state
+    if "mitigation_analysis_cache" not in st.session_state:
+        st.session_state.mitigation_analysis_cache = None
+        st.session_state.mitigation_analysis_timestamp = None
+    
+    # Check if we need to refresh (every 30 seconds or on demand)
+    import time
+    current_time = time.time()
+    cache_valid = (
+        st.session_state.mitigation_analysis_cache is not None and
+        st.session_state.mitigation_analysis_timestamp is not None and
+        (current_time - st.session_state.mitigation_analysis_timestamp) < 30
+    )
+    
+    with st.expander("🛡️ Mitigation Analysis", expanded=False):
+        col_refresh, col_spacer = st.columns([1, 4])
+        with col_refresh:
+            if st.button("🔄 Refresh", key="refresh_mitigation_analysis", use_container_width=True):
+                st.session_state.mitigation_analysis_cache = None
+                cache_valid = False
+        
+        # Get or compute analysis
+        if not cache_valid:
+            with st.spinner("Analyzing mitigation coverage..."):
+                try:
+                    analysis = manager.get_mitigation_analysis()
+                    st.session_state.mitigation_analysis_cache = analysis
+                    st.session_state.mitigation_analysis_timestamp = current_time
+                except Exception as e:
+                    st.error(f"Analysis error: {e}")
+                    return
+        
+        analysis = st.session_state.mitigation_analysis_cache
+        
+        if not analysis:
+            st.info("No data available for analysis. Create some risks and mitigations first.")
+            return
+        
+        # Coverage overview metrics
+        stats = analysis.get("coverage_stats", {})
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Risks", stats.get("total_risks", 0))
+        with col2:
+            coverage_pct = stats.get("coverage_percentage", 0)
+            st.metric("Coverage", f"{coverage_pct}%")
+        with col3:
+            st.metric("Mitigated", stats.get("mitigated_risks", 0))
+        with col4:
+            unmitigated = stats.get("unmitigated_risks", 0)
+            st.metric("⚠️ Unmitigated", unmitigated)
+        
+        st.markdown("---")
+        
+        # Analysis mode selection
+        analysis_mode = st.radio(
+            "Analysis Mode",
+            ["risk_treatment", "mitigation_impact", "coverage_gaps"],
+            format_func=lambda x: {
+                "risk_treatment": "🎯 Risk Treatment",
+                "mitigation_impact": "🛡️ Mitigation Impact",
+                "coverage_gaps": "📊 Coverage Gaps"
+            }.get(x, x),
+            horizontal=True,
+            key="mitigation_analysis_mode"
+        )
+        
+        st.markdown("---")
+        
+        # === MODE 1: RISK TREATMENT EXPLORER ===
+        if analysis_mode == "risk_treatment":
+            st.markdown("**Select a risk to see its mitigation coverage**")
+            
+            # Get all risks for selection
+            all_risks = manager.get_all_risks()
+            if not all_risks:
+                st.info("No risks available.")
+                return
+            
+            # Create risk options with status indicators
+            risk_options = {}
+            for r in all_risks:
+                risk_id = r["id"]
+                mits = [rs for rs in analysis.get("risk_mitigation_summary", []) if rs["id"] == risk_id]
+                mit_count = mits[0]["mitigation_count"] if mits else 0
+                impl_count = mits[0].get("implemented_count", 0) if mits else 0
+                
+                # Status emoji
+                if mit_count == 0:
+                    status_emoji = "⚠️"
+                elif impl_count == 0:
+                    status_emoji = "📋"
+                elif impl_count >= 2:
+                    status_emoji = "✅"
+                else:
+                    status_emoji = "🔶"
+                
+                level_icon = "🟣" if r["level"] == "Strategic" else "🔵"
+                label = f"{status_emoji} {level_icon} {r['name']} ({mit_count} mitigations)"
+                risk_options[label] = risk_id
+            
+            selected_risk_label = st.selectbox(
+                "Select Risk",
+                options=list(risk_options.keys()),
+                key="risk_treatment_selector"
+            )
+            
+            if selected_risk_label:
+                selected_risk_id = risk_options[selected_risk_label]
+                
+                # Get detailed mitigation info for this risk
+                details = manager.get_risk_mitigation_details(selected_risk_id)
+                
+                if details:
+                    risk_data = details["risk"]
+                    mits = details["mitigations"]
+                    coverage_status = details["coverage_status"]
+                    influence_info = details.get("influence_info", {})
+                    
+                    # Coverage status badge
+                    status_badges = {
+                        "unmitigated": ("⚠️ No Mitigations", "error"),
+                        "proposed_only": ("📋 Only Proposed", "warning"),
+                        "partially_covered": ("🔶 Partially Covered", "info"),
+                        "well_covered": ("✅ Well Covered", "success")
+                    }
+                    badge_text, badge_type = status_badges.get(coverage_status, ("Unknown", "info"))
+                    
+                    # Display risk info
+                    col_risk1, col_risk2 = st.columns([2, 1])
+                    with col_risk1:
+                        st.markdown(f"**Risk:** {risk_data['name']}")
+                        st.caption(f"Level: {risk_data['level']} | Exposure: {risk_data.get('exposure', 'N/A')}")
+                    with col_risk2:
+                        if badge_type == "error":
+                            st.error(badge_text)
+                        elif badge_type == "warning":
+                            st.warning(badge_text)
+                        elif badge_type == "success":
+                            st.success(badge_text)
+                        else:
+                            st.info(badge_text)
+                    
+                    # Show influence flags if any
+                    if influence_info:
+                        flags = []
+                        if influence_info.get("is_top_propagator"):
+                            flags.append(f"🎯 Top Propagator (Score: {influence_info.get('propagation_score', 'N/A')})")
+                        if influence_info.get("is_convergence_point"):
+                            flags.append(f"⚡ Convergence Point (Score: {influence_info.get('convergence_score', 'N/A')})")
+                        if influence_info.get("is_bottleneck"):
+                            flags.append(f"🚧 Bottleneck ({influence_info.get('path_percentage', 'N/A')}% of paths)")
+                        
+                        if flags:
+                            st.markdown("**📊 Influence Analysis Flags:**")
+                            for flag in flags:
+                                st.caption(flag)
+                    
+                    st.markdown("---")
+                    
+                    # List mitigations
+                    if mits:
+                        st.markdown(f"**Mitigations ({len(mits)}):**")
+                        for mit in mits:
+                            mit_detail = manager.get_mitigation_by_id(mit["id"])
+                            status = mit_detail.get("status", "Unknown") if mit_detail else "Unknown"
+                            mit_type = mit_detail.get("type", "Unknown") if mit_detail else "Unknown"
+                            effectiveness = mit.get("effectiveness", "Medium")
+                            
+                            # Status color
+                            status_colors = {
+                                "Implemented": "🟢",
+                                "In Progress": "🟡",
+                                "Proposed": "📋",
+                                "Deferred": "⏸️"
+                            }
+                            status_icon = status_colors.get(status, "⚪")
+                            
+                            # Effectiveness indicator
+                            eff_colors = {
+                                "Critical": "🔴",
+                                "High": "🟠",
+                                "Medium": "🟡",
+                                "Low": "🟢"
+                            }
+                            eff_icon = eff_colors.get(effectiveness, "⚪")
+                            
+                            st.markdown(f"- {status_icon} **{mit['name']}** ({mit_type})")
+                            st.caption(f"  Status: {status} | Effectiveness: {eff_icon} {effectiveness}")
+                            if mit.get("rel_description"):
+                                st.caption(f"  _{mit['rel_description']}_")
+                    else:
+                        st.warning("⚠️ This risk has no mitigations assigned.")
+                        st.caption("💡 Consider adding mitigations via the 💊 Risk Mitigations tab.")
+                    
+                    # Button to visualize in graph
+                    if st.button("🔍 Visualize in Graph", key="viz_risk_treatment", use_container_width=True):
+                        st.session_state.pending_explore_node = {
+                            "node_id": selected_risk_id,
+                            "direction": "both"
+                        }
+                        st.session_state.influence_explorer_enabled = True
+                        st.rerun()
+        
+        # === MODE 2: MITIGATION IMPACT EXPLORER ===
+        elif analysis_mode == "mitigation_impact":
+            st.markdown("**Select a mitigation to see all risks it addresses**")
+            
+            # Get all mitigations for selection
+            all_mitigations = manager.get_all_mitigations()
+            if not all_mitigations:
+                st.info("No mitigations available.")
+                return
+            
+            # Create mitigation options
+            mit_options = {}
+            for m in all_mitigations:
+                risks_addressed = manager.get_risks_for_mitigation(m["id"])
+                risk_count = len(risks_addressed)
+                
+                type_icons = {
+                    "Dedicated": "🟢",
+                    "Inherited": "🔵",
+                    "Baseline": "🟣"
+                }
+                type_icon = type_icons.get(m.get("type", "Dedicated"), "⚪")
+                
+                status_icons = {
+                    "Implemented": "✅",
+                    "In Progress": "🔄",
+                    "Proposed": "📋",
+                    "Deferred": "⏸️"
+                }
+                status_icon = status_icons.get(m.get("status", "Proposed"), "⚪")
+                
+                label = f"{status_icon} {type_icon} {m['name']} ({risk_count} risks)"
+                mit_options[label] = m["id"]
+            
+            selected_mit_label = st.selectbox(
+                "Select Mitigation",
+                options=list(mit_options.keys()),
+                key="mitigation_impact_selector"
+            )
+            
+            if selected_mit_label:
+                selected_mit_id = mit_options[selected_mit_label]
+                
+                # Get detailed impact info for this mitigation
+                details = manager.get_mitigation_impact_details(selected_mit_id)
+                
+                if details:
+                    mit_data = details["mitigation"]
+                    risks = details["risks"]
+                    strategic_impacts = details.get("strategic_impacts", [])
+                    
+                    # Display mitigation info
+                    col_mit1, col_mit2 = st.columns([2, 1])
+                    with col_mit1:
+                        st.markdown(f"**Mitigation:** {mit_data['name']}")
+                        st.caption(f"Type: {mit_data.get('type', 'N/A')} | Status: {mit_data.get('status', 'N/A')}")
+                        if mit_data.get("owner"):
+                            st.caption(f"Owner: {mit_data['owner']}")
+                    with col_mit2:
+                        st.metric("Risks Addressed", details["risk_count"])
+                        if details["total_exposure_covered"] > 0:
+                            st.metric("Total Exposure Covered", f"{details['total_exposure_covered']:.1f}")
+                    
+                    # Show strategic impact if any
+                    if strategic_impacts:
+                        st.markdown("**🎯 Strategic Impact:**")
+                        for impact in strategic_impacts:
+                            flags_str = ", ".join(impact["flags"])
+                            st.caption(f"  • {impact['risk_name']} - {flags_str}")
+                    
+                    st.markdown("---")
+                    
+                    # List addressed risks
+                    if risks:
+                        st.markdown(f"**Risks Addressed ({len(risks)}):**")
+                        
+                        col_strat, col_op = st.columns(2)
+                        with col_strat:
+                            st.markdown(f"🟣 **Strategic:** {details['strategic_count']}")
+                        with col_op:
+                            st.markdown(f"🔵 **Operational:** {details['operational_count']}")
+                        
+                        for risk in risks:
+                            level_icon = "🟣" if risk.get("level") == "Strategic" else "🔵"
+                            effectiveness = risk.get("effectiveness", "Medium")
+                            exposure = risk.get("exposure", 0) or 0
+                            
+                            # Effectiveness indicator
+                            eff_colors = {
+                                "Critical": "🔴",
+                                "High": "🟠",
+                                "Medium": "🟡",
+                                "Low": "🟢"
+                            }
+                            eff_icon = eff_colors.get(effectiveness, "⚪")
+                            
+                            # Check if this is a high-priority risk
+                            is_high_priority = any(si["risk_id"] == risk["id"] for si in strategic_impacts)
+                            priority_badge = " ⭐" if is_high_priority else ""
+                            
+                            st.markdown(f"- {level_icon} **{risk['name']}**{priority_badge}")
+                            st.caption(f"  Effectiveness: {eff_icon} {effectiveness} | Exposure: {exposure:.1f}")
+                            if risk.get("rel_description"):
+                                st.caption(f"  _{risk['rel_description']}_")
+                    else:
+                        st.info("This mitigation is not linked to any risks yet.")
+        
+        # === MODE 3: COVERAGE GAP ANALYSIS ===
+        elif analysis_mode == "coverage_gaps":
+            st.markdown("**Identify gaps in your mitigation strategy**")
+            
+            # Get coverage gap analysis
+            try:
+                gaps = manager.get_coverage_gap_analysis()
+            except Exception as e:
+                st.error(f"Error analyzing coverage gaps: {e}")
+                return
+            
+            # Create sub-tabs for different gap views
+            gap_tabs = st.tabs([
+                "🚨 High Priority",
+                "⚠️ Unmitigated",
+                "📋 Proposed Only",
+                "🟣 Strategic Gaps",
+                "📊 By Category"
+            ])
+            
+            # TAB 1: High Priority Unmitigated
+            with gap_tabs[0]:
+                st.markdown("**Unmitigated risks that are Top Propagators, Convergence Points, or Bottlenecks**")
+                
+                high_priority = gaps.get("high_priority_unmitigated", [])
+                if high_priority:
+                    for risk in high_priority[:5]:
+                        level_icon = "🟣" if risk.get("level") == "Strategic" else "🔵"
+                        flags = risk.get("influence_flags", [])
+                        flags_str = " | ".join(f"⚡ {f}" for f in flags)
+                        
+                        col_info, col_btn = st.columns([4, 1])
+                        with col_info:
+                            st.markdown(f"**{level_icon} {risk['name']}**")
+                            st.caption(f"Exposure: {risk.get('exposure', 0):.1f} | {flags_str}")
+                        with col_btn:
+                            if st.button("🔍", key=f"gap_high_{risk['id']}", help="Explore in graph"):
+                                st.session_state.pending_explore_node = {
+                                    "node_id": risk["id"],
+                                    "direction": "both"
+                                }
+                                st.session_state.influence_explorer_enabled = True
+                                st.rerun()
+                else:
+                    st.success("✅ All high-priority risks have mitigations!")
+            
+            # TAB 2: Critical Unmitigated (High Exposure)
+            with gap_tabs[1]:
+                st.markdown("**Risks with high exposure and no mitigations**")
+                
+                critical = gaps.get("critical_unmitigated", [])
+                if critical:
+                    for risk in critical[:5]:
+                        level_icon = "🟣" if risk.get("level") == "Strategic" else "🔵"
+                        exposure = risk.get("exposure", 0)
+                        
+                        col_info, col_btn = st.columns([4, 1])
+                        with col_info:
+                            st.markdown(f"**{level_icon} {risk['name']}**")
+                            st.caption(f"Exposure: **{exposure:.1f}** | Categories: {', '.join(risk.get('categories', []))}")
+                        with col_btn:
+                            if st.button("🔍", key=f"gap_crit_{risk['id']}", help="Explore in graph"):
+                                st.session_state.pending_explore_node = {
+                                    "node_id": risk["id"],
+                                    "direction": "both"
+                                }
+                                st.session_state.influence_explorer_enabled = True
+                                st.rerun()
+                else:
+                    st.success("✅ No high-exposure unmitigated risks!")
+            
+            # TAB 3: Proposed Only (High Exposure)
+            with gap_tabs[2]:
+                st.markdown("**High-exposure risks with only proposed (not implemented) mitigations**")
+                
+                proposed_only = gaps.get("proposed_only_high_exposure", [])
+                if proposed_only:
+                    for risk in proposed_only[:5]:
+                        level_icon = "🟣" if risk.get("level") == "Strategic" else "🔵"
+                        exposure = risk.get("exposure", 0)
+                        proposed_mits = risk.get("proposed_mitigations", [])
+                        
+                        col_info, col_btn = st.columns([4, 1])
+                        with col_info:
+                            st.markdown(f"**{level_icon} {risk['name']}**")
+                            st.caption(f"Exposure: **{exposure:.1f}** | Proposed: {', '.join(proposed_mits[:3])}")
+                        with col_btn:
+                            if st.button("🔍", key=f"gap_prop_{risk['id']}", help="Explore in graph"):
+                                st.session_state.pending_explore_node = {
+                                    "node_id": risk["id"],
+                                    "direction": "both"
+                                }
+                                st.session_state.influence_explorer_enabled = True
+                                st.rerun()
+                else:
+                    st.success("✅ All high-exposure risks have implemented mitigations!")
+            
+            # TAB 4: Strategic Gaps
+            with gap_tabs[3]:
+                st.markdown("**Strategic risks without adequate mitigation coverage**")
+                
+                strategic_gaps = gaps.get("strategic_gaps", [])
+                if strategic_gaps:
+                    for risk in strategic_gaps[:5]:
+                        exposure = risk.get("exposure", 0)
+                        impl_eff = risk.get("implemented_effectiveness", 0)
+                        
+                        col_info, col_btn = st.columns([4, 1])
+                        with col_info:
+                            st.markdown(f"**🟣 {risk['name']}**")
+                            if impl_eff > 0:
+                                st.caption(f"Exposure: {exposure:.1f} | Implemented effectiveness: {impl_eff}/4+")
+                            else:
+                                st.caption(f"Exposure: {exposure:.1f} | ⚠️ No implemented mitigations")
+                        with col_btn:
+                            if st.button("🔍", key=f"gap_strat_{risk['id']}", help="Explore in graph"):
+                                st.session_state.pending_explore_node = {
+                                    "node_id": risk["id"],
+                                    "direction": "both"
+                                }
+                                st.session_state.influence_explorer_enabled = True
+                                st.rerun()
+                else:
+                    st.success("✅ All strategic risks are well covered!")
+            
+            # TAB 5: Coverage by Category
+            with gap_tabs[4]:
+                st.markdown("**Mitigation coverage breakdown by risk category**")
+                
+                category_coverage = gaps.get("category_coverage", {})
+                if category_coverage:
+                    for cat, cov_stats in category_coverage.items():
+                        coverage_pct = cov_stats.get("coverage_percentage", 0)
+                        total = cov_stats.get("total", 0)
+                        mitigated = cov_stats.get("mitigated", 0)
+                        unmitigated = cov_stats.get("unmitigated", 0)
+                        
+                        # Progress bar color based on coverage
+                        if coverage_pct >= 80:
+                            bar_color = "green"
+                            status_emoji = "✅"
+                        elif coverage_pct >= 50:
+                            bar_color = "orange"
+                            status_emoji = "🔶"
+                        else:
+                            bar_color = "red"
+                            status_emoji = "⚠️"
+                        
+                        st.markdown(f"**{cat}** {status_emoji}")
+                        col_prog, col_stats = st.columns([3, 1])
+                        with col_prog:
+                            st.progress(coverage_pct / 100)
+                        with col_stats:
+                            st.caption(f"{coverage_pct}% ({mitigated}/{total})")
+                        
+                        if unmitigated > 0:
+                            st.caption(f"  ⚠️ {unmitigated} risks without mitigations")
+                        st.markdown("---")
+                else:
+                    st.info("No category coverage data available.")
 
 
 def render_graph(nodes: list, edges: list, color_by: str = "level", physics_enabled: bool = True, 
@@ -4951,6 +5849,9 @@ def main():
         with col_display:
             # === INFLUENCE ANALYSIS PANEL ===
             render_influence_analysis_panel(manager)
+            
+            # === MITIGATION ANALYSIS PANEL ===
+            render_mitigation_analysis_panel(manager)
             
             # Get edge visibility settings
             edge_visibility_mode = st.session_state.get("edge_visibility_mode", "all")
