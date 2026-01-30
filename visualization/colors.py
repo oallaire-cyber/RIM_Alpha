@@ -1,67 +1,146 @@
 """
 Color Utilities for RIM Graph Visualization.
 
-Provides color schemes for nodes and edges based on various attributes.
+Enhanced color schemes with semantic meaning:
+- Warm colors (red/orange/purple) for risks/threats
+- Cool colors (teal/green) for mitigations/protection
+- Gold for TPOs/objectives
 """
 
 from typing import Optional
 
 
-# Node colors by level
+# =============================================================================
+# RISK COLORS - Warm spectrum (threats)
+# =============================================================================
+
+RISK_COLORS = {
+    "strategic": {
+        "base": "#8E44AD",      # Purple - consequence-oriented
+        "light": "#BB8FCE",
+        "dark": "#6C3483"
+    },
+    "operational": {
+        "base": "#2980B9",      # Blue - cause-oriented
+        "light": "#5DADE2",
+        "dark": "#1F618D"
+    }
+}
+
+# Legacy compatibility aliases
 LEVEL_COLORS = {
-    "Strategic": "#9b59b6",   # Purple
-    "Operational": "#3498db"  # Blue
+    "Strategic": RISK_COLORS["strategic"]["base"],
+    "Operational": RISK_COLORS["operational"]["base"]
 }
 
-# Node colors by exposure ranges
+# Exposure gradient - Heat map concept (critical = hot, low = cool)
 EXPOSURE_COLORS = {
-    "critical": "#e74c3c",    # Red (>= 7)
-    "high": "#f39c12",        # Orange (>= 4)
-    "medium": "#3498db",      # Blue (>= 2)
-    "low": "#27ae60",         # Green (< 2)
-    "none": "#95a5a6"         # Gray (None)
+    "critical": "#C0392B",     # Dark red - immediate danger
+    "high": "#E74C3C",         # Red - significant concern
+    "medium": "#F39C12",       # Orange - attention needed
+    "low": "#F1C40F",          # Yellow - manageable
+    "none": "#BDC3C7"          # Gray - not assessed
 }
 
-# TPO colors
-TPO_COLORS = {
-    "background": "#f1c40f",  # Yellow
-    "border": "#f39c12",      # Darker yellow
-    "highlight": "#f5d76e"    # Light yellow
+
+# =============================================================================
+# MITIGATION COLORS - Cool/Green spectrum (protection)
+# =============================================================================
+
+MITIGATION_COLORS = {
+    "dedicated": {
+        "implemented": "#1ABC9C",    # Teal - active protection
+        "in_progress": "#48C9B0",
+        "proposed": "#A3E4D7",
+        "deferred": "#D5DBDB"
+    },
+    "inherited": {
+        "implemented": "#3498DB",    # Blue - external source
+        "in_progress": "#5DADE2",
+        "proposed": "#AED6F1",
+        "deferred": "#D6DBDF"
+    },
+    "baseline": {
+        "implemented": "#9B59B6",    # Purple - standard practice
+        "in_progress": "#AF7AC5",
+        "proposed": "#D7BDE2",
+        "deferred": "#D7DBDD"
+    }
 }
 
-# Mitigation type colors
+# Legacy compatibility alias
 MITIGATION_TYPE_COLORS = {
-    "Dedicated": "#27ae60",   # Green
-    "Inherited": "#3498db",   # Blue
-    "Baseline": "#9b59b6"     # Purple
+    "Dedicated": MITIGATION_COLORS["dedicated"]["implemented"],
+    "Inherited": MITIGATION_COLORS["inherited"]["implemented"],
+    "Baseline": MITIGATION_COLORS["baseline"]["implemented"]
 }
 
-# Influence type colors
+# Mitigation border colors by type
+MITIGATION_BORDER_COLORS = {
+    "Dedicated": "#0E6655",    # Dark teal
+    "Inherited": "#1A5276",    # Dark blue
+    "Baseline": "#5B2C6F"      # Dark purple
+}
+
+
+# =============================================================================
+# TPO COLORS - Gold (objectives/goals)
+# =============================================================================
+
+TPO_COLORS = {
+    "background": "#F1C40F",   # Gold
+    "border": "#D4AC0D",       # Dark gold
+    "highlight": "#F7DC6F",    # Light gold
+    "text": "#7D6608"          # Dark gold for text
+}
+
+
+# =============================================================================
+# INFLUENCE TYPE COLORS (Edge colors for risk relationships)
+# =============================================================================
+
 INFLUENCE_TYPE_COLORS = {
-    "Level1": "#e74c3c",      # Red (Op→Strat)
-    "Level2": "#9b59b6",      # Purple (Strat→Strat)
-    "Level3": "#3498db"       # Blue (Op→Op)
+    "Level1": "#E74C3C",       # Red (Op→Strat) - causes consequence
+    "Level2": "#8E44AD",       # Purple (Strat→Strat) - amplifies
+    "Level3": "#2980B9"        # Blue (Op→Op) - contributes
 }
 
-# Effectiveness colors (for mitigation edges)
+
+# =============================================================================
+# EFFECTIVENESS COLORS (Mitigation edge colors)
+# =============================================================================
+
 EFFECTIVENESS_COLORS = {
-    "Critical": "#145a32",    # Dark green
-    "High": "#1e8449",        # Medium green
-    "Medium": "#27ae60",      # Light green
-    "Low": "#7dcea0"          # Very light green
+    "Critical": "#0E6655",     # Dark teal - strong block
+    "High": "#1ABC9C",         # Teal
+    "Medium": "#48C9B0",       # Light teal
+    "Low": "#A3E4D7"           # Very light teal
 }
 
-# Impact level colors (for TPO impact edges)
+
+# =============================================================================
+# IMPACT COLORS (TPO impact edge colors)
+# =============================================================================
+
 IMPACT_COLORS = {
-    "Critical": "#c0392b",
-    "High": "#e74c3c",
-    "Medium": "#3498db",
-    "Low": "#85c1e9"
+    "Critical": "#D35400",     # Dark orange
+    "High": "#E67E22",         # Orange
+    "Medium": "#F39C12",       # Light orange
+    "Low": "#F5B041"           # Yellow-orange
 }
 
-# Selection highlight color
-HIGHLIGHT_COLOR = "#e74c3c"  # Red
 
+# =============================================================================
+# HIGHLIGHT AND SELECTION
+# =============================================================================
+
+HIGHLIGHT_COLOR = "#E74C3C"    # Red for selection highlight
+SELECTION_GLOW = "#FFD700"     # Gold glow for emphasis
+
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
 
 def get_color_by_level(level: str) -> str:
     """
@@ -73,12 +152,15 @@ def get_color_by_level(level: str) -> str:
     Returns:
         Hex color string
     """
-    return LEVEL_COLORS.get(level, LEVEL_COLORS["Operational"])
+    level_key = level.lower() if level else "operational"
+    if level_key in RISK_COLORS:
+        return RISK_COLORS[level_key]["base"]
+    return RISK_COLORS["operational"]["base"]
 
 
 def get_color_by_exposure(exposure: Optional[float]) -> str:
     """
-    Get node color based on exposure value.
+    Get node color based on exposure value using heat map gradient.
     
     Args:
         exposure: Risk exposure value (0-16 typically)
@@ -103,19 +185,35 @@ def get_mitigation_color(mitigation_type: str, status: str = "Implemented") -> s
     Get mitigation node color based on type and status.
     
     Args:
-        mitigation_type: Type of mitigation
-        status: Mitigation status
+        mitigation_type: Type of mitigation (Dedicated, Inherited, Baseline)
+        status: Mitigation status (Implemented, In Progress, Proposed, Deferred)
     
     Returns:
-        Hex color string (with transparency for non-implemented)
+        Hex color string
     """
-    color = MITIGATION_TYPE_COLORS.get(mitigation_type, "#27ae60")
+    type_key = mitigation_type.lower() if mitigation_type else "dedicated"
+    status_key = status.lower().replace(" ", "_") if status else "implemented"
     
-    # Add transparency for proposed/deferred mitigations
-    if status in ["Proposed", "Deferred"]:
-        color = color + "99"  # Add alpha channel
+    if type_key in MITIGATION_COLORS:
+        type_colors = MITIGATION_COLORS[type_key]
+        if status_key in type_colors:
+            return type_colors[status_key]
+        return type_colors["implemented"]
     
-    return color
+    return MITIGATION_COLORS["dedicated"]["implemented"]
+
+
+def get_mitigation_border_color(mitigation_type: str) -> str:
+    """
+    Get mitigation border color based on type.
+    
+    Args:
+        mitigation_type: Type of mitigation
+    
+    Returns:
+        Hex color string
+    """
+    return MITIGATION_BORDER_COLORS.get(mitigation_type, MITIGATION_BORDER_COLORS["Dedicated"])
 
 
 def get_influence_color(influence_type: str) -> str:
@@ -139,7 +237,7 @@ def get_effectiveness_color(effectiveness: str) -> str:
     Get mitigation edge color based on effectiveness.
     
     Args:
-        effectiveness: Effectiveness level
+        effectiveness: Effectiveness level (Critical, High, Medium, Low)
     
     Returns:
         Hex color string
@@ -152,7 +250,7 @@ def get_impact_color(impact_level: str) -> str:
     Get TPO impact edge color based on impact level.
     
     Args:
-        impact_level: Impact level
+        impact_level: Impact level (Critical, High, Medium, Low)
     
     Returns:
         Hex color string
@@ -172,9 +270,9 @@ def interpolate_color(start_color: str, end_color: str, factor: float) -> str:
     Returns:
         Interpolated hex color
     """
-    # Remove # prefix
-    start = start_color.lstrip('#')
-    end = end_color.lstrip('#')
+    # Remove # prefix and handle alpha channel
+    start = start_color.lstrip('#')[:6]
+    end = end_color.lstrip('#')[:6]
     
     # Parse RGB components
     r1, g1, b1 = int(start[0:2], 16), int(start[2:4], 16), int(start[4:6], 16)
@@ -186,3 +284,19 @@ def interpolate_color(start_color: str, end_color: str, factor: float) -> str:
     b = int(b1 + (b2 - b1) * factor)
     
     return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def get_exposure_gradient_position(exposure: Optional[float], max_exposure: float = 16.0) -> float:
+    """
+    Get the gradient position (0-1) for an exposure value.
+    
+    Args:
+        exposure: Exposure value
+        max_exposure: Maximum expected exposure value
+    
+    Returns:
+        Position in gradient (0 = low, 1 = critical)
+    """
+    if exposure is None:
+        return 0.0
+    return min(1.0, max(0.0, exposure / max_exposure))

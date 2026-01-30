@@ -31,6 +31,12 @@ from ui import (
     render_mitigation_analysis_panel,
 )
 
+# Legend
+from ui.legend import (
+    render_graph_legend,
+    render_compact_legend,
+)
+
 # Tab Pages
 from ui.tabs import (
     render_risks_tab,
@@ -108,6 +114,10 @@ def render_connection_sidebar():
         st.sidebar.success("✅ Connected to Neo4j")
     else:
         st.sidebar.warning("⚠️ Not connected")
+        
+    if st.session_state.connected:
+        st.sidebar.markdown("---")
+        render_graph_legend(expanded=False)
 
 
 def render_welcome_page():
@@ -127,29 +137,29 @@ def render_welcome_page():
         ### ✨ Key Features
         
         **🎯 Two-Level Risk Architecture**
-        - **Strategic Risks**: Consequence-oriented, managed by program leadership
-        - **Operational Risks**: Cause-oriented, managed by functional teams
+        - **Strategic Risks** (◆ Diamond): Consequence-oriented, managed by program leadership
+        - **Operational Risks** (● Circle): Cause-oriented, managed by functional teams
         - **Origin Tracking**: Distinguish between New (program-specific) and Legacy (inherited) risks
         
         **🔗 Influence Mapping**
-        - Level 1: Operational → Strategic influences
-        - Level 2: Strategic → Strategic influences
-        - Level 3: Operational → Operational influences
+        - Level 1: Operational → Strategic influences (red, thick)
+        - Level 2: Strategic → Strategic influences (purple, medium)
+        - Level 3: Operational → Operational influences (blue, dashed)
         - Configurable strength and confidence scoring
         
         **🏆 Top Program Objectives (TPOs)**
-        - Link strategic risks to program objectives
+        - ⬡ Gold hexagon visualization
         - Cluster-based organization (Product, Business, Industrial, Safety, Sustainability)
         - Impact level tracking with visual indicators
         
         **🛡️ Mitigation Management**
-        - **Dedicated**: Program-owned mitigations
-        - **Inherited**: From corporate or other programs
-        - **Baseline**: Standards, regulations, best practices
-        - Effectiveness tracking and many-to-many risk relationships
+        - **Dedicated** (teal, solid): Program-owned mitigations
+        - **Inherited** (blue, dotted): From corporate or other programs
+        - **Baseline** (purple, thick): Standards, regulations, best practices
+        - Shield-shaped nodes (🛡️) with bar-end arrows showing "blocking" effect
         
         **⚠️ Contingent Risk Support**
-        - Future risks linked to structural decisions
+        - ◇ Hollow diamond shape for potential/contingent risks
         - Decision timeline and activation conditions
         - Visual distinction with dashed borders
         
@@ -162,6 +172,20 @@ def render_welcome_page():
         **📊 Import/Export**
         - Full Excel import/export capability
         - Layout save/load for presentations
+        
+        ---
+        
+        ### 🎨 Visual Legend Quick Reference
+        
+        | Element | Shape | Meaning |
+        |---------|-------|---------|
+        | ◆ Purple | Diamond | Strategic Risk |
+        | ● Blue | Circle | Operational Risk |
+        | 🛡️ Teal/Blue/Purple | Rounded Box | Mitigation |
+        | ⬡ Gold | Hexagon | TPO |
+        | → | Standard Arrow | Influence |
+        | ⊣ | Bar-end Arrow | Mitigation link |
+        | ▷ | Vee Arrow | TPO Impact |
         """)
 
 
@@ -690,6 +714,9 @@ def render_visualization_tab(manager: RiskGraphManager):
                 edge_scores = {(e["source"], e["target"]): e["score"] for e in all_scored}
             except:
                 pass
+        
+        # Add compact legend above graph
+        render_compact_legend()
         
         # Render graph
         render_graph_streamlit(

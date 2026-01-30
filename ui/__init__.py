@@ -74,6 +74,15 @@ from ui.tabs import (
     render_import_export_tab,
 )
 
+from ui.legend import (
+    render_graph_legend,
+    render_compact_legend,
+    render_sidebar_legend,
+    render_node_legend,
+    render_edge_legend,
+    render_status_legend,
+)
+
 __all__ = [
     # Styles
     "CSS_STYLES",
@@ -131,4 +140,11 @@ __all__ = [
     "render_tpo_impacts_tab",
     "render_risk_mitigations_tab",
     "render_import_export_tab",
+    # Legend
+    "render_graph_legend",
+    "render_compact_legend",
+    "render_sidebar_legend",
+    "render_node_legend",
+    "render_edge_legend",
+    "render_status_legend",
 ]

@@ -31,9 +31,9 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
 ### Influence Mapping
 
 - Three types of influence links:
-  - **Level 1**: Operational → Strategic (red)
-  - **Level 2**: Strategic → Strategic (purple)
-  - **Level 3**: Operational → Operational (blue)
+  - **Level 1**: Operational → Strategic (red, thick solid line)
+  - **Level 2**: Strategic → Strategic (purple, medium solid line)
+  - **Level 3**: Operational → Operational (blue, dashed line)
 - Configurable strength (Weak/Moderate/Strong/Critical)
 - Confidence scoring
 
@@ -42,31 +42,40 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
 - Link strategic risks to program objectives
 - Cluster-based organization (Product Efficiency, Business Efficiency, Industrial Efficiency, Sustainability, Safety)
 - Impact level tracking (Low/Medium/High/Critical)
-- Yellow hexagon visualization
+- Gold hexagon visualization
 
 ### Mitigation Management
 
 - **Mitigation Types**:
-  - **Dedicated**: Program-owned mitigations created specifically for identified risks
-  - **Inherited**: Mitigations inherited from other entities or programs
-  - **Baseline**: Standard controls from requirements, regulations, or industry standards
+  - **Dedicated**: Program-owned mitigations created specifically for identified risks (teal, solid border)
+  - **Inherited**: Mitigations inherited from other entities or programs (blue, dotted border)
+  - **Baseline**: Standard controls from requirements, regulations, or industry standards (purple, thick border)
 - **Mitigation Status tracking**: Proposed, In Progress, Implemented, Deferred
 - **Effectiveness scoring**: Low, Medium, High, Critical
 - **Many-to-many relationships**: One mitigation can address multiple risks
 - Source entity tracking for inherited/baseline mitigations
-- Green rectangle visualization with dashed edges to risks
+- Shield-shaped visualization (🛡️) with bar-end arrows to risks
 
 ### Visualization
 
 - Interactive graph powered by PyVis
-- Color coding by level or exposure
+- **Semantic shape system** for instant recognition:
+  - **Diamonds (◆)** for Strategic Risks - pointed shape conveys danger
+  - **Circles (●)** for Operational Risks - foundation/cause-oriented
+  - **Rounded boxes (🛡️)** for Mitigations - shield-like protection
+  - **Hexagons (⬡)** for TPOs - program objectives
+- Color coding by level or exposure (heat map gradient)
 - **Visual distinction for risk origins**:
   - New risks: Standard border
-  - Legacy risks: Gray dashed border with [L] prefix
+  - Legacy risks: Gray thick border with [L] prefix
 - **Mitigation visualization**:
-  - Green rectangles (color varies by type)
-  - Dashed green edges showing mitigation relationships
-  - Edge thickness indicates effectiveness
+  - Rounded boxes with shield emoji (🛡️)
+  - Bar-end arrows (⊣) showing "blocking" effect
+  - Border style indicates status (solid=implemented, dashed=proposed)
+- **Edge differentiation by relationship type**:
+  - Standard arrows (→) for influence relationships
+  - Bar-end arrows (⊣) for mitigation relationships
+  - Vee arrows (▷) for TPO impact relationships
 - Multiple layout algorithms:
   - Layered (TPO → Strategic → Operational)
   - Category-based (2×2 grid)
@@ -224,210 +233,132 @@ RETURN count(r) as updated_risks
 
 ## 📁 Project Structure
 
-The application has been refactored from a monolithic design to a modular architecture for improved maintainability, testability, and code organization.
-
 ```
-rim-app/
-├── app.py                      # Main application entry point (823 lines)
-├── app_alpha.py                # Legacy monolithic version (deprecated)
-├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-│
-├── config/                     # Configuration
+rim/
+├── app.py                  # Main application entry point
+├── config/
 │   ├── __init__.py
-│   └── settings.py             # App settings and constants
-│
-├── models/                     # Data models
+│   └── settings.py         # Application settings and constants
+├── database/
 │   ├── __init__.py
-│   ├── enums.py                # Enumeration types
-│   ├── risk.py                 # Risk model
-│   ├── tpo.py                  # TPO model
-│   ├── mitigation.py           # Mitigation model
-│   └── relationships.py        # Relationship models
-│
-├── database/                   # Database layer
+│   ├── connection.py       # Neo4j connection management
+│   ├── manager.py          # RiskGraphManager facade
+│   └── queries/
+│       ├── analysis.py     # Influence analysis queries
+│       ├── influences.py   # Influence CRUD operations
+│       ├── mitigations.py  # Mitigation CRUD operations
+│       ├── risks.py        # Risk CRUD operations
+│       └── tpos.py         # TPO CRUD operations
+├── models/
 │   ├── __init__.py
-│   ├── connection.py           # Neo4j connection management
-│   ├── manager.py              # RiskGraphManager facade
-│   └── queries/                # Cypher query modules
-│       ├── __init__.py
-│       ├── risks.py            # Risk CRUD queries
-│       ├── tpos.py             # TPO CRUD queries
-│       ├── mitigations.py      # Mitigation CRUD queries
-│       ├── influences.py       # Influence queries
-│       └── analysis.py         # Analysis queries
-│
-├── services/                   # Business logic layer
+│   ├── enums.py            # Enumeration types
+│   ├── mitigation.py       # Mitigation data model
+│   ├── relationships.py    # Relationship data models
+│   ├── risk.py             # Risk data model
+│   └── tpo.py              # TPO data model
+├── services/
 │   ├── __init__.py
-│   ├── influence_analysis.py   # Influence network analysis
-│   ├── mitigation_analysis.py  # Mitigation coverage analysis
-│   ├── export_service.py       # Excel export
-│   └── import_service.py       # Excel import
-│
-├── ui/                         # UI components
+│   ├── export_service.py   # Excel export functionality
+│   ├── import_service.py   # Excel import functionality
+│   ├── influence_analysis.py  # InfluenceAnalyzer class
+│   └── mitigation_analysis.py # Mitigation coverage analysis
+├── ui/
 │   ├── __init__.py
-│   ├── styles.py               # CSS styles and badges
-│   ├── filters.py              # Filter management
-│   ├── layouts.py              # Graph layout generators
-│   ├── components.py           # Reusable UI components
-│   ├── sidebar.py              # Sidebar rendering
-│   ├── panels/                 # Analysis panels
-│   │   ├── __init__.py
-│   │   ├── influence_panel.py
-│   │   └── mitigation_panel.py
-│   └── tabs/                   # Tab pages
-│       ├── __init__.py
-│       ├── risks_tab.py
-│       ├── tpos_tab.py
-│       ├── mitigations_tab.py
+│   ├── components.py       # Reusable UI components
+│   ├── filters.py          # FilterManager class
+│   ├── layouts.py          # LayoutManager and layout generators
+│   ├── panels/
+│   │   ├── influence_panel.py   # Influence analysis panel
+│   │   └── mitigation_panel.py  # Mitigation analysis panel
+│   ├── sidebar.py          # Sidebar rendering
+│   ├── styles.py           # CSS styles and badge generators
+│   └── tabs/
+│       ├── import_export_tab.py
 │       ├── influences_tab.py
-│       ├── tpo_impacts_tab.py
+│       ├── mitigations_tab.py
+│       ├── risks_tab.py
 │       ├── risk_mitigations_tab.py
-│       └── import_export_tab.py
-│
-├── visualization/              # Graph visualization
+│       ├── tpos_tab.py
+│       └── tpo_impacts_tab.py
+├── utils/
 │   ├── __init__.py
-│   ├── colors.py               # Color schemes
-│   ├── node_styles.py          # Node styling
-│   ├── edge_styles.py          # Edge styling
-│   ├── graph_options.py        # PyVis configuration
-│   └── graph_renderer.py       # Main render functions
-│
-├── utils/                      # Utilities
+│   └── helpers.py          # Utility functions
+├── visualization/
 │   ├── __init__.py
-│   └── helpers.py              # Helper functions
-│
-├── tests/                      # Test suite
-│   └── __init__.py
-│
-├── demo_data_loader.cypher     # Cypher script to load demo data
-└── bulk_import_template.cypher # Template for bulk data imports
+│   ├── colors.py           # Color schemes and utilities
+│   ├── edge_styles.py      # Edge styling configuration
+│   ├── graph_options.py    # Graph physics and options
+│   ├── graph_renderer.py   # PyVis graph rendering
+│   └── node_styles.py      # Node styling configuration
+└── requirements.txt
 ```
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        app.py                                   │
-│                   (Main Entry Point)                            │
-└─────────────────────────────────────────────────────────────────┘
-                            │
-         ┌──────────────────┼──────────────────┐
-         ▼                  ▼                  ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│       UI        │ │   Visualization │ │    Services     │
-│  (Streamlit)    │ │    (PyVis)      │ │ (Analysis/IO)   │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
-         │                  │                  │
-         └──────────────────┼──────────────────┘
-                            ▼
-              ┌─────────────────────────┐
-              │   Database (Neo4j)      │
-              │   RiskGraphManager      │
-              └─────────────────────────┘
-                            │
-              ┌─────────────────────────┐
-              │      Neo4j Graph        │
-              └─────────────────────────┘
-```
-
-### Module Responsibilities
-
-| Module           | Purpose                                                        |
-| ---------------- | -------------------------------------------------------------- |
-| `config/`        | Application settings, constants, and default values            |
-| `models/`        | Data models, enumerations, and type definitions                |
-| `database/`      | Neo4j connection, query execution, and RiskGraphManager facade |
-| `services/`      | Business logic for analysis, import/export operations          |
-| `ui/`            | Streamlit UI components, filters, panels, and tab pages        |
-| `visualization/` | PyVis graph rendering, styling, and layout                     |
-| `utils/`         | Helper functions and utilities                                 |
-
-## 🔧 Configuration
-
-### Neo4j Connection
-
-Default connection settings (in `config/settings.py`):
-
-- URI: `bolt://localhost:7687`
-- Username: `neo4j`
-- Password: (your password)
-
-### Application Settings
-
-Edit `config/settings.py` to customize:
-
-- Risk levels, categories, statuses
-- TPO clusters
-- Mitigation types and effectiveness levels
-- Influence strengths
-- Visualization colors and node sizes
-- Analysis parameters (propagation decay, max depth, etc.)
-
-### Filter Presets
-
-Built-in presets:
-| Preset | Description |
-|--------|-------------|
-| 🌐 Full View | All risks and TPOs (no mitigations) |
-| 🟣 Strategic Focus | Strategic risks + TPOs only |
-| 🔵 Operational Focus | Operational risks only |
-| ✅ Active Risks Only | Excludes contingent risks |
-| ⚠️ Contingent Risks | Future/contingent risks only |
-| 🎯 Risks Only | All risks, no TPOs |
-| 🆕 New Risks Only | Program-specific new risks |
-| 📜 Legacy Risks Only | Inherited/Enterprise level risks |
-| 🛡️ Risks + Mitigations | Show risks with mitigations (no TPOs) |
-| 🗺️ Full Map | Everything: Risks, TPOs, and Mitigations |
-
-**Note:** At application startup, the default view displays all elements (equivalent to 🗺️ Full Map).
 
 ## 📖 Usage Guide
 
-### Connecting to Neo4j
-
-1. Enter your Neo4j connection details in the sidebar
-2. Click "Connect"
-
 ### Creating Risks
 
-1. Navigate to the "🎯 Risks" tab
-2. Fill in the risk form (name, level, categories, etc.)
-3. Click "Create risk"
+1. Go to the **🎯 Risks** tab
+2. Expand "➕ Create New Risk"
+3. Fill in the details:
+   - **Name**: Descriptive risk name
+   - **Level**: Strategic (consequence-oriented) or Operational (cause-oriented)
+   - **Origin**: New (program-specific) or Legacy (inherited)
+   - **Categories**: One or more domain categories
+   - **Status**: Active, Contingent, or Archived
+   - **Probability/Impact**: For exposure calculation
+4. Click "Create Risk"
 
 ### Creating Influences
 
-1. Navigate to the "🔗 Influences" tab
-2. Select source and target risks
-3. Set strength and confidence
-4. Click "Create influence"
+1. Go to the **🔗 Influences** tab
+2. Expand "➕ Create New Influence"
+3. Select source and target risks
+4. The influence type is automatically determined:
+   - Level 1: Operational → Strategic
+   - Level 2: Strategic → Strategic
+   - Level 3: Operational → Operational
+5. Set strength and optional description
+6. Click "Create Influence"
 
-### Creating TPO Impacts
+### Creating TPOs
 
-1. Navigate to the "📌 TPO Impacts" tab
-2. Select a Strategic risk and a TPO
-3. Set impact level
-4. Click "Create TPO Impact"
+1. Go to the **🏆 TPOs** tab
+2. Expand "➕ Create New TPO"
+3. Enter reference, name, cluster, and description
+4. Click "Create TPO"
+
+### Linking Risks to TPOs
+
+1. Go to the **🔗 TPO Impacts** tab
+2. Select a strategic risk and TPO
+3. Set the impact level
+4. Click "Create Impact"
 
 ### Creating Mitigations
 
-1. Navigate to the "🛡️ Mitigations" tab
-2. Enter name, type, and status
-3. Click "Create Mitigation"
+1. Go to the **🛡️ Mitigations** tab
+2. Expand "➕ Create New Mitigation"
+3. Fill in the details:
+   - **Name**: Mitigation action name
+   - **Type**: Dedicated, Inherited, or Baseline
+   - **Status**: Proposed, In Progress, Implemented, or Deferred
+   - **Owner**: Responsible party
+   - **Source Entity**: For Inherited/Baseline types
+4. Click "Create Mitigation"
 
 ### Linking Mitigations to Risks
 
-1. Navigate to the "💊 Risk Mitigations" tab
-2. Select a mitigation and a risk
-3. Set effectiveness level (Low/Medium/High/Critical)
-4. Add description of how the mitigation addresses the risk
-5. Click "Create Link"
+1. Go to the **🔗 Risk Mitigations** tab
+2. Expand "➕ Link Mitigation to Risk"
+3. Select a mitigation and risk
+4. Set the effectiveness level
+5. Click "Create Mitigation Link"
 
-### Visualizing Mitigations
+Note: One mitigation can be linked to multiple risks, and one risk can have multiple mitigations.
 
-By default, the application displays all elements including mitigations. To customize:
+### Viewing Mitigations
 
-1. In the **📊 Visualization** tab, expand the **🛡️ Mitigation Filters** section
+1. Go to the **📊 Visualization** tab
 2. Toggle "🟢 Show Mitigations" checkbox to show/hide
 3. Optionally filter by mitigation type and status
 4. Or use Quick Presets:
@@ -582,28 +513,67 @@ The Mitigation Analysis panel provides decision support for risk treatment strat
 
 ### Node Shapes & Colors
 
-| Element                | Shape     | Color       | Notes                          |
-| ---------------------- | --------- | ----------- | ------------------------------ |
-| Strategic Risk         | Circle    | Purple      | Size varies by exposure        |
-| Operational Risk       | Circle    | Blue        | Size varies by exposure        |
-| Contingent Risk        | Square    | Level color | Dashed border                  |
-| Legacy Risk            | Circle    | Level color | Gray dashed border, [L] prefix |
-| TPO                    | Hexagon   | Yellow      | Reference as label             |
-| Mitigation (Dedicated) | Rectangle | Green       | 🛡️ prefix                      |
-| Mitigation (Inherited) | Rectangle | Blue        | 🛡️ prefix                      |
-| Mitigation (Baseline)  | Rectangle | Purple      | 🛡️ prefix                      |
+| Element                | Shape              | Color            | Border Style      | Notes                                         |
+| ---------------------- | ------------------ | ---------------- | ----------------- | --------------------------------------------- |
+| Strategic Risk         | ◆ Diamond          | Purple (#8E44AD) | Solid             | Consequence-oriented, size varies by exposure |
+| Operational Risk       | ● Circle           | Blue (#2980B9)   | Solid             | Cause-oriented, size varies by exposure       |
+| Contingent Risk        | ◇ Diamond (hollow) | Level color      | Dashed            | Potential risk, not yet materialized          |
+| Legacy Risk            | ● or ◆             | Level color      | Gray thick border | Inherited risk, [L] prefix in label           |
+| TPO                    | ⬡ Hexagon          | Gold (#F1C40F)   | Solid             | Program objective, reference as label         |
+| Mitigation (Dedicated) | 🛡️ Rounded Box     | Teal (#1ABC9C)   | Solid, medium     | Program-specific mitigation                   |
+| Mitigation (Inherited) | 🛡️ Rounded Box     | Blue (#3498DB)   | Dotted            | Inherited from external source                |
+| Mitigation (Baseline)  | 🛡️ Rounded Box     | Purple (#9B59B6) | Solid, thick      | Standard practice/regulation                  |
+
+### Risk Exposure Gradient (when coloring by exposure)
+
+| Exposure Level | Color              | Description                  |
+| -------------- | ------------------ | ---------------------------- |
+| Critical (≥7)  | Dark Red (#C0392B) | Immediate attention required |
+| High (≥4)      | Red (#E74C3C)      | Significant concern          |
+| Medium (≥2)    | Orange (#F39C12)   | Attention needed             |
+| Low (<2)       | Yellow (#F1C40F)   | Manageable                   |
+
+### Mitigation Status Indicators (Border Style)
+
+| Status      | Border Style   | Description                |
+| ----------- | -------------- | -------------------------- |
+| Implemented | Solid          | Active protection in place |
+| In Progress | Dash-dot (─∙─) | Being deployed             |
+| Proposed    | Dashed (─ ─)   | Planned but not started    |
+| Deferred    | Dotted (∙∙∙)   | On hold                    |
 
 ### Edge Types
 
-| Relationship          | Color  | Style  | Notes                  |
-| --------------------- | ------ | ------ | ---------------------- |
-| Level 1 (Op→Strat)    | Red    | Solid  | Width by strength      |
-| Level 2 (Strat→Strat) | Purple | Solid  | Width by strength      |
-| Level 3 (Op→Op)       | Blue   | Solid  | Width by strength      |
-| TPO Impact            | Blue   | Dashed | Width by impact level  |
-| Mitigates             | Green  | Dashed | Width by effectiveness |
+| Relationship          | Color            | Style        | Arrow Type | Notes               |
+| --------------------- | ---------------- | ------------ | ---------- | ------------------- |
+| Level 1 (Op→Strat)    | Red (#E74C3C)    | Thick solid  | → Standard | Causes consequence  |
+| Level 2 (Strat→Strat) | Purple (#8E44AD) | Medium solid | → Standard | Amplifies impact    |
+| Level 3 (Op→Op)       | Blue (#2980B9)   | Thin dashed  | → Standard | Contributes to      |
+| TPO Impact            | Orange (#E67E22) | Dash-dot     | ▷ Vee      | Threatens objective |
+| Mitigates             | Green (#1ABC9C)  | Variable     | ⊣ Bar      | Blocks/reduces risk |
+
+### Mitigation Edge Thickness (by Effectiveness)
+
+| Effectiveness | Width | Description              |
+| ------------- | ----- | ------------------------ |
+| Critical      | 5px   | Highly effective control |
+| High          | 4px   | Strong protection        |
+| Medium        | 3px   | Moderate reduction       |
+| Low           | 2px   | Minimal impact           |
 
 ## 📝 Version History
+
+### v2.1.0 - Enhanced Visualization (January 2025)
+
+**Major Changes:**
+
+- New semantic shape system for instant visual recognition
+- Diamonds for strategic risks (pointed = danger)
+- Circles for operational risks (foundation)
+- Rounded shield-like boxes for mitigations
+- Different arrow types for relationship categories
+- Heat map gradient for exposure coloring
+- Border styles encode mitigation status
 
 ### v2.0.0 - Modular Refactoring (January 2025)
 
