@@ -1240,3 +1240,37 @@ class RiskGraphManager:
         
         result = importer.import_from_excel(filepath)
         return result.to_dict()
+    
+    # =========================================================================
+    # EXPOSURE CALCULATION
+    # =========================================================================
+    
+    def calculate_exposure(self) -> Dict[str, Any]:
+        """
+        Calculate exposure scores for all risks.
+        
+        This method runs the exposure calculation considering:
+        - Base exposure (Likelihood × Impact)
+        - Mitigation effectiveness
+        - Influence limitations from upstream risks
+        
+        Returns:
+            GlobalExposureResult as dictionary with all metrics
+        """
+        from services.exposure_calculator import calculate_exposure
+        
+        # Gather all required data
+        risks = self.get_all_risks()
+        influences = self.get_all_influences()
+        mitigations = self.get_all_mitigations()
+        mitigates_rels = self.get_all_mitigates_relationships()
+        
+        # Run calculation
+        result = calculate_exposure(
+            risks=risks,
+            influences=influences,
+            mitigations=mitigations,
+            mitigates_relationships=mitigates_rels
+        )
+        
+        return result.to_dict()

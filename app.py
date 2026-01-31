@@ -222,6 +222,131 @@ def render_statistics_dashboard(stats: dict):
             st.metric("💊 Mitigates", stats.get("total_mitigates", 0))
 
 
+def render_exposure_dashboard(manager):
+    """Render the exposure calculation dashboard."""
+    with st.expander("⚡ Risk Exposure Analysis", expanded=True):
+        # Check if we have cached results
+        exposure_results = st.session_state.get("exposure_results")
+        
+        col_btn, col_info = st.columns([1, 3])
+        
+        with col_btn:
+            if st.button("🔄 Calculate Exposure", type="primary", use_container_width=True,
+                        help="Run exposure calculation for all risks"):
+                with st.spinner("Calculating exposure scores..."):
+                    try:
+                        results = manager.calculate_exposure()
+                        st.session_state.exposure_results = results
+                        st.success("✅ Calculation complete!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Calculation error: {e}")
+        
+        with col_info:
+            if exposure_results:
+                calc_time = exposure_results.get("calculated_at", "")
+                if calc_time:
+                    try:
+                        from datetime import datetime
+                        dt = datetime.fromisoformat(calc_time)
+                        st.caption(f"Last calculated: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+                    except:
+                        pass
+            else:
+                st.caption("Click 'Calculate Exposure' to compute risk scores")
+        
+        if exposure_results:
+            st.markdown("---")
+            
+            # Main metrics row
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                residual_pct = exposure_results.get("residual_risk_percentage", 0)
+                st.metric(
+                    "📉 Residual Risk",
+                    f"{residual_pct:.1f}%",
+                    help="Percentage of base exposure remaining after mitigations and considering influences"
+                )
+            
+            with col2:
+                weighted_score = exposure_results.get("weighted_risk_score", 0)
+                # Determine health status color
+                if weighted_score <= 10:
+                    health_label, health_color = "Excellent", "🟢"
+                elif weighted_score <= 30:
+                    health_label, health_color = "Good", "🟢"
+                elif weighted_score <= 50:
+                    health_label, health_color = "Moderate", "🟡"
+                elif weighted_score <= 70:
+                    health_label, health_color = "Concerning", "🟠"
+                else:
+                    health_label, health_color = "Critical", "🔴"
+                
+                st.metric(
+                    f"{health_color} Risk Score",
+                    f"{weighted_score:.1f}/100",
+                    help=f"Impact-weighted risk score. Status: {health_label}"
+                )
+            
+            with col3:
+                max_exp = exposure_results.get("max_single_exposure", 0)
+                max_name = exposure_results.get("max_exposure_risk_name", "N/A")
+                st.metric(
+                    "⚠️ Max Exposure",
+                    f"{max_exp:.1f}",
+                    help=f"Highest single risk exposure: {max_name}"
+                )
+            
+            # Secondary metrics row
+            col4, col5, col6, col7 = st.columns(4)
+            
+            with col4:
+                total_base = exposure_results.get("total_base_exposure", 0)
+                st.metric("📊 Total Base", f"{total_base:.0f}")
+            
+            with col5:
+                total_final = exposure_results.get("total_final_exposure", 0)
+                st.metric("📉 Total Final", f"{total_final:.0f}")
+            
+            with col6:
+                mitigated = exposure_results.get("mitigated_risks_count", 0)
+                unmitigated = exposure_results.get("unmitigated_risks_count", 0)
+                st.metric("🛡️ Mitigated", f"{mitigated}/{mitigated + unmitigated}")
+            
+            with col7:
+                risks_with_data = exposure_results.get("risks_with_data", 0)
+                total_risks = exposure_results.get("total_risks", 0)
+                st.metric("📋 With Data", f"{risks_with_data}/{total_risks}")
+            
+            # Details expander
+            with st.expander("📋 Detailed Risk Exposures", expanded=False):
+                risk_results = exposure_results.get("risk_results", [])
+                if risk_results:
+                    # Sort by final exposure descending
+                    sorted_results = sorted(risk_results, key=lambda x: x.get("final_exposure", 0), reverse=True)
+                    
+                    # Create a simple table
+                    st.markdown("**Top Risks by Final Exposure:**")
+                    
+                    for i, r in enumerate(sorted_results[:10]):
+                        level_icon = "🟣" if r.get("level") == "Strategic" else "🔵"
+                        mit_info = f"🛡️×{r.get('mitigation_count', 0)}" if r.get('mitigation_count', 0) > 0 else "⚠️ No mit"
+                        inf_info = f"↑{r.get('upstream_risk_count', 0)}" if r.get('upstream_risk_count', 0) > 0 else ""
+                        
+                        base = r.get("base_exposure", 0)
+                        final = r.get("final_exposure", 0)
+                        reduction = ((base - final) / base * 100) if base > 0 else 0
+                        
+                        st.markdown(
+                            f"{i+1}. {level_icon} **{r.get('risk_name', 'Unknown')}**: "
+                            f"Base={base:.0f} → Final={final:.1f} "
+                            f"({reduction:.0f}% ↓) {mit_info} {inf_info}"
+                        )
+                else:
+                    st.info("No risk exposure data available.")
+
+
 def render_visualization_filters(manager: RiskGraphManager):
     """Render the visualization filters sidebar."""
     from config import RISK_STATUSES, RISK_ORIGINS, MITIGATION_TYPES, MITIGATION_STATUSES
@@ -778,6 +903,9 @@ def main():
     # Statistics dashboard
     stats = manager.get_statistics()
     render_statistics_dashboard(stats)
+    
+    # Exposure analysis dashboard
+    render_exposure_dashboard(manager)
     
     st.markdown("---")
     

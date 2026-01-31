@@ -32,6 +32,13 @@ from services.import_service import (
     ImportResult,
 )
 
+from services.exposure_calculator import (
+    ExposureCalculator,
+    calculate_exposure,
+    RiskExposureResult,
+    GlobalExposureResult,
+)
+
 __all__ = [
     # Influence Analysis
     "InfluenceAnalyzer",
@@ -53,4 +60,9 @@ __all__ = [
     # Import
     "ExcelImporter",
     "ImportResult",
+    # Exposure Calculator
+    "ExposureCalculator",
+    "calculate_exposure",
+    "RiskExposureResult",
+    "GlobalExposureResult",
 ]

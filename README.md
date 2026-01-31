@@ -28,6 +28,21 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
 - Contingent risk support with activation conditions and decision dates
 - Probability × Impact exposure calculation
 
+### Exposure Calculation
+
+- **On-demand calculation** via dedicated button (not real-time for performance)
+- **Base Exposure**: Likelihood × Impact (0-100 scale)
+- **Mitigation Factor**: Multiplicative model with diminishing returns for multiple mitigations
+- **Influence Limitation**: Upstream risks limit downstream mitigation effectiveness
+  - Unmitigated upstream risks create a "floor" for downstream exposure
+  - Models the reality that fixing symptoms without addressing causes has limited effect
+- **Global Metrics**:
+  - **Residual Risk %**: Percentage of base exposure remaining after all factors
+  - **Weighted Risk Score**: Impact²-weighted score (0-100) for executive reporting
+  - **Max Single Exposure**: Alert metric for worst-case individual risk
+- **Health Status Indicator**: Color-coded status (Excellent → Critical)
+- **Detailed Breakdown**: Per-risk exposure analysis with reduction percentages
+
 ### Influence Mapping
 
 - Three types of influence links:
@@ -77,6 +92,7 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
   - Bar-end arrows (⊣) for mitigation relationships
   - Vee arrows (▷) for TPO impact relationships
 - Multiple layout algorithms:
+  - **Hierarchical (Sugiyama)**: Edge-crossing minimization with semantic layer constraints
   - Layered (TPO → Strategic → Operational)
   - Category-based (2×2 grid)
   - TPO Cluster grouping
@@ -115,6 +131,7 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
 ### User Interface
 
 - **Collapsible Statistics Dashboard** at the top of the main view
+- **Risk Exposure Analysis Dashboard** with calculation button and metrics display
 - **Comprehensive Legend** in sidebar with collapsible sections:
   - Node Types (risks, TPOs, mitigations)
   - Link Types (influences, impacts, mitigates)
@@ -261,7 +278,8 @@ rim/
 │   ├── export_service.py   # Excel export functionality
 │   ├── import_service.py   # Excel import functionality
 │   ├── influence_analysis.py  # InfluenceAnalyzer class
-│   └── mitigation_analysis.py # Mitigation coverage analysis
+│   ├── mitigation_analysis.py # Mitigation coverage analysis
+│   └── exposure_calculator.py # Risk exposure calculation engine
 ├── ui/
 │   ├── __init__.py
 │   ├── components.py       # Reusable UI components
@@ -380,6 +398,7 @@ Note: One mitigation can be linked to multiple risks, and one risk can have mult
 
 Predefined layouts available:
 
+- **Hierarchical**: Sugiyama algorithm with edge-crossing minimization
 - **Layered**: TPO at top, Strategic middle, Operational bottom
 - **Categories**: 2×2 grid grouping by category
 - **TPO Clusters**: Group risks by their TPO cluster associations
@@ -447,6 +466,43 @@ The Mitigation Analysis panel provides decision support for risk treatment strat
 - Ensure all Strategic risks have at least one implemented mitigation
 - Monitor category coverage to identify systematic gaps
 - Use the "Visualize in Graph" feature to understand risk context before deciding on mitigation approach
+
+### Using Exposure Calculation
+
+The Exposure Calculation feature provides quantitative risk scoring that accounts for mitigations and influence relationships.
+
+1. In the **⚡ Risk Exposure Analysis** dashboard (below Statistics)
+2. Click **🔄 Calculate Exposure** to run the calculation
+3. Review the three key metrics:
+   - **📉 Residual Risk %**: Overall mitigation effectiveness (lower is better)
+   - **🟢/🟡/🔴 Risk Score**: Impact-weighted score with health status
+   - **⚠️ Max Exposure**: Highest single risk exposure (identifies hotspots)
+4. Expand **📋 Detailed Risk Exposures** to see per-risk breakdown
+
+**Understanding the Calculation:**
+
+The exposure model considers three factors:
+
+1. **Base Exposure** = Likelihood × Impact (0-100 scale)
+2. **Mitigation Effect**: Each mitigation reduces exposure multiplicatively
+   - Critical: 90% reduction, High: 70%, Medium: 50%, Low: 30%
+   - Multiple mitigations have diminishing returns: Factor = ∏(1 - Effectiveness)
+3. **Influence Limitation**: Upstream risks limit downstream mitigation effectiveness
+   - If upstream risks are unmitigated, downstream mitigations are less effective
+   - This models "you can't fully solve symptoms without addressing causes"
+
+**Example:**
+- Risk A (upstream): Base=12, no mitigation → Residual=12 (100%)
+- Risk B (downstream): Base=15, Medium mitigation (50%)
+  - Without influence: Final = 15 × 0.5 = 7.5
+  - With unmitigated upstream: Final ≈ 15 × 0.68 = 10.2 (limitation reduces effectiveness)
+
+**Best Practices:**
+
+- Run calculation after significant data changes (new risks, mitigations, influences)
+- Address high-influence upstream risks before downstream risks
+- Monitor the Max Exposure metric to identify critical hotspots
+- Use the detailed breakdown to prioritize mitigation efforts
 
 ## 📊 Data Model
 
@@ -562,6 +618,33 @@ The Mitigation Analysis panel provides decision support for risk treatment strat
 | Low           | 2px   | Minimal impact           |
 
 ## 📝 Version History
+
+### v2.2.0 - Exposure Calculation & Hierarchical Layout (January 2025)
+
+**Major Changes:**
+
+- **Exposure Calculation Engine**: New quantitative risk scoring system
+  - Calculates risk exposure considering mitigations and influence relationships
+  - Influence Limitation model: upstream risks limit downstream mitigation effectiveness
+  - Three global metrics: Residual Risk %, Weighted Risk Score, Max Exposure
+  - Health status indicator with color coding
+  - Detailed per-risk breakdown with reduction percentages
+  - On-demand calculation via button (not real-time for performance)
+
+- **Hierarchical Layout (Sugiyama Algorithm)**: New graph layout option
+  - Minimizes edge crossings using barycenter heuristic
+  - Respects RIM semantic hierarchy (TPO → Strategic → Operational)
+  - Connected nodes are vertically aligned for better readability
+  - Mitigations positioned alongside their target risks
+  - Available as "🌳 Hierarchical" in predefined layouts
+
+**New Files:**
+- `services/exposure_calculator.py`: Exposure calculation engine
+
+**UI Enhancements:**
+- New "⚡ Risk Exposure Analysis" dashboard section
+- Calculate Exposure button with cached results
+- Detailed exposure breakdown expandable panel
 
 ### v2.1.0 - Enhanced Visualization (January 2025)
 
