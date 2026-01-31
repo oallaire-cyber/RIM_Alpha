@@ -55,8 +55,9 @@ def render_graph(
     filtered_edges = filter_edges_by_score(edges, max_edges, edge_scores)
     
     # Generate auto layout if physics disabled and no positions
+    # Pass edges to enable Sugiyama crossing minimization
     if not physics_enabled and not positions:
-        positions = generate_auto_spread_layout(nodes)
+        positions = generate_auto_spread_layout(nodes, filtered_edges)
     
     # Create network
     try:

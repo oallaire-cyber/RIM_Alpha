@@ -58,6 +58,7 @@ from ui.layouts import (
     generate_layered_layout,
     generate_category_layout,
     generate_tpo_cluster_layout,
+    generate_auto_spread_layout,
 )
 
 
@@ -603,6 +604,18 @@ def render_layout_management(manager: RiskGraphManager):
                 st.rerun()
         
         with col_preset_4:
+            if st.button("🌳 Hierarchical", key="preset_sugiyama", use_container_width=True,
+                        help="Sugiyama algorithm - minimizes edge crossings"):
+                nodes, edges = manager.get_graph_data({"show_tpos": True})
+                positions = generate_auto_spread_layout(nodes, edges)
+                auto_name = f"hierarchical_{datetime.now().strftime('%Y%m%d_%H%M')}"
+                layout_mgr.save_layout(auto_name, positions)
+                st.session_state.selected_layout_name = auto_name
+                st.rerun()
+        
+        col_preset_5, _ = st.columns(2)
+        
+        with col_preset_5:
             if st.button("🔄 Reset Layout", key="reset_layout", use_container_width=True):
                 if "selected_layout_name" in st.session_state:
                     del st.session_state.selected_layout_name

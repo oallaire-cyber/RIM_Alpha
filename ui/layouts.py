@@ -284,20 +284,170 @@ def generate_tpo_cluster_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[s
     return positions
 
 
-def generate_auto_spread_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
+def generate_auto_spread_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]] = None) -> Dict[str, Dict[str, float]]:
     """
-    Generate an automatic spread layout with size-aware spacing.
+    Generate a hierarchical layout using the Sugiyama algorithm.
     
-    Uses a hierarchical layout: TPOs at top, Strategic in middle, Operational at bottom.
-    Nodes are spread horizontally with spacing based on node sizes.
+    The Sugiyama algorithm produces clean layered layouts by:
+    1. Assigning nodes to layers based on graph topology
+    2. Ordering nodes within layers to minimize edge crossings
+    3. Positioning nodes with optimal spacing
+    
+    For RIM, the semantic hierarchy is respected:
+    - TPOs at top (layer 0)
+    - Strategic risks in middle layers
+    - Operational risks in lower layers
+    - Mitigations positioned alongside their targets
     
     Args:
         nodes: List of node dictionaries
+        edges: List of edge dictionaries (optional, for crossing minimization)
     
     Returns:
         Position dictionary mapping node IDs to {x, y}
     """
+    if not nodes:
+        return {}
+    
+    # Build node lookup and edge lists
+    node_map = {n["id"]: n for n in nodes}
+    node_ids = set(node_map.keys())
+    
+    # Parse edges if provided
+    adjacency = {nid: [] for nid in node_ids}  # node -> nodes it points to
+    reverse_adj = {nid: [] for nid in node_ids}  # node -> nodes that point to it
+    
+    if edges:
+        for edge in edges:
+            src, tgt = edge.get("source"), edge.get("target")
+            if src in node_ids and tgt in node_ids:
+                adjacency[src].append(tgt)
+                reverse_adj[tgt].append(src)
+    
+    # ==========================================================================
+    # PHASE 1: Layer Assignment (strict semantic constraints for RIM)
+    # ==========================================================================
+    
+    def get_semantic_layer(node: Dict[str, Any]) -> int:
+        """
+        Get the semantic layer for a node based on RIM hierarchy.
+        
+        RIM hierarchy (top to bottom):
+        - Layer 0: TPOs (goals/objectives at the top)
+        - Layer 1: Strategic risks (consequences)
+        - Layer 2: Operational risks (causes)
+        - Layer 3: Mitigations (positioned alongside their targets)
+        """
+        node_type = node.get("node_type", "Risk")
+        level = node.get("level", "Operational")
+        
+        if node_type == "TPO":
+            return 0  # TPOs always at top
+        elif node_type == "Mitigation":
+            return 3  # Mitigations in a separate layer
+        elif level == "Strategic":
+            return 1  # Strategic risks below TPOs
+        else:  # Operational
+            return 2  # Operational risks below Strategic
+    
+    # Assign layers based strictly on semantics
+    # Unlike traditional Sugiyama, we don't adjust layers based on edges
+    # because RIM has a defined semantic hierarchy that must be preserved
+    node_layers = {}
+    for nid, node in node_map.items():
+        node_layers[nid] = get_semantic_layer(node)
+    
+    # Group nodes by layer
+    layers = {}
+    for nid, layer in node_layers.items():
+        if layer not in layers:
+            layers[layer] = []
+        layers[layer].append(nid)
+    
+    # ==========================================================================
+    # PHASE 2: Crossing Minimization (Barycenter heuristic)
+    # ==========================================================================
+    
+    def get_barycenter(node_id: str, adjacent_layer_order: Dict[str, int]) -> float:
+        """Calculate barycenter (average position) of connected nodes in adjacent layer."""
+        connected = adjacency[node_id] + reverse_adj[node_id]
+        positions_in_adj = [adjacent_layer_order[n] for n in connected if n in adjacent_layer_order]
+        
+        if not positions_in_adj:
+            return float('inf')  # No connections, keep original position
+        
+        return sum(positions_in_adj) / len(positions_in_adj)
+    
+    # Sort layers by layer number
+    sorted_layer_nums = sorted(layers.keys())
+    
+    # Initial ordering: sort by semantic type, then by name for stability
+    for layer_num in sorted_layer_nums:
+        layer_nodes = layers[layer_num]
+        # Sort by node type priority, then name
+        def sort_key(nid):
+            node = node_map[nid]
+            type_priority = {
+                "TPO": 0,
+                "Risk": 1,
+                "Mitigation": 2
+            }
+            return (
+                type_priority.get(node.get("node_type", "Risk"), 1),
+                node.get("name", nid)
+            )
+        layers[layer_num] = sorted(layer_nodes, key=sort_key)
+    
+    # Barycenter ordering passes (top-down then bottom-up)
+    for iteration in range(4):
+        # Top-down pass
+        for i in range(1, len(sorted_layer_nums)):
+            layer_num = sorted_layer_nums[i]
+            prev_layer_num = sorted_layer_nums[i - 1]
+            
+            # Build position map for previous layer
+            prev_order = {nid: idx for idx, nid in enumerate(layers[prev_layer_num])}
+            
+            # Calculate barycenters and sort
+            current_nodes = layers[layer_num]
+            barycenters = [(nid, get_barycenter(nid, prev_order)) for nid in current_nodes]
+            
+            # Sort by barycenter, keeping nodes with no connections in their relative positions
+            connected = [(nid, bc) for nid, bc in barycenters if bc != float('inf')]
+            unconnected = [nid for nid, bc in barycenters if bc == float('inf')]
+            
+            connected.sort(key=lambda x: x[1])
+            layers[layer_num] = [nid for nid, _ in connected] + unconnected
+        
+        # Bottom-up pass
+        for i in range(len(sorted_layer_nums) - 2, -1, -1):
+            layer_num = sorted_layer_nums[i]
+            next_layer_num = sorted_layer_nums[i + 1]
+            
+            # Build position map for next layer
+            next_order = {nid: idx for idx, nid in enumerate(layers[next_layer_num])}
+            
+            # Calculate barycenters and sort
+            current_nodes = layers[layer_num]
+            barycenters = [(nid, get_barycenter(nid, next_order)) for nid in current_nodes]
+            
+            connected = [(nid, bc) for nid, bc in barycenters if bc != float('inf')]
+            unconnected = [nid for nid, bc in barycenters if bc == float('inf')]
+            
+            connected.sort(key=lambda x: x[1])
+            layers[layer_num] = [nid for nid, _ in connected] + unconnected
+    
+    # ==========================================================================
+    # PHASE 3: Coordinate Assignment
+    # ==========================================================================
+    
     positions = {}
+    
+    # Layout parameters
+    canvas_width = 1400
+    margin_x = 100
+    layer_spacing = 150  # Vertical spacing between layers
+    min_node_spacing = 180  # Minimum horizontal spacing between nodes
     
     def get_node_size(node: Dict[str, Any]) -> float:
         """Calculate the visual size of a node."""
@@ -310,134 +460,125 @@ def generate_auto_spread_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[s
             exposure = node.get("exposure") or 0
             return 25 + (exposure * 1.5) if exposure else 25
     
-    def get_node_width(node: Dict[str, Any]) -> float:
-        """Estimate the total width a node needs."""
-        size = get_node_size(node)
-        label_width = 180  # max label width
-        return max(size * 2, label_width) + 20
+    # Calculate Y positions for each layer
+    layer_y_positions = {}
+    current_y = 80
     
-    # Separate nodes by type/level
-    tpos = [n for n in nodes if n.get("node_type") == "TPO"]
-    strategic = [n for n in nodes if n.get("level") == "Strategic" and n.get("node_type") not in ("TPO", "Mitigation")]
-    operational = [n for n in nodes if n.get("level") == "Operational" and n.get("node_type") not in ("TPO", "Mitigation")]
-    mitigations = [n for n in nodes if n.get("node_type") == "Mitigation"]
+    for layer_num in sorted_layer_nums:
+        layer_y_positions[layer_num] = current_y
+        
+        # Calculate max node size in this layer
+        layer_nodes = layers[layer_num]
+        if layer_nodes:
+            max_size = max(get_node_size(node_map[nid]) for nid in layer_nodes)
+            current_y += layer_spacing + max_size
+        else:
+            current_y += layer_spacing
     
-    # Layout parameters
-    canvas_width = 1400
-    margin_x = 100
-    min_spacing = 50
-    
-    def layout_row(node_list: List[Dict], y_position: float) -> float:
-        """Layout a row of nodes, returns row height."""
-        n = len(node_list)
+    # Calculate X positions using median method with rubber-banding
+    for layer_num in sorted_layer_nums:
+        layer_nodes = layers[layer_num]
+        n = len(layer_nodes)
+        
         if n == 0:
-            return 0
+            continue
+        
+        y_pos = layer_y_positions[layer_num]
         
         if n == 1:
-            positions[node_list[0]["id"]] = {
+            # Center single node
+            positions[layer_nodes[0]] = {
                 "x": int(canvas_width / 2),
-                "y": int(y_position)
+                "y": int(y_pos)
             }
-            return get_node_size(node_list[0]) * 2
-        
-        # Calculate spacings
-        spacings = []
-        for i in range(n - 1):
-            current_width = get_node_width(node_list[i])
-            next_width = get_node_width(node_list[i + 1])
-            spacing = (current_width / 2) + min_spacing + (next_width / 2)
-            spacings.append(spacing)
-        
-        total_width = sum(spacings)
-        
-        # Scale if too wide
-        available_width = canvas_width - 2 * margin_x
-        if total_width > available_width:
-            scale = available_width / total_width
-            spacings = [s * scale for s in spacings]
-            total_width = available_width
-        
-        # Center the row
-        start_x = (canvas_width - total_width) / 2
-        start_x = max(start_x, margin_x)
-        
-        # Place nodes
-        current_x = start_x
-        max_size = 0
-        for i, node in enumerate(node_list):
-            positions[node["id"]] = {
-                "x": int(current_x),
-                "y": int(y_position)
-            }
-            max_size = max(max_size, get_node_size(node))
-            if i < len(spacings):
-                current_x += spacings[i]
-        
-        return max_size * 2
-    
-    def layout_grid(node_list: List[Dict], y_start: float, max_per_row: int = 5) -> float:
-        """Layout nodes in a grid pattern."""
-        n = len(node_list)
-        if n == 0:
-            return 0
-        
-        rows = math.ceil(n / max_per_row)
-        current_y = y_start
-        total_height = 0
-        
-        for row_idx in range(rows):
-            start_idx = row_idx * max_per_row
-            end_idx = min(start_idx + max_per_row, n)
-            row_nodes = node_list[start_idx:end_idx]
+        else:
+            # Calculate ideal positions based on connected nodes in previous layers
+            ideal_x = {}
             
-            row_height = layout_row(row_nodes, current_y)
+            for nid in layer_nodes:
+                connected = adjacency[nid] + reverse_adj[nid]
+                connected_positions = [positions[c]["x"] for c in connected if c in positions]
+                
+                if connected_positions:
+                    # Use median of connected positions
+                    connected_positions.sort()
+                    mid = len(connected_positions) // 2
+                    if len(connected_positions) % 2 == 0:
+                        ideal_x[nid] = (connected_positions[mid-1] + connected_positions[mid]) / 2
+                    else:
+                        ideal_x[nid] = connected_positions[mid]
+                else:
+                    ideal_x[nid] = None
             
-            max_node_size = max(get_node_size(node) for node in row_nodes)
-            row_spacing = max_node_size * 2 + min_spacing + 40
+            # Assign positions ensuring minimum spacing
+            available_width = canvas_width - 2 * margin_x
+            total_spacing = (n - 1) * min_node_spacing
             
-            current_y += row_spacing
-            total_height += row_spacing
-        
-        return total_height
+            if total_spacing > available_width:
+                # Scale down spacing to fit
+                actual_spacing = available_width / (n - 1)
+            else:
+                actual_spacing = min_node_spacing
+            
+            # Start position to center the nodes
+            total_width = actual_spacing * (n - 1)
+            start_x = (canvas_width - total_width) / 2
+            
+            # Position nodes
+            for i, nid in enumerate(layer_nodes):
+                x_pos = start_x + i * actual_spacing
+                
+                # Adjust towards ideal position while maintaining spacing
+                if ideal_x[nid] is not None:
+                    # Blend between grid position and ideal position
+                    blend_factor = 0.3  # How much to move towards ideal
+                    min_x = margin_x + i * min_node_spacing * 0.5
+                    max_x = canvas_width - margin_x - (n - 1 - i) * min_node_spacing * 0.5
+                    ideal = ideal_x[nid]
+                    
+                    # Ensure we don't violate boundaries
+                    target_x = x_pos + (ideal - x_pos) * blend_factor
+                    target_x = max(min_x, min(max_x, target_x))
+                    x_pos = target_x
+                
+                positions[nid] = {
+                    "x": int(x_pos),
+                    "y": int(y_pos)
+                }
     
-    # Layout each layer
-    y_tpo = 80
-    tpo_height = layout_row(tpos, y_tpo) if tpos else 0
+    # ==========================================================================
+    # PHASE 4: Post-processing for mitigations
+    # ==========================================================================
     
-    max_tpo_size = max([get_node_size(n) for n in tpos], default=35)
-    y_strategic = y_tpo + max(tpo_height, max_tpo_size * 2) + 80
-    
-    if len(strategic) <= 5:
-        strategic_height = layout_row(strategic, y_strategic) if strategic else 0
-    else:
-        strategic_height = layout_grid(strategic, y_strategic, 5)
-    
-    max_strategic_size = max([get_node_size(n) for n in strategic], default=25)
-    y_operational = y_strategic + max(strategic_height, max_strategic_size * 2) + 100
-    
-    if len(operational) <= 6:
-        layout_row(operational, y_operational)
-    else:
-        layout_grid(operational, y_operational, 6)
-    
-    # Mitigations on the right side
-    if mitigations:
-        y_mit = y_strategic
-        for i, node in enumerate(mitigations):
-            positions[node["id"]] = {
-                "x": int(canvas_width - 100),
-                "y": int(y_mit + (i * 60))
-            }
+    # Reposition mitigations closer to their target risks
+    for nid in node_ids:
+        node = node_map[nid]
+        if node.get("node_type") == "Mitigation":
+            # Find connected risk nodes
+            connected = adjacency[nid] + reverse_adj[nid]
+            connected_risks = [c for c in connected if c in positions and 
+                             node_map[c].get("node_type") != "Mitigation"]
+            
+            if connected_risks:
+                # Position mitigation to the right of its primary target
+                primary_target = connected_risks[0]
+                target_pos = positions[primary_target]
+                
+                positions[nid] = {
+                    "x": int(min(target_pos["x"] + 250, canvas_width - margin_x)),
+                    "y": int(target_pos["y"])
+                }
     
     return positions
 
 
 # Layout generators registry
+# Note: auto_spread now uses Sugiyama algorithm for hierarchical layout
 LAYOUT_GENERATORS = {
     "layered": ("Layered (Risk Levels)", generate_layered_layout),
     "category": ("By Category", generate_category_layout),
     "tpo_cluster": ("By TPO Cluster", generate_tpo_cluster_layout),
-    "auto_spread": ("Auto Spread", generate_auto_spread_layout),
+    "auto_spread": ("Hierarchical (Sugiyama)", generate_auto_spread_layout),
 }
 
 
@@ -446,19 +587,35 @@ def get_layout_options() -> List[str]:
     return [name for name, _ in LAYOUT_GENERATORS.values()]
 
 
-def generate_layout(layout_type: str, nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
+def generate_layout(
+    layout_type: str, 
+    nodes: List[Dict[str, Any]], 
+    edges: List[Dict[str, Any]] = None
+) -> Dict[str, Dict[str, float]]:
     """
     Generate layout using the specified generator.
     
     Args:
         layout_type: Key of the layout generator
         nodes: List of node dictionaries
+        edges: List of edge dictionaries (used by Sugiyama algorithm for crossing minimization)
     
     Returns:
         Position dictionary
     """
     if layout_type in LAYOUT_GENERATORS:
         _, generator = LAYOUT_GENERATORS[layout_type]
+        
+        # Pass edges to auto_spread (Sugiyama) layout if available
+        if layout_type == "auto_spread" and edges is not None:
+            return generator(nodes, edges)
+        
+        # Check if the generator accepts edges parameter
+        import inspect
+        sig = inspect.signature(generator)
+        if 'edges' in sig.parameters and edges is not None:
+            return generator(nodes, edges)
+        
         return generator(nodes)
     
     # Default to layered
