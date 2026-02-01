@@ -84,6 +84,206 @@ def init_session_state():
         st.session_state.selected_node_id = None
 
 
+def render_help_section():
+    """Render the help section in the sidebar."""
+    with st.sidebar.expander("❓ Help & Documentation", expanded=False):
+        help_tab = st.radio(
+            "Select topic:",
+            ["Overview", "Exposure Calculation", "Influence Model", "Mitigations", "Layouts"],
+            label_visibility="collapsed",
+            horizontal=True
+        )
+        
+        if help_tab == "Overview":
+            st.markdown("""
+            ### 🎯 RIM Overview
+            
+            The **Risk Influence Map** visualizes relationships between:
+            
+            - **Strategic Risks** (◆): Consequence-oriented, managed by leadership
+            - **Operational Risks** (●): Cause-oriented, managed by teams  
+            - **TPOs** (⬡): Top Program Objectives
+            - **Mitigations** (🛡️): Risk treatments
+            
+            **Influence Types:**
+            - **Level 1** (red): Operational → Strategic
+            - **Level 2** (purple): Strategic → Strategic
+            - **Level 3** (blue): Operational → Operational
+            """)
+        
+        elif help_tab == "Exposure Calculation":
+            st.markdown("""
+            ### ⚡ Exposure Calculation
+            
+            The exposure model quantifies risk considering three factors:
+            
+            ---
+            
+            **1️⃣ Base Exposure**
+            ```
+            Base = Likelihood × Impact
+            ```
+            Scale: 1-10 each, so Base ranges 1-100
+            
+            ---
+            
+            **2️⃣ Mitigation Factor**
+            
+            Multiple mitigations combine with **diminishing returns**:
+            ```
+            Factor = ∏(1 - Effectiveness)
+            ```
+            
+            | Effectiveness | Reduction |
+            |---------------|-----------|
+            | Critical | 90% |
+            | High | 70% |
+            | Medium | 50% |
+            | Low | 30% |
+            
+            *Example: High + Medium = 0.3 × 0.5 = 0.15 (85% reduction)*
+            
+            ---
+            
+            **3️⃣ Influence Limitation**
+            
+            Upstream risks **limit** how effective downstream mitigations can be:
+            ```
+            Limitation = Avg(Upstream_Residual × Strength)
+            ```
+            
+            | Strength | Weight |
+            |----------|--------|
+            | Critical | 1.0 |
+            | Strong | 0.75 |
+            | Moderate | 0.50 |
+            | Weak | 0.25 |
+            
+            The effective mitigation becomes:
+            ```
+            Effective = Mit_Factor + (1 - Mit_Factor) × Limitation
+            ```
+            
+            *This models: "fixing symptoms without addressing causes has limited effect"*
+            
+            ---
+            
+            **4️⃣ Final Exposure**
+            ```
+            Final = Base × Effective_Mitigation_Factor
+            ```
+            
+            ---
+            
+            **📊 Global Metrics**
+            
+            | Metric | Formula | Purpose |
+            |--------|---------|---------|
+            | Residual % | Σ(Final)/Σ(Base)×100 | Overall effectiveness |
+            | Risk Score | Impact²-weighted (0-100) | Executive metric |
+            | Max Exposure | max(Final) | Hotspot alert |
+            """)
+        
+        elif help_tab == "Influence Model":
+            st.markdown("""
+            ### 🔗 Influence Model
+            
+            Influences represent how risks affect each other:
+            
+            **Direction Matters:**
+            - Source risk **causes or contributes to** target risk
+            - Operational risks typically influence Strategic risks
+            
+            **Influence Types (Auto-determined):**
+            
+            | Type | From → To | Meaning |
+            |------|-----------|---------|
+            | Level 1 | Op → Strat | Causes consequence |
+            | Level 2 | Strat → Strat | Amplifies impact |
+            | Level 3 | Op → Op | Contributes to |
+            
+            **Strength Levels:**
+            - **Critical**: Direct, inevitable causation
+            - **Strong**: High probability of propagation
+            - **Moderate**: Likely contributes
+            - **Weak**: Possible minor contribution
+            
+            **Analysis Features:**
+            - **Top Propagators**: Risks with highest downstream impact
+            - **Convergence Points**: Where multiple influences meet
+            - **Critical Paths**: Strongest chains to TPOs
+            - **Bottlenecks**: Single points of failure
+            """)
+        
+        elif help_tab == "Mitigations":
+            st.markdown("""
+            ### 🛡️ Mitigation Model
+            
+            **Mitigation Types:**
+            
+            | Type | Description | Visual |
+            |------|-------------|--------|
+            | Dedicated | Program-specific | Teal, solid |
+            | Inherited | From other sources | Blue, dotted |
+            | Baseline | Standards/regulations | Purple, thick |
+            
+            **Status Levels:**
+            - **Implemented**: Active protection ✅
+            - **In Progress**: Being deployed 🔄
+            - **Proposed**: Planned 📋
+            - **Deferred**: On hold ⏸️
+            
+            **Effectiveness Levels:**
+            
+            | Level | Reduction | When to use |
+            |-------|-----------|-------------|
+            | Critical | 90% | Eliminates root cause |
+            | High | 70% | Significantly reduces |
+            | Medium | 50% | Moderate reduction |
+            | Low | 30% | Minor reduction |
+            
+            **Key Principle:**
+            One mitigation can address multiple risks, and one risk can have multiple mitigations.
+            
+            **Strategic Advice:**
+            - Mitigate upstream risks first (influence limitation)
+            - Prioritize high-exposure, high-influence risks
+            - Check coverage gaps regularly
+            """)
+        
+        elif help_tab == "Layouts":
+            st.markdown("""
+            ### 📐 Graph Layouts
+            
+            **Predefined Layouts:**
+            
+            | Layout | Description |
+            |--------|-------------|
+            | 🌳 Hierarchical | Sugiyama algorithm, minimizes edge crossings |
+            | 📊 Layered | TPO → Strategic → Operational rows |
+            | 🗂️ Categories | 2×2 grid by category |
+            | 🏆 TPO Clusters | Grouped by TPO associations |
+            
+            **Hierarchical (Sugiyama) Algorithm:**
+            
+            1. **Layer Assignment**: Nodes assigned to layers based on RIM hierarchy
+            2. **Crossing Minimization**: Barycenter heuristic orders nodes to reduce edge crossings
+            3. **Coordinate Assignment**: Positions nodes with connected nodes aligned
+            
+            **Manual Layout:**
+            1. Disable physics (⚙️ Graph Options)
+            2. Drag nodes to desired positions
+            3. Enable "📍 Position capture"
+            4. Click capture button on graph
+            5. Save layout in 💾 Layout Management
+            
+            **Tips:**
+            - Use Hierarchical for presentations
+            - Disable physics for stable manual layouts
+            - Saved layouts persist across sessions
+            """)
+
+
 def render_connection_sidebar():
     """Render the Neo4j connection sidebar."""
     st.sidebar.markdown("## 🔌 Neo4j Connection")
@@ -119,6 +319,8 @@ def render_connection_sidebar():
     if st.session_state.connected:
         st.sidebar.markdown("---")
         render_graph_legend(expanded=False)
+        st.sidebar.markdown("---")
+        render_help_section()
 
 
 def render_welcome_page():

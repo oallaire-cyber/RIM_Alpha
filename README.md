@@ -136,6 +136,12 @@ The Risk Influence Map (RIM) is an innovative methodology for visualizing and ma
   - Node Types (risks, TPOs, mitigations)
   - Link Types (influences, impacts, mitigates)
   - Edge Thickness meanings
+- **Help & Documentation** section in sidebar with topics:
+  - Overview of RIM concepts
+  - Exposure Calculation methodology with formulas
+  - Influence Model explanation
+  - Mitigation effectiveness guide
+  - Layout algorithms description
 - **Analysis Panels** in the visualization area:
   - 📊 Influence Analysis (Top Propagators, Convergence Points, Critical Paths, Bottlenecks, Clusters)
   - 🛡️ Mitigation Analysis (Risk Treatment, Mitigation Impact, Coverage Gaps)
@@ -253,6 +259,7 @@ RETURN count(r) as updated_risks
 ```
 rim/
 ├── app.py                  # Main application entry point
+├── calibration_simulator.py # Monte Carlo model calibration tool
 ├── config/
 │   ├── __init__.py
 │   └── settings.py         # Application settings and constants
@@ -504,6 +511,44 @@ The exposure model considers three factors:
 - Monitor the Max Exposure metric to identify critical hotspots
 - Use the detailed breakdown to prioritize mitigation efforts
 
+### Calibrating the Exposure Model
+
+A Monte Carlo simulation tool is provided to validate and calibrate the exposure calculation model.
+
+**Running the Calibration Simulator:**
+
+```bash
+streamlit run calibration_simulator.py
+```
+
+**Simulation Modes:**
+
+1. **Monte Carlo (Random)**: Generates thousands of random scenarios
+   - Random likelihood, impact, influence strength values
+   - Random mitigation coverage levels
+   - Visualizes distribution of outcomes
+
+2. **Mitigation Path**: Shows exposure evolution as mitigations are added
+   - Starts with no mitigations
+   - Progressively adds mitigations (prioritizing high-impact risks)
+   - Shows how exposure decreases along the mitigation path
+
+**Visualizations:**
+
+- **Distribution Plots**: Histograms of residual risk %, risk score, max exposure
+- **Scatter Clouds**: Coverage vs residual risk, colored by influence strength
+- **Heatmaps**: Sensitivity analysis (coverage × influence → residual risk)
+- **3D Scatter**: Multi-dimensional view of key factors
+- **Path Evolution**: Individual paths with confidence bands
+- **Density Contours**: Concentration of outcomes
+
+**Use Cases:**
+
+- Validate that the model produces reasonable results across parameter ranges
+- Identify sensitivity to influence strength (how much does it affect mitigation effectiveness?)
+- Determine optimal mitigation strategies (which risks to mitigate first?)
+- Calibrate effectiveness scores if needed
+
 ## 📊 Data Model
 
 ### Nodes
@@ -638,13 +683,29 @@ The exposure model considers three factors:
   - Mitigations positioned alongside their target risks
   - Available as "🌳 Hierarchical" in predefined layouts
 
+- **Help & Documentation Section**: In-app help system
+  - Accessible from sidebar with topic-based navigation
+  - Detailed exposure calculation methodology with formulas
+  - Influence model explanation
+  - Mitigation effectiveness guide
+  - Layout algorithms description
+
+- **Monte Carlo Calibration Simulator**: Model validation tool
+  - Separate Streamlit app for exposure model calibration
+  - Two modes: Monte Carlo (random scenarios) and Mitigation Path (progressive)
+  - Rich visualizations: distributions, scatter clouds, heatmaps, 3D plots
+  - Sensitivity analysis for model parameters
+  - CSV export of simulation results
+
 **New Files:**
 - `services/exposure_calculator.py`: Exposure calculation engine
+- `calibration_simulator.py`: Monte Carlo simulation tool
 
 **UI Enhancements:**
 - New "⚡ Risk Exposure Analysis" dashboard section
 - Calculate Exposure button with cached results
 - Detailed exposure breakdown expandable panel
+- "❓ Help & Documentation" section in sidebar
 
 ### v2.1.0 - Enhanced Visualization (January 2025)
 
