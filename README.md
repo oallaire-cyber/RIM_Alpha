@@ -116,8 +116,47 @@ rim/
 │   ├── edge_styles.py        # Relationship visualization
 │   └── colors.py             # Color palette
 ├── utils/                    # Helper functions
+├── tests/                    # Test suite
+│   ├── conftest.py           # Shared fixtures
+│   ├── test_enums.py         # Enum tests
+│   ├── test_risk.py          # Risk model tests
+│   ├── test_mitigation.py    # Mitigation model tests
+│   ├── test_tpo.py           # TPO model tests
+│   ├── test_relationships.py # Relationship tests
+│   ├── test_helpers.py       # Utility tests
+│   └── test_*.py             # Service tests
 └── docs/                     # Documentation
 ```
+
+## 🧪 Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+python -m pytest tests/ -v
+
+# Run with coverage report
+python -m pytest tests/ --cov=models --cov=utils --cov=services
+
+# Run specific module tests
+python -m pytest tests/test_enums.py -v
+python -m pytest tests/test_risk.py -v
+```
+
+### Test Coverage
+
+| Module | Test File | Coverage |
+|--------|-----------|----------|
+| `models/enums.py` | `test_enums.py` | ✓ Complete |
+| `models/risk.py` | `test_risk.py` | ✓ Complete |
+| `models/mitigation.py` | `test_mitigation.py` | ✓ Complete |
+| `models/tpo.py` | `test_tpo.py` | ✓ Complete |
+| `models/relationships.py` | `test_relationships.py` | ✓ Complete |
+| `utils/helpers.py` | `test_helpers.py` | ✓ Complete |
+| `services/exposure_calculator.py` | `test_exposure_calculator.py` | Partial |
+| `services/influence_analysis.py` | `test_influence_analysis.py` | Partial |
+| `services/mitigation_analysis.py` | `test_mitigation_analysis.py` | Partial |
 
 ## 🔧 Configuration
 
@@ -172,4 +211,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.2.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.3.0 | See [CHANGELOG.md](CHANGELOG.md) for history

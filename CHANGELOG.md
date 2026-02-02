@@ -4,6 +4,51 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.3.0] - 2026-02-02
+
+### Test Suite Implementation
+
+**New Features:**
+
+- **Comprehensive Test Infrastructure**
+  - Added pytest and pytest-cov to dependencies
+  - Created `pytest.ini` configuration
+  - Created `tests/conftest.py` with shared fixtures and sample data
+
+- **Model Unit Tests** (100% coverage)
+  - `test_enums.py`: Tests for all enum classes (RiskLevel, RiskStatus, etc.)
+  - `test_risk.py`: Tests for Risk dataclass creation, properties, serialization
+  - `test_mitigation.py`: Tests for Mitigation dataclass
+  - `test_tpo.py`: Tests for TPO dataclass
+  - `test_relationships.py`: Tests for Influence, TPOImpact, MitigatesRelationship
+
+- **Utility Unit Tests** (100% coverage)
+  - `test_helpers.py`: Tests for all helper functions (format_percentage, wrap_text, etc.)
+
+- **Service Unit Tests** (Partial coverage)
+  - `test_exposure_calculator.py`: Tests for ExposureCalculator and data classes
+  - `test_influence_analysis.py`: Tests for InfluenceAnalyzer and results
+  - `test_mitigation_analysis.py`: Tests for MitigationAnalyzer coverage analysis
+
+**Files Added:**
+- `pytest.ini` (8 lines)
+- `tests/conftest.py` (262 lines)
+- `tests/test_enums.py` (264 lines)
+- `tests/test_risk.py` (347 lines)
+- `tests/test_mitigation.py` (318 lines)
+- `tests/test_tpo.py` (296 lines)
+- `tests/test_relationships.py` (404 lines)
+- `tests/test_helpers.py` (364 lines)
+- `tests/test_exposure_calculator.py` (329 lines)
+- `tests/test_influence_analysis.py` (290 lines)
+- `tests/test_mitigation_analysis.py` (385 lines)
+
+**Dependencies Added:**
+- `pytest>=7.4.0`
+- `pytest-cov>=4.1.0`
+
+---
+
 ## [v2.2.0] - 2026-02-01
 
 ### Exposure Calculation & Hierarchical Layout
