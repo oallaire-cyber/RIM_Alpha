@@ -1,0 +1,502 @@
+# RIM IT Security Schema
+# Example cybersecurity profile demonstrating schema flexibility
+
+version: "1.0"
+name: "IT Security"
+description: "IT Security and Cybersecurity risk management schema"
+
+entities:
+  risk:
+    neo4j_label: "Risk"
+    levels:
+      - id: "enterprise"
+        label: "Enterprise"
+        description: "Organization-wide strategic security risks"
+        color: "#8E44AD"
+        shape: "diamond"
+        emoji: "◆"
+        size: 35
+      - id: "tactical"
+        label: "Tactical"
+        description: "Technical and operational security risks"
+        color: "#2980B9"
+        shape: "dot"
+        emoji: "●"
+        size: 30
+    
+    categories:
+      - id: "cyber"
+        label: "Cyber"
+        description: "Digital and network security risks"
+        color: "#e74c3c"
+      - id: "physical"
+        label: "Physical"
+        description: "Physical security risks"
+        color: "#8E44AD"
+      - id: "personnel"
+        label: "Personnel"
+        description: "Human and insider threats"
+        color: "#3498db"
+      - id: "compliance"
+        label: "Compliance"
+        description: "Regulatory and compliance risks"
+        color: "#27ae60"
+    
+    statuses:
+      - id: "active"
+        label: "Active"
+        description: "Currently active threats"
+        is_active: true
+      - id: "potential"
+        label: "Potential"
+        description: "Potential or emerging threats"
+        is_active: true
+      - id: "mitigated"
+        label: "Mitigated"
+        description: "Risks with controls in place"
+        is_active: true
+      - id: "closed"
+        label: "Closed"
+        description: "Resolved or inactive risks"
+        is_active: false
+    
+    origins:
+      - id: "internal"
+        label: "Internal"
+        description: "Internally identified risks"
+      - id: "external"
+        label: "External"
+        description: "Externally reported risks"
+      - id: "audit"
+        label: "Audit"
+        description: "Risks from audits or assessments"
+    
+    attributes:
+      - name: "name"
+        type: "string"
+        required: true
+        description: "Risk name"
+      - name: "description"
+        type: "string"
+        required: false
+        description: "Risk description"
+      - name: "owner"
+        type: "string"
+        required: false
+        description: "Risk owner"
+      - name: "probability"
+        type: "float"
+        required: false
+        default: null
+        description: "Likelihood rating (1-10)"
+      - name: "impact"
+        type: "float"
+        required: false
+        default: null
+        description: "Impact rating (1-10)"
+      - name: "threat_actor"
+        type: "string"
+        required: false
+        description: "Associated threat actor or source"
+      - name: "attack_vector"
+        type: "string"
+        required: false
+        description: "Attack vector or method"
+    
+    custom_attributes:
+      - id: "cvss_score"
+        label: "CVSS Score"
+        type: "float"
+        required: false
+        default: null
+        description: "Common Vulnerability Scoring System score"
+      - id: "affected_systems"
+        label: "Affected Systems"
+        type: "string"
+        required: false
+        description: "Systems or applications affected"
+
+  tpo:
+    neo4j_label: "TPO"
+    clusters:
+      - id: "confidentiality"
+        label: "Confidentiality"
+        description: "Data protection and privacy objectives"
+        color: "#e74c3c"
+      - id: "integrity"
+        label: "Integrity"
+        description: "Data and system integrity objectives"
+        color: "#f39c12"
+      - id: "availability"
+        label: "Availability"
+        description: "System availability objectives"
+        color: "#27ae60"
+      - id: "compliance"
+        label: "Compliance"
+        description: "Regulatory compliance objectives"
+        color: "#8E44AD"
+    
+    attributes:
+      - name: "reference"
+        type: "string"
+        required: true
+        description: "TPO reference code"
+      - name: "name"
+        type: "string"
+        required: true
+        description: "TPO name"
+      - name: "description"
+        type: "string"
+        required: false
+        description: "TPO description"
+      - name: "regulation"
+        type: "string"
+        required: false
+        description: "Associated regulation (e.g., GDPR, SOX)"
+
+  mitigation:
+    neo4j_label: "Mitigation"
+    types:
+      - id: "technical"
+        label: "Technical"
+        description: "Technical controls and solutions"
+        color: "#27ae60"
+        line_style: "solid"
+      - id: "administrative"
+        label: "Administrative"
+        description: "Policy and procedural controls"
+        color: "#3498db"
+        line_style: "dotted"
+      - id: "physical"
+        label: "Physical"
+        description: "Physical security controls"
+        color: "#8E44AD"
+        line_style: "dashed"
+    
+    statuses:
+      - id: "planned"
+        label: "Planned"
+        description: "Controls under planning"
+        is_active: true
+      - id: "implementing"
+        label: "Implementing"
+        description: "Controls being deployed"
+        is_active: true
+      - id: "active"
+        label: "Active"
+        description: "Controls in operation"
+        is_active: true
+      - id: "deprecated"
+        label: "Deprecated"
+        description: "Phased out or replaced controls"
+        is_active: false
+    
+    attributes:
+      - name: "name"
+        type: "string"
+        required: true
+        description: "Control name"
+      - name: "description"
+        type: "string"
+        required: false
+        description: "Control description"
+      - name: "owner"
+        type: "string"
+        required: false
+        description: "Control owner"
+      - name: "framework_ref"
+        type: "string"
+        required: false
+        description: "Framework reference (e.g., NIST CSF, ISO 27001)"
+
+  # Custom entity types for IT Security domain
+  custom_entities:
+    - id: "asset"
+      label: "Asset"
+      neo4j_label: "Asset"
+      description: "IT assets, systems, and infrastructure"
+      color: "#3498db"
+      shape: "box"
+      emoji: "🖥️"
+      size: 28
+      attributes:
+        - name: "reference"
+          type: "string"
+          required: true
+          description: "Asset identifier"
+        - name: "name"
+          type: "string"
+          required: true
+          description: "Asset name"
+        - name: "description"
+          type: "string"
+          required: false
+          description: "Asset description"
+        - name: "asset_type"
+          type: "string"
+          required: false
+          description: "Type (Server, Workstation, Network, Application, Data)"
+        - name: "criticality"
+          type: "int"
+          required: false
+          default: 5
+          description: "Criticality rating (1-10)"
+    
+    - id: "threat_actor"
+      label: "Threat Actor"
+      neo4j_label: "ThreatActor"
+      description: "Threat actors and adversary groups"
+      color: "#c0392b"
+      shape: "diamond"
+      emoji: "👤"
+      size: 30
+      attributes:
+        - name: "reference"
+          type: "string"
+          required: true
+          description: "Threat actor ID"
+        - name: "name"
+          type: "string"
+          required: true
+          description: "Threat actor name or group"
+        - name: "description"
+          type: "string"
+          required: false
+          description: "Description and tactics"
+        - name: "motivation"
+          type: "string"
+          required: false
+          description: "Motivation (Financial, Espionage, Hacktivism)"
+        - name: "sophistication"
+          type: "string"
+          required: false
+          description: "Skill level (Low, Medium, High, Nation-State)"
+
+relationships:
+  influences:
+    neo4j_type: "INFLUENCES"
+    default_confidence: 0.8
+    types:
+      - id: "exploits_to_enterprise"
+        label: "Exploits to Enterprise"
+        description: "Tactical exploit impacts enterprise risk"
+        color: "#e74c3c"
+        line_style: "solid"
+      - id: "enterprise_to_enterprise"
+        label: "Enterprise to Enterprise"
+        description: "Enterprise risk chain"
+        color: "#8E44AD"
+        line_style: "solid"
+      - id: "tactical_to_tactical"
+        label: "Tactical to Tactical"
+        description: "Tactical attack chain"
+        color: "#2980B9"
+        line_style: "dashed"
+    
+    strengths:
+      - id: "low"
+        label: "Low"
+        value: 0.25
+        description: "Indirect or unlikely pathway"
+        color: "#bdc3c7"
+      - id: "medium"
+        label: "Medium"
+        value: 0.50
+        description: "Plausible pathway"
+        color: "#f39c12"
+      - id: "high"
+        label: "High"
+        value: 0.75
+        description: "Likely pathway"
+        color: "#e67e22"
+      - id: "critical"
+        label: "Critical"
+        value: 1.0
+        description: "Direct or inevitable pathway"
+        color: "#e74c3c"
+
+  impacts_tpo:
+    neo4j_type: "IMPACTS_TPO"
+    impact_levels:
+      - id: "minimal"
+        label: "Minimal"
+        value: 1
+        description: "Minor impact on security objective"
+        color: "#27ae60"
+      - id: "moderate"
+        label: "Moderate"
+        value: 2
+        description: "Moderate impact, recoverable"
+        color: "#f39c12"
+      - id: "significant"
+        label: "Significant"
+        value: 3
+        description: "Major impact, requires response"
+        color: "#e67e22"
+      - id: "severe"
+        label: "Severe"
+        value: 4
+        description: "Critical impact, business affecting"
+        color: "#e74c3c"
+
+  mitigates:
+    neo4j_type: "MITIGATES"
+    effectiveness_levels:
+      - id: "minimal"
+        label: "Minimal"
+        reduction: 0.20
+        description: "Defense-in-depth layer"
+      - id: "partial"
+        label: "Partial"
+        reduction: 0.50
+        description: "Reduces likelihood or impact"
+      - id: "substantial"
+        label: "Substantial"
+        reduction: 0.75
+        description: "Significantly reduces risk"
+      - id: "comprehensive"
+        label: "Comprehensive"
+        reduction: 0.95
+        description: "Near-complete risk mitigation"
+
+  # Custom relationship types
+  custom_relationships:
+    - id: "targets"
+      label: "Targets"
+      neo4j_type: "TARGETS"
+      description: "Risk targets an asset"
+      from_entity: "risk"
+      to_entity: "asset"
+      color: "#c0392b"
+      line_style: "dashed"
+      attributes:
+        - name: "attack_stage"
+          type: "string"
+          required: false
+          description: "Stage in attack chain"
+    
+    - id: "protects"
+      label: "Protects"
+      neo4j_type: "PROTECTS"
+      description: "Mitigation protects an asset"
+      from_entity: "mitigation"
+      to_entity: "asset"
+      color: "#27ae60"
+      line_style: "solid"
+      attributes:
+        - name: "coverage"
+          type: "float"
+          required: false
+          description: "Protection coverage (0-1)"
+    
+    - id: "exploits"
+      label: "Exploits"
+      neo4j_type: "EXPLOITS"
+      description: "Threat actor exploits a risk"
+      from_entity: "threat_actor"
+      to_entity: "risk"
+      color: "#e74c3c"
+      line_style: "solid"
+      bidirectional: false
+      attributes:
+        - name: "likelihood"
+          type: "float"
+          required: false
+          description: "Exploitation likelihood"
+
+analysis:
+  exposure:
+    base_formula: "likelihood * impact"
+    max_base_value: 100.0
+    propagation_decay: 0.85
+    convergence_multiplier: 0.2
+  cache_timeout_seconds: 30
+  max_influence_depth: 10
+  high_exposure_threshold_multiplier: 1.2
+
+ui:
+  app_title: "Security Risk Map (SRM)"
+  app_icon: "🔒"
+  layout: "wide"
+  graph_height: "700px"
+  graph_bgcolor: "#1a1a2e"
+  tabs:
+    - id: "visualization"
+      label: "Threat Map"
+      icon: "🗺️"
+      enabled: true
+    - id: "risks"
+      label: "Threats"
+      icon: "⚠️"
+      enabled: true
+    - id: "tpos"
+      label: "Objectives"
+      icon: "🎯"
+      enabled: true
+    - id: "mitigations"
+      label: "Controls"
+      icon: "🛡️"
+      enabled: true
+    - id: "influences"
+      label: "Attack Chains"
+      icon: "⛓️"
+      enabled: true
+    - id: "analysis"
+      label: "Analysis"
+      icon: "📈"
+      enabled: true
+    - id: "import_export"
+      label: "Import/Export"
+      icon: "📥"
+      enabled: true
+  presets:
+    - id: "all_threats"
+      name: "🔍 All Threats"
+      description: "Show all security risks and controls"
+      filters:
+        risks:
+          levels: ["Enterprise", "Tactical"]
+          categories: ["Cyber", "Physical", "Personnel", "Compliance"]
+          statuses: ["Active", "Potential", "Mitigated"]
+        tpos:
+          enabled: true
+        mitigations:
+          enabled: true
+    - id: "cyber_only"
+      name: "💻 Cyber Threats"
+      description: "Focus on cyber security risks"
+      filters:
+        risks:
+          levels: ["Enterprise", "Tactical"]
+          categories: ["Cyber"]
+          statuses: ["Active", "Potential"]
+        tpos:
+          enabled: false
+        mitigations:
+          enabled: true
+    - id: "compliance_view"
+      name: "📋 Compliance View"
+      description: "Compliance-focused view"
+      filters:
+        risks:
+          levels: ["Enterprise"]
+          categories: ["Compliance"]
+          statuses: ["Active", "Potential", "Mitigated"]
+        tpos:
+          enabled: true
+          clusters: ["Compliance"]
+        mitigations:
+          enabled: true
+    - id: "high_impact"
+      name: "🔴 High Impact"
+      description: "Focus on high-impact threats"
+      filters:
+        risks:
+          levels: ["Enterprise", "Tactical"]
+          categories: ["Cyber", "Physical", "Personnel", "Compliance"]
+          statuses: ["Active"]
+          min_exposure: 50
+        tpos:
+          enabled: true
+        mitigations:
+          enabled: false

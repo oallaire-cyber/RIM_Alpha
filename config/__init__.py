@@ -17,6 +17,13 @@ from config.settings import (
     NEO4J_DEFAULTS,
     GRAPH_DEFAULTS,
     ANALYSIS_CACHE_TIMEOUT,
+    # New schema-related exports
+    RISK_LEVEL_CONFIG,
+    TPO_CLUSTER_CONFIG,
+    MITIGATION_TYPE_CONFIG,
+    get_active_schema,
+    get_active_schema_name,
+    set_active_schema,
 )
 
 # Convenience exports for app.py
@@ -46,4 +53,25 @@ __all__ = [
     "NEO4J_DEFAULT_USER",
     "GRAPH_DEFAULTS",
     "ANALYSIS_CACHE_TIMEOUT",
+    # Schema config items
+    "RISK_LEVEL_CONFIG",
+    "TPO_CLUSTER_CONFIG",
+    "MITIGATION_TYPE_CONFIG",
+    "get_active_schema",
+    "get_active_schema_name",
+    "set_active_schema",
 ]
+
+# Optional schema loader imports (for new schema-based configuration)
+try:
+    from config.schema_loader import (
+        SchemaLoader, SchemaConfig, get_schema, reload_schema, list_schemas,
+        validate_schema, save_schema
+    )
+    __all__.extend([
+        "SchemaLoader", "SchemaConfig", "get_schema", "reload_schema", 
+        "list_schemas", "validate_schema", "save_schema"
+    ])
+except ImportError:
+    pass  # Schema loader not available
+

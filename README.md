@@ -22,6 +22,7 @@ The Risk Influence Map transforms static risk registers into **dynamic risk inte
 | Operational Risk | ● Circle | Cause-oriented, managed by functional teams |
 | Mitigation | 🛡️ Rounded Box | Controls and protective actions |
 | TPO | ⬡ Hexagon | Top Program Objectives at risk |
+| Custom Entities | 📦 Configurable | User-defined types (e.g., Asset, Threat Actor) |
 
 ## 🚀 Quick Start
 
@@ -92,15 +93,23 @@ streamlit run app.py
 | [Architecture](docs/ARCHITECTURE.md) | Code structure and module design |
 | [Methodology](docs/METHODOLOGY.md) | RIM methodology and formulas |
 | [Visual Design](docs/VISUAL_DESIGN.md) | Shape/color semantics reference |
+| [Configuration Manager](docs/CONFIGURATION_MANAGER.md) | Schema management app |
+| [Calibration Simulator](docs/CALIBRATION_SIMULATOR.md) | Monte Carlo validation tool |
 | [Changelog](CHANGELOG.md) | Version history |
 
 ## 🏗️ Project Structure
 
 ```
 rim/
-├── app.py                    # Main Streamlit application (1,193 lines)
+├── app.py                    # Main Streamlit application
+├── app_config.py             # Configuration Manager app
 ├── calibration_simulator.py  # Monte Carlo validation tool
 ├── config/                   # Application settings
+│   ├── settings.py           # Hardcoded defaults
+│   └── schema_loader.py      # YAML schema system
+├── schemas/                  # Schema configurations
+│   ├── default/              # SMR nuclear schema
+│   └── it_security/          # Cybersecurity schema
 ├── database/                 # Neo4j connection and queries
 │   └── queries/              # Cypher query modules
 ├── models/                   # Data models and enumerations
@@ -117,14 +126,6 @@ rim/
 │   └── colors.py             # Color palette
 ├── utils/                    # Helper functions
 ├── tests/                    # Test suite
-│   ├── conftest.py           # Shared fixtures
-│   ├── test_enums.py         # Enum tests
-│   ├── test_risk.py          # Risk model tests
-│   ├── test_mitigation.py    # Mitigation model tests
-│   ├── test_tpo.py           # TPO model tests
-│   ├── test_relationships.py # Relationship tests
-│   ├── test_helpers.py       # Utility tests
-│   └── test_*.py             # Service tests
 └── docs/                     # Documentation
 ```
 
@@ -211,4 +212,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.3.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.5.0 | See [CHANGELOG.md](CHANGELOG.md) for history

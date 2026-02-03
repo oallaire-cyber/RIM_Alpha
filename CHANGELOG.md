@@ -4,6 +4,125 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.5.0] - 2026-02-03
+
+### Schema Extension: Custom Entities & Relationships
+
+**New Features:**
+
+- **Custom Entity Types** (`config/schema_loader.py`)
+  - Define user-created node types (e.g., Asset, Threat Actor)
+  - Visual properties: color, shape, emoji, size
+  - Custom attributes per entity type
+  - Full graph visualization integration
+
+- **Custom Relationship Types**
+  - Define connections between any entities (core or custom)
+  - Source/target entity specification
+  - Visual properties: color, line style, bidirectional flag
+  - Custom attributes per relationship type
+
+- **Custom Attributes for Core Entities**
+  - Add custom attributes to Risk, TPO, and Mitigation entities
+  - Supports string, int, float, boolean, date types
+
+- **Configuration Manager Enhancements** (`app_config.py`)
+  - New "📦 Custom Entities" tab with add/edit/delete operations
+  - New "🔀 Custom Relationships" tab with entity type dropdowns
+  - Attribute management within entity/relationship editors
+
+- **Test Data Generator Updates**
+  - Generates instances of custom entity types
+  - Creates custom relationships with random attribute values
+  - Type-appropriate value generation (int/float/boolean/string)
+
+- **Example: IT Security Schema**
+  - Custom entities: Asset (🖥️), Threat Actor (👤)
+  - Custom relationships: TARGETS, PROTECTS, EXPLOITS
+
+**Files Modified:**
+- `config/schema_loader.py` (+400 lines) - Added CustomEntityConfig, CustomRelationshipConfig dataclasses
+- `app_config.py` (+350 lines) - Added custom entity/relationship UI editors
+- `schemas/it_security/schema.yaml` - Added example custom types
+
+**Bug Fixes:**
+- Fixed sidebar legend HTML rendering issue (raw tags displayed instead of styled content)
+
+---
+
+## [v2.4.0] - 2026-02-03
+
+### Configuration Manager & Schema System
+
+
+**New Features:**
+
+- **YAML Schema System** (`config/schema_loader.py`)
+  - Typed dataclasses for all configuration elements (20+ classes)
+  - YAML parsing with validation
+  - Backward-compatible property helpers for existing code
+  - Save/load/duplicate schema operations
+  - Schema validation with detailed error messages
+
+- **Configuration Manager App** (`app_config.py`)
+  - Standalone Streamlit application for schema management
+  - Four main tabs: Schema Management, Database, Data Management, Health Check
+  - Form-based editors for all configuration elements
+  - Color pickers, sliders, live previews
+  - YAML preview with edit mode and validation
+
+- **Schema Management Tab**
+  - Six sub-tabs for comprehensive editing
+  - Risk levels editor (color, shape, emoji, size)
+  - Categories, statuses, origins editors
+  - TPO clusters with color configuration
+  - Mitigation types and statuses
+  - Influence strengths with value sliders
+  - Effectiveness and impact level editors
+  - Create/duplicate/delete schema operations
+
+- **Database Tab**
+  - Database statistics dashboard
+  - Schema-to-database compatibility checker
+  - Migration detection with Cypher script generation
+  - Node and relationship counts by type
+
+- **Data Management Tab**
+  - Clear database with confirmation
+  - Demo data loader
+  - JSON backup/restore functionality
+
+- **Health Check Tab**
+  - Schema validation status
+  - Database connection checker
+  - Data integrity checks (orphans, invalid values)
+  - Comprehensive health report generation
+
+- **Example Schemas**
+  - `schemas/default/` - SMR nuclear project (Strategic/Operational)
+  - `schemas/it_security/` - Cybersecurity example (Enterprise/Tactical, CIA-based TPOs)
+
+**Files Added:**
+- `app_config.py` (~1,500 lines)
+- `config/schema_loader.py` (~700 lines)
+- `schemas/default/schema.yaml` (~300 lines)
+- `schemas/it_security/schema.yaml` (~320 lines)
+- `docs/CONFIGURATION_MANAGER.md` - Dedicated app documentation
+- `docs/CALIBRATION_SIMULATOR.md` - Dedicated calibration app documentation
+
+**Files Modified:**
+- `config/settings.py` - Dynamic schema loading with `.rim_schema` file and `RIM_SCHEMA` env var support
+- `config/__init__.py` - Added schema loader exports and new config items
+- `ui/legend.py` - Dynamic legend generation from active schema
+
+**Schema Selection:**
+- Set active schema via `.rim_schema` file in project root
+- Or use `RIM_SCHEMA` environment variable
+- Configuration Manager has "Set as Default for Main App" button
+- App restart required after schema changes
+
+---
+
 ## [v2.3.0] - 2026-02-02
 
 ### Test Suite Implementation

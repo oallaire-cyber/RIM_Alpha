@@ -1,0 +1,398 @@
+version: '1.0'
+name: Default
+description: Default RIM schema based on SMR nuclear project configuration
+entities:
+  risk:
+    neo4j_label: Risk
+    levels:
+    - id: strategic
+      label: Strategic
+      description: Consequence-oriented risks managed by program leadership
+      color: '#9b59b6'
+      shape: diamond
+      emoji: ◆
+      size: 35
+    - id: operational
+      label: Operational
+      description: Cause-oriented risks managed by functional teams
+      color: '#3498db'
+      shape: dot
+      emoji: ●
+      size: 30
+    categories:
+    - id: programme
+      label: Programme
+      description: Program-level risks
+      color: '#9b59b6'
+    - id: product
+      label: Product
+      description: Product-related risks
+      color: '#3498db'
+    - id: industrial
+      label: Industrial
+      description: Industrial/manufacturing risks
+      color: '#27ae60'
+    - id: supply_chain
+      label: Supply Chain
+      description: Supply chain and logistics risks
+      color: '#e74c3c'
+    statuses:
+    - id: active
+      label: Active
+      description: Currently active risks
+      is_active: true
+    - id: contingent
+      label: Contingent
+      description: Potential risks awaiting activation
+      is_active: true
+    - id: archived
+      label: Archived
+      description: Closed or inactive risks
+      is_active: false
+    origins:
+    - id: new
+      label: New
+      description: Newly identified risks
+    - id: legacy
+      label: Legacy
+      description: Inherited or historical risks
+    attributes:
+    - name: name
+      type: string
+      required: true
+      default: null
+      description: Risk name
+    - name: description
+      type: string
+      required: false
+      default: null
+      description: Risk description
+    - name: owner
+      type: string
+      required: false
+      default: null
+      description: Risk owner
+    - name: probability
+      type: float
+      required: false
+      default: null
+      description: Likelihood rating (1-10)
+    - name: impact
+      type: float
+      required: false
+      default: null
+      description: Impact rating (1-10)
+    - name: activation_condition
+      type: string
+      required: false
+      default: null
+      description: Condition for contingent risk activation
+    - name: activation_decision_date
+      type: date
+      required: false
+      default: null
+      description: Decision date for contingent risks
+    custom_attributes: []
+  tpo:
+    neo4j_label: TPO
+    clusters:
+    - id: product_efficiency
+      label: Product Efficiency
+      description: Product performance objectives
+      color: '#f1c40f'
+    - id: business_efficiency
+      label: Business Efficiency
+      description: Business performance objectives
+      color: '#f39c12'
+    - id: industrial_efficiency
+      label: Industrial Efficiency
+      description: Manufacturing performance objectives
+      color: '#e67e22'
+    - id: sustainability
+      label: Sustainability
+      description: Environmental objectives
+      color: '#27ae60'
+    - id: safety
+      label: Safety
+      description: Safety objectives
+      color: '#e74c3c'
+    attributes:
+    - name: reference
+      type: string
+      required: true
+      default: null
+      description: TPO reference code
+    - name: name
+      type: string
+      required: true
+      default: null
+      description: TPO name
+    - name: description
+      type: string
+      required: false
+      default: null
+      description: TPO description
+    custom_attributes: []
+  mitigation:
+    neo4j_label: Mitigation
+    types:
+    - id: dedicated
+      label: Dedicated
+      description: Program-specific mitigations
+      color: '#27ae60'
+      line_style: solid
+    - id: inherited
+      label: Inherited
+      description: Mitigations from other sources
+      color: '#3498db'
+      line_style: dotted
+    - id: baseline
+      label: Baseline
+      description: Standard or regulatory mitigations
+      color: '#9b59b6'
+      line_style: thick
+    statuses:
+    - id: proposed
+      label: Proposed
+      description: Planned mitigations
+      is_active: true
+    - id: in_progress
+      label: In Progress
+      description: Mitigations being implemented
+      is_active: true
+    - id: implemented
+      label: Implemented
+      description: Active mitigations
+      is_active: true
+    - id: deferred
+      label: Deferred
+      description: On-hold mitigations
+      is_active: false
+    attributes:
+    - name: name
+      type: string
+      required: true
+      default: null
+      description: Mitigation name
+    - name: description
+      type: string
+      required: false
+      default: null
+      description: Mitigation description
+    - name: owner
+      type: string
+      required: false
+      default: null
+      description: Mitigation owner
+    - name: source_entity
+      type: string
+      required: false
+      default: null
+      description: Source entity for inherited mitigations
+    custom_attributes: []
+relationships:
+  influences:
+    neo4j_type: INFLUENCES
+    default_confidence: 0.8
+    types:
+    - id: level1_op_to_strat
+      label: Level1_Op_to_Strat
+      description: Operational to Strategic influence
+      color: '#e74c3c'
+      line_style: solid
+    - id: level2_strat_to_strat
+      label: Level2_Strat_to_Strat
+      description: Strategic to Strategic influence
+      color: '#9b59b6'
+      line_style: solid
+    - id: level3_op_to_op
+      label: Level3_Op_to_Op
+      description: Operational to Operational influence
+      color: '#3498db'
+      line_style: dashed
+    strengths:
+    - id: weak
+      label: Weak
+      value: 0.25
+      description: Possible minor contribution
+      color: '#bdc3c7'
+    - id: moderate
+      label: Moderate
+      value: 0.5
+      description: Likely contributes
+      color: '#f39c12'
+    - id: strong
+      label: Strong
+      value: 0.75
+      description: High probability of propagation
+      color: '#e67e22'
+    - id: critical
+      label: Critical
+      value: 1.0
+      description: Direct, inevitable causation
+      color: '#e74c3c'
+  impacts_tpo:
+    neo4j_type: IMPACTS_TPO
+    impact_levels:
+    - id: low
+      label: Low
+      value: 1
+      description: Minor impact on objective
+      color: '#27ae60'
+    - id: medium
+      label: Medium
+      value: 2
+      description: Moderate impact on objective
+      color: '#f39c12'
+    - id: high
+      label: High
+      value: 3
+      description: Significant impact on objective
+      color: '#e67e22'
+    - id: critical
+      label: Critical
+      value: 4
+      description: Severe impact on objective
+      color: '#e74c3c'
+  mitigates:
+    neo4j_type: MITIGATES
+    effectiveness_levels:
+    - id: low
+      label: Low
+      reduction: 0.3
+      description: Minor risk reduction
+    - id: medium
+      label: Medium
+      reduction: 0.5
+      description: Moderate risk reduction
+    - id: high
+      label: High
+      reduction: 0.7
+      description: Significant risk reduction
+    - id: critical
+      label: Critical
+      reduction: 0.9
+      description: Near-complete risk elimination
+analysis:
+  exposure:
+    base_formula: likelihood * impact
+    max_base_value: 100.0
+    propagation_decay: 0.85
+    convergence_multiplier: 0.2
+  cache_timeout_seconds: 30
+  max_influence_depth: 10
+  high_exposure_threshold_multiplier: 1.2
+ui:
+  app_title: Risk Influence Map (RIM)
+  app_icon: 🎯
+  layout: wide
+  graph_height: 700px
+  graph_bgcolor: '#ffffff'
+  tabs:
+  - id: visualization
+    label: Visualization
+    icon: 📊
+    enabled: true
+  - id: risks
+    label: Risks
+    icon: 🎯
+    enabled: true
+  - id: tpos
+    label: TPOs
+    icon: 🏆
+    enabled: true
+  - id: mitigations
+    label: Mitigations
+    icon: 🛡️
+    enabled: true
+  - id: influences
+    label: Influences
+    icon: 🔗
+    enabled: true
+  - id: analysis
+    label: Analysis
+    icon: 📈
+    enabled: true
+  - id: import_export
+    label: Import/Export
+    icon: 📥
+    enabled: true
+  presets:
+  - id: all_elements
+    name: 🔍 All Elements
+    description: Show all risks, TPOs, and mitigations
+    filters:
+      risks:
+        levels:
+        - Strategic
+        - Operational
+        categories:
+        - Programme
+        - Produit
+        - Industriel
+        - Supply Chain
+        statuses:
+        - Active
+        - Contingent
+      tpos:
+        enabled: true
+      mitigations:
+        enabled: true
+  - id: risks_only
+    name: 🎯 Risks Only
+    description: Show only risks and their influences
+    filters:
+      risks:
+        levels:
+        - Strategic
+        - Operational
+        categories:
+        - Programme
+        - Produit
+        - Industriel
+        - Supply Chain
+        statuses:
+        - Active
+        - Contingent
+      tpos:
+        enabled: false
+      mitigations:
+        enabled: false
+  - id: strategic_focus
+    name: ◆ Strategic Focus
+    description: Focus on strategic risks only
+    filters:
+      risks:
+        levels:
+        - Strategic
+        categories:
+        - Programme
+        - Produit
+        - Industriel
+        - Supply Chain
+        statuses:
+        - Active
+        - Contingent
+      tpos:
+        enabled: true
+      mitigations:
+        enabled: false
+  - id: operational_focus
+    name: ● Operational Focus
+    description: Focus on operational risks
+    filters:
+      risks:
+        levels:
+        - Operational
+        categories:
+        - Programme
+        - Produit
+        - Industriel
+        - Supply Chain
+        statuses:
+        - Active
+        - Contingent
+      tpos:
+        enabled: false
+      mitigations:
+        enabled: true
