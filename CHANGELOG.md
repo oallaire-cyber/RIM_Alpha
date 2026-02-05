@@ -4,6 +4,71 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.5.1] - 2026-02-05
+
+### Terminology Update: Strategic → Business Risks
+
+**Breaking Change:**
+
+- **Risk Level Rename**: "Strategic" risks are now called "Business" risks
+  - Better reflects consequence-oriented nature of these risks
+  - Aligns with program management terminology
+  - Requires Neo4j data migration for existing databases
+
+**Changes:**
+
+- **Database Layer**
+  - `database/queries/tpos.py`: TPO impact validation now accepts "Business" level
+  - `database/queries/influences.py`: Influence type detection uses Business level
+    - `Level1_Op_to_Strat` → `Level1_Op_to_Bus`
+    - `Level2_Strat_to_Strat` → `Level2_Bus_to_Bus`
+  - `database/queries/analysis.py`: Statistics queries updated
+  - `database/manager.py`: All level comparisons updated
+
+- **Visualization Layer**
+  - `visualization/colors.py`: Color dictionary keys updated
+  - `visualization/node_styles.py`: Shape and style lookups updated
+  - `visualization/edge_styles.py`: Added legacy Strat→Bus tooltip transformation
+
+- **Models Layer**
+  - `models/enums.py`: `RiskLevel.STRATEGIC` → `RiskLevel.BUSINESS`
+  - `models/enums.py`: `InfluenceType` enum values updated
+  - `models/risk.py`: `is_strategic` → `is_business` property
+
+- **UI Layer**
+  - `ui/panels/influence_panel.py`: Level display and icons
+  - `ui/panels/mitigation_panel.py`: Gap analysis terminology
+  - `ui/layouts.py`: Layered layout level detection
+  - `app.py`: Statistics display and help text
+
+- **Schema Updates**
+  - `schemas/default/schema.yaml`: Risk level id/label updated
+  - Filter presets: `strategic_focus` → `business_focus`
+  - Influence types in schema updated
+
+- **Documentation**
+  - README.md, METHODOLOGY.md, VISUAL_DESIGN.md, USER_GUIDE.md updated
+
+**Migration Required:**
+
+```cypher
+-- Update risk levels
+MATCH (r:Risk {level: "Strategic"})
+SET r.level = "Business"
+RETURN count(r);
+
+-- Update influence types
+MATCH ()-[r:INFLUENCES]->()
+WHERE r.influence_type CONTAINS "Strat"
+SET r.influence_type = REPLACE(
+  REPLACE(r.influence_type, "Strat_to_Strat", "Bus_to_Bus"),
+  "Op_to_Strat", "Op_to_Bus"
+)
+RETURN count(r);
+```
+
+---
+
 ## [v2.5.0] - 2026-02-03
 
 ### Schema Extension: Custom Entities & Relationships
