@@ -19,7 +19,7 @@ Complete reference for visual semantics in the Risk Influence Map.
     MOST PROMINENT                               LEAST PROMINENT
     ◀────────────────────────────────────────────────────────▶
     
-    ⬡ TPO       ◆ Business      ● Operational      🛡️ Mitigation
+    ⬡ TPO       ◆ Strategic      ● Operational      🛡️ Mitigation
     (Gold)       (Purple)          (Blue)            (Green/Teal)
     (Largest)    (Large)           (Medium)          (Medium)
 ```
@@ -32,14 +32,14 @@ Complete reference for visual semantics in the Risk Influence Map.
 
 | Shape | Entity | Rationale |
 |-------|--------|-----------|
-| **◆ Diamond** | Business Risk | Pointed shape = danger, warning (road sign psychology) |
+| **◆ Diamond** | Strategic Risk | Pointed shape = danger, warning (road sign psychology) |
 | **● Circle** | Operational Risk | Foundation, building block, cause-oriented |
 | **🛡️ Rounded Box** | Mitigation | Shield-like, protective, softer edges |
 | **⬡ Hexagon** | TPO | Distinctive goal shape, structural stability |
 
 ### Why These Shapes?
 
-**Diamond for Business Risks**:
+**Diamond for Strategic Risks**:
 - Universal danger symbol (road signs, warnings)
 - Points create tension, draw attention
 - Prominent in visual field
@@ -67,7 +67,7 @@ Complete reference for visual semantics in the Risk Influence Map.
 
 | Entity | Color | Hex | RGB |
 |--------|-------|-----|-----|
-| Business Risk | Purple | `#8E44AD` | 142, 68, 173 |
+| Strategic Risk | Purple | `#8E44AD` | 142, 68, 173 |
 | Operational Risk | Blue | `#2980B9` | 41, 128, 185 |
 | TPO | Gold | `#F1C40F` | 241, 196, 15 |
 | Mitigation (Dedicated) | Teal | `#1ABC9C` | 26, 188, 156 |
@@ -88,7 +88,7 @@ Complete reference for visual semantics in the Risk Influence Map.
 | Color Family | Meaning | Used For |
 |--------------|---------|----------|
 | **Red/Orange** | Danger, urgency, heat | High exposure risks |
-| **Purple** | Authority, strategy | Business risks |
+| **Purple** | Authority, strategy | Strategic risks |
 | **Blue** | Stability, trust, operations | Operational risks |
 | **Green/Teal** | Safety, protection, health | Mitigations |
 | **Gold** | Value, goals, achievement | TPOs |
@@ -146,8 +146,8 @@ Complete reference for visual semantics in the Risk Influence Map.
 
 | Influence Level | Color | Hex |
 |-----------------|-------|-----|
-| Level 1 (Op→Bus) | Red | `#E74C3C` |
-| Level 2 (Bus→Bus) | Purple | `#8E44AD` |
+| Level 1 (Op→Strat) | Red | `#E74C3C` |
+| Level 2 (Strat→Strat) | Purple | `#8E44AD` |
 | Level 3 (Op→Op) | Blue | `#2980B9` |
 
 ### Influence Edge Thickness (by Strength)
@@ -197,7 +197,7 @@ All mitigates edges use: **Green** (`#1ABC9C`)
 | Entity | Base Size | Variation |
 |--------|-----------|-----------|
 | TPO | 40px | Fixed |
-| Business Risk | 35px | +5px if high exposure |
+| Strategic Risk | 35px | +5px if high exposure |
 | Operational Risk | 28px | +5px if high exposure |
 | Mitigation | 32px | Fixed |
 
@@ -269,7 +269,7 @@ When using "Explore in Graph":
 ┌─────────────────────────────────────────────────────┐
 │                    NODE SHAPES                       │
 ├─────────────────────────────────────────────────────┤
-│  ◆  Business Risk (Purple)    ◇  Contingent Risk   │
+│  ◆  Strategic Risk (Purple)    ◇  Contingent Risk   │
 │  ●  Operational Risk (Blue)    🛡️  Mitigation       │
 │  ⬡  TPO (Gold)                                      │
 ├─────────────────────────────────────────────────────┤
@@ -321,7 +321,7 @@ All text meets WCAG AA standards:
 ```python
 # PyVis shape names
 SHAPE_MAP = {
-    "business_risk": "diamond",
+    "strategic_risk": "diamond",
     "operational_risk": "dot",      # Circle
     "mitigation": "box",            # Rounded via CSS
     "tpo": "hexagon"

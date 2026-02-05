@@ -62,7 +62,7 @@ The application has three main areas:
 
 | Level | Description | Managed By |
 |-------|-------------|------------|
-| **Business** | Consequence-oriented risks with program-wide impact | Program leadership |
+| **Strategic** | Consequence-oriented risks with program-wide impact | Program leadership |
 | **Operational** | Cause-oriented risks from specific functional areas | Functional teams |
 
 ### Risk Categories
@@ -86,7 +86,7 @@ The application has three main areas:
    - **Reference**: Unique identifier (e.g., SR-001, OR-015)
    - **Name**: Short descriptive name
    - **Description**: Detailed explanation
-   - **Level**: Business or Operational
+   - **Level**: Strategic or Operational
    - **Category**: Programme/Produit/Industriel/Supply Chain
    - **Likelihood**: 1-10 scale
    - **Impact**: 1-10 scale
@@ -119,8 +119,8 @@ Influence relationships describe how risks affect each other:
 
 | Level | Direction | Description | Visual |
 |-------|-----------|-------------|--------|
-| **Level 1** | Operational → Business | Root cause creates consequence | Red, thick solid |
-| **Level 2** | Business → Business | Consequence amplifies consequence | Purple, medium solid |
+| **Level 1** | Operational → Strategic | Root cause creates consequence | Red, thick solid |
+| **Level 2** | Strategic → Strategic | Consequence amplifies consequence | Purple, medium solid |
 | **Level 3** | Operational → Operational | Cause contributes to cause | Blue, thin dashed |
 
 ### Influence Strength
@@ -229,7 +229,7 @@ Top Program Objectives (TPOs) represent the key goals that risks may threaten:
 ### Linking Risks to TPOs
 
 1. Go to **📌 TPO Impacts** tab
-2. Select the **Risk** (typically Business)
+2. Select the **Risk** (typically Strategic)
 3. Select the **TPO** it threatens
 4. Set **Impact Level** (Low/Medium/High/Critical)
 5. Add optional description
@@ -295,7 +295,7 @@ The exposure calculation quantifies risk severity considering:
 | Layout | Description | Best For |
 |--------|-------------|----------|
 | **🌳 Hierarchical (Sugiyama)** | Edge-crossing minimization, semantic layers | Understanding flow |
-| **📶 Layered** | TPO → Business → Operational layers | Seeing hierarchy |
+| **📶 Layered** | TPO → Strategic → Operational layers | Seeing hierarchy |
 | **📊 Category Grid** | 2×2 grid by risk category | Category comparison |
 | **🎯 TPO Cluster** | Group risks around their TPOs | TPO impact analysis |
 
@@ -303,14 +303,14 @@ The exposure calculation quantifies risk severity considering:
 
 | Element | Shape | Meaning |
 |---------|-------|---------|
-| **◆ Diamond** | Business Risk | Pointed = danger, consequence |
+| **◆ Diamond** | Strategic Risk | Pointed = danger, consequence |
 | **● Circle** | Operational Risk | Foundation, cause |
 | **🛡️ Rounded Box** | Mitigation | Shield = protection |
 | **⬡ Hexagon** | TPO | Objective/goal |
 
 ### Color Modes
 
-- **By Level**: Purple (Business), Blue (Operational)
+- **By Level**: Purple (Strategic), Blue (Operational)
 - **By Exposure**: Gradient from Yellow (low) to Dark Red (critical)
 
 ### Edge Visual Semantics
@@ -409,7 +409,7 @@ Coverage gaps are flagged if the unmitigated risk is also:
 | Preset | Shows |
 |--------|-------|
 | 🌐 Full View | Risks + TPOs (no mitigations) |
-| 🟣 Business Focus | Business risks only |
+| 🟣 Strategic Focus | Strategic risks only |
 | 🔵 Operational Focus | Operational risks only |
 | ✅ Active Risks Only | Excludes contingent/archived |
 | ⚠️ Contingent Risks | Potential risks only |
@@ -424,7 +424,7 @@ Coverage gaps are flagged if the unmitigated risk is also:
 **⚡ Quick Presets**: One-click filter configurations
 
 **🎯 Risk Filters**:
-- Level (Business/Operational)
+- Level (Strategic/Operational)
 - Categories (Programme/Produit/Industriel/Supply Chain)
 - Status (Active/Archived)
 - Origin (New/Legacy)
@@ -475,7 +475,7 @@ Each multi-select filter has **All** and **None** buttons for quick selection.
 ### Risk Modeling
 
 1. **Start with TPOs**: Define what you're protecting
-2. **Map Business Risks**: What consequences threaten TPOs?
+2. **Map Strategic Risks**: What consequences threaten TPOs?
 3. **Trace to Operational**: What causes create those consequences?
 4. **Add Influences**: How do risks amplify each other?
 5. **Layer Mitigations**: Cover high-exposure risks first

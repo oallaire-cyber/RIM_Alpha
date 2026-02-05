@@ -4,7 +4,7 @@ Visualization module for RIM application.
 Contains PyVis graph rendering, styling, and layout utilities.
 
 Enhanced visualization with semantic shapes and colors:
-- Risks: Diamonds (strategic) and Circles (operational)
+- Risks: Diamonds (business) and Circles (operational)
 - Mitigations: Rounded boxes (shield-like)
 - TPOs: Hexagons (objectives)
 

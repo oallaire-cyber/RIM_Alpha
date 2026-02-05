@@ -55,7 +55,7 @@ RIM transforms risk registers into **dynamic risk intelligence**:
 1. **Visible relationships**: See how risks connect and amplify
 2. **Dynamic scoring**: Mitigations affect entire chains
 3. **Clear hierarchy**: Causes vs consequences
-4. **Coordinated management**: Business vs operational ownership
+4. **Coordinated management**: Strategic vs operational ownership
 
 ---
 
@@ -65,13 +65,13 @@ RIM transforms risk registers into **dynamic risk intelligence**:
 
 | Level | Orientation | Focus | Managed By |
 |-------|-------------|-------|------------|
-| **Business** | Consequence | What could go wrong for the program | Program leadership |
+| **Strategic** | Consequence | What could go wrong for the program | Program leadership |
 | **Operational** | Cause | What activities could fail | Functional teams |
 
 ### Why Two Levels?
 
 1. **Different management approaches**:
-   - Business: Portfolio-level decisions, resource allocation
+   - Strategic: Portfolio-level decisions, resource allocation
    - Operational: Process controls, technical mitigations
 
 2. **Clear accountability**:
@@ -79,7 +79,7 @@ RIM transforms risk registers into **dynamic risk intelligence**:
    - Teams own causes
 
 3. **Reduced cognitive load**:
-   - ~10-20 business risks for leadership
+   - ~10-20 strategic risks for leadership
    - ~50-100 operational risks across teams
 
 ### Risk Categories
@@ -113,7 +113,7 @@ RIM transforms risk registers into **dynamic risk intelligence**:
      ┌─────────────────────┼─────────────────────┐
      │                     │                     │
 ┌────┴─────┐         ┌─────┴────┐         ┌─────┴────┐
-│ Business│◄────────│ Business│◄────────│ Business│
+│ Strategic│◄────────│ Strategic│◄────────│ Strategic│
 │  Risk 1  │ Level 2 │  Risk 2  │ Level 2 │  Risk 3  │
 └────▲─────┘         └──────────┘         └────▲─────┘
      │                                         │
@@ -127,8 +127,8 @@ RIM transforms risk registers into **dynamic risk intelligence**:
 
 | Level | Direction | Meaning | Example |
 |-------|-----------|---------|---------|
-| **Level 1** | Operational → Business | Cause creates consequence | "Supplier bankruptcy causes supply disruption" |
-| **Level 2** | Business → Business | Consequence amplifies consequence | "Supply disruption causes schedule delay" |
+| **Level 1** | Operational → Strategic | Cause creates consequence | "Supplier bankruptcy causes supply disruption" |
+| **Level 2** | Strategic → Strategic | Consequence amplifies consequence | "Supply disruption causes schedule delay" |
 | **Level 3** | Operational → Operational | Cause contributes to cause | "Quality issue contributes to rework" |
 
 ### Influence Strength

@@ -2,7 +2,7 @@
 Node Styling for RIM Graph Visualization.
 
 Enhanced node shapes with semantic meaning:
-- Diamonds (◆) for Strategic Risks - pointed = danger, consequence-oriented
+- Diamonds (◆) for Business Risks - pointed = danger, consequence-oriented
 - Circles (●) for Operational Risks - foundation, cause-oriented
 - Rounded Boxes (🛡️) for Mitigations - shield-like, protective
 - Hexagons (⬡) for TPOs - objectives, goals
@@ -28,7 +28,7 @@ from visualization.colors import (
 
 # Risk shapes by level and status
 RISK_SHAPES = {
-    "strategic": {
+    "business": {
         "default": "diamond",      # Pointed = danger, high-level
         "contingent": "diamond"    # Hollow diamond for potential
     },
@@ -50,7 +50,7 @@ TPO_SHAPE = "hexagon"
 # =============================================================================
 
 NODE_SIZES = {
-    "strategic_risk": 35,
+    "business_risk": 35,
     "operational_risk": 28,
     "contingent_risk": 30,
     "mitigation": 40,
@@ -157,7 +157,7 @@ def build_risk_tooltip(node: Dict[str, Any], is_highlighted: bool = False) -> st
     categories = node.get("categories", [])
     
     # Level indicator
-    level_icon = "◆" if level == "Strategic" else "●"
+    level_icon = "◆" if level == "Business" else "●"
     
     parts = [
         f"{level_icon} {node.get('name', 'Unknown Risk')}",
@@ -232,7 +232,7 @@ def create_risk_node_config(
     """
     Create enhanced risk node configuration.
     
-    Uses diamond shape for strategic risks (consequence-oriented)
+    Uses diamond shape for business risks (consequence-oriented)
     and circle for operational risks (cause-oriented).
     Contingent risks use hollow diamond with dashed border.
     
@@ -257,7 +257,7 @@ def create_risk_node_config(
     if status == "Contingent":
         shape = "diamond"
         is_contingent = True
-    elif level == "Strategic":
+    elif level == "Business":
         shape = "diamond"
         is_contingent = False
     else:  # Operational
@@ -282,8 +282,8 @@ def create_risk_node_config(
     # =========================
     # SIZE CALCULATION
     # =========================
-    if level == "Strategic":
-        base_size = NODE_SIZES["strategic_risk"]
+    if level == "Business":
+        base_size = NODE_SIZES["business_risk"]
     else:
         base_size = NODE_SIZES["operational_risk"]
     
@@ -319,7 +319,7 @@ def create_risk_node_config(
     # LABEL CONSTRUCTION
     # =========================
     # Shape indicator prefix
-    if level == "Strategic":
+    if level == "Business":
         label_prefix = "◆ "
     else:
         label_prefix = "● "
@@ -357,7 +357,7 @@ def create_risk_node_config(
             "color": "#2C3E50",
             "size": 20,
             "face": "Arial",
-            "bold": level == "Strategic"
+            "bold": level == "Business"
         },
         "shadow": {
             "enabled": True,
@@ -601,9 +601,9 @@ def get_legend_items() -> Dict[str, Any]:
     return {
         "nodes": {
             "risks": [
-                {"label": "Strategic Risk", "shape": "diamond", "color": RISK_COLORS["strategic"]["base"], "icon": "◆"},
+                {"label": "Business Risk", "shape": "diamond", "color": RISK_COLORS["business"]["base"], "icon": "◆"},
                 {"label": "Operational Risk", "shape": "dot", "color": RISK_COLORS["operational"]["base"], "icon": "●"},
-                {"label": "Contingent Risk", "shape": "diamond", "color": RISK_COLORS["strategic"]["base"], "dashed": True, "icon": "◇"},
+                {"label": "Contingent Risk", "shape": "diamond", "color": RISK_COLORS["business"]["base"], "dashed": True, "icon": "◇"},
                 {"label": "Legacy Risk", "shape": "dot", "color": RISK_COLORS["operational"]["base"], "border": "#7F8C8D", "icon": "●[L]"}
             ],
             "exposure": [

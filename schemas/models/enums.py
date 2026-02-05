@@ -9,7 +9,7 @@ from enum import Enum
 
 class RiskLevel(str, Enum):
     """Risk hierarchy levels."""
-    BUSINESS = "Business"
+    STRATEGIC = "Strategic"
     OPERATIONAL = "Operational"
     
     def __str__(self) -> str:
@@ -225,8 +225,8 @@ class ImpactLevel(str, Enum):
 
 class InfluenceType(str, Enum):
     """Types of influence relationships between risks."""
-    LEVEL1_OP_TO_BUS = "Level1_Op_to_Bus"
-    LEVEL2_BUS_TO_BUS = "Level2_Bus_to_Bus"
+    LEVEL1_OP_TO_STRAT = "Level1_Op_to_Strat"
+    LEVEL2_STRAT_TO_STRAT = "Level2_Strat_to_Strat"
     LEVEL3_OP_TO_OP = "Level3_Op_to_Op"
     UNKNOWN = "Unknown"
     

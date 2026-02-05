@@ -8,9 +8,6 @@ from typing import List, Dict, Any, Optional
 from database.connection import Neo4jConnection
 from database.queries import risks, tpos, mitigations, influences
 
-# Schema-driven configuration
-from config import RISK_LEVELS
-
 
 # =============================================================================
 # GRAPH DATA RETRIEVAL
@@ -193,16 +190,8 @@ def get_statistics(conn: Neo4jConnection) -> Dict[str, Any]:
     
     # Risk counts
     stats["total_risks"] = risks.get_risk_count(conn)
-    # Use schema-driven level names
-    if len(RISK_LEVELS) >= 1:
-        stats["level1_risks"] = risks.get_risk_count_by_level(conn, RISK_LEVELS[0])
-        stats["level1_name"] = RISK_LEVELS[0]
-    if len(RISK_LEVELS) >= 2:
-        stats["level2_risks"] = risks.get_risk_count_by_level(conn, RISK_LEVELS[1])
-        stats["level2_name"] = RISK_LEVELS[1]
-    # Keep backward compatibility keys
-    stats["strategic_risks"] = stats.get("level1_risks", 0)
-    stats["operational_risks"] = stats.get("level2_risks", 0)
+    stats["strategic_risks"] = risks.get_risk_count_by_level(conn, "Strategic")
+    stats["operational_risks"] = risks.get_risk_count_by_level(conn, "Operational")
     stats["contingent_risks"] = risks.get_risk_count_by_status(conn, "Contingent")
     stats["new_risks"] = risks.get_risk_count_by_origin(conn, "New")
     stats["legacy_risks"] = risks.get_risk_count_by_origin(conn, "Legacy")

@@ -1,6 +1,6 @@
 # 🎯 Risk Influence Map (RIM)
 
-A dynamic risk management visualization system built with Streamlit and Neo4j, designed for strategic and operational risk mapping in complex programs (SMR nuclear projects, aerospace, etc.).
+A dynamic risk management visualization system built with Streamlit and Neo4j, designed for business and operational risk mapping in complex programs (SMR nuclear projects, aerospace, etc.).
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.29+-red.svg)
@@ -18,7 +18,7 @@ The Risk Influence Map transforms static risk registers into **dynamic risk inte
 
 | Entity | Shape | Purpose |
 |--------|-------|---------|
-| Strategic Risk | ◆ Diamond | Consequence-oriented, managed by leadership |
+| Business Risk | ◆ Diamond | Consequence-oriented, managed by leadership |
 | Operational Risk | ● Circle | Cause-oriented, managed by functional teams |
 | Mitigation | 🛡️ Rounded Box | Controls and protective actions |
 | TPO | ⬡ Hexagon | Top Program Objectives at risk |
@@ -66,7 +66,7 @@ streamlit run app.py
 
 | Feature | Description |
 |---------|-------------|
-| **Two-Level Risk Architecture** | Strategic (consequence) vs Operational (cause) risks |
+| **Two-Level Risk Architecture** | Business (consequence) vs Operational (cause) risks |
 | **Influence Mapping** | Three influence levels with strength/confidence scoring |
 | **Mitigation Management** | Dedicated/Inherited/Baseline types with effectiveness tracking |
 | **Exposure Calculation** | Quantitative scoring with influence limitation model |
@@ -179,7 +179,7 @@ NEO4J_PASSWORD=your_password
 ## 📊 Demo Data
 
 Load the `Apex Nuclear Systems` demo dataset to explore:
-- 15+ Strategic Risks
+- 15+ Business Risks
 - 30+ Operational Risks
 - Multiple influence chains
 - Mitigation coverage scenarios

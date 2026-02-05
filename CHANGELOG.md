@@ -99,7 +99,7 @@ All notable changes to the Risk Influence Map (RIM) application.
   - Comprehensive health report generation
 
 - **Example Schemas**
-  - `schemas/default/` - SMR nuclear project (Strategic/Operational)
+  - `schemas/default/` - SMR nuclear project (Business/Operational)
   - `schemas/it_security/` - Cybersecurity example (Enterprise/Tactical, CIA-based TPOs)
 
 **Files Added:**
@@ -186,7 +186,7 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 - **Hierarchical Layout (Sugiyama Algorithm)** (`ui/layouts.py`)
   - Edge-crossing minimization using barycenter heuristic
-  - Respects RIM semantic hierarchy (TPO → Strategic → Operational)
+  - Respects RIM semantic hierarchy (TPO → Business → Operational)
   - Connected nodes vertically aligned for readability
   - Mitigations positioned alongside target risks
   - Available as "🌳 Hierarchical" in predefined layouts
@@ -228,7 +228,7 @@ All notable changes to the Risk Influence Map (RIM) application.
 **New Features:**
 
 - **Semantic Shape System** (`visualization/node_styles.py`)
-  - ◆ Diamonds for Strategic Risks (pointed = danger)
+  - ◆ Diamonds for Business Risks (pointed = danger)
   - ● Circles for Operational Risks (foundation)
   - 🛡️ Rounded boxes for Mitigations (shield-like)
   - ⬡ Hexagons for TPOs (structural)
@@ -390,7 +390,7 @@ rim/
 
 - **Quick Filter Presets**
   - 🌐 Full View
-  - 🟣 Strategic Focus
+  - 🟣 Business Focus
   - 🔵 Operational Focus
   - ✅ Active Risks Only
   - ⚠️ Contingent Risks
@@ -441,7 +441,7 @@ rim/
   - Cluster categories: Product, Business, Industrial, Sustainability, Safety
 
 - **TPO Impact Relationship**
-  - Link strategic risks to TPOs
+  - Link business risks to TPOs
   - Impact level (Low/Medium/High/Critical)
 
 - **Visualization**
@@ -458,13 +458,13 @@ rim/
 **Core Features:**
 
 - **Risk Management**
-  - Two-level architecture (Strategic/Operational)
+  - Two-level architecture (Business/Operational)
   - Four categories (Programme/Produit/Industriel/Supply Chain)
   - Likelihood × Impact scoring
   - Active/Archived status
 
 - **Influence Mapping**
-  - Three influence levels (L1: Op→Strat, L2: Strat→Strat, L3: Op→Op)
+  - Three influence levels (L1: Op→Bus, L2: Bus→Bus, L3: Op→Op)
   - Strength and confidence scoring
   - Description field
 
@@ -498,7 +498,7 @@ rim/
 
 ### v2.0.0 → v2.1.0
 
-1. Node shapes changed: Diamond for strategic, circle for operational
+1. Node shapes changed: Diamond for business, circle for operational
 2. Edge arrows changed: Bar-end for mitigations, vee for TPO impacts
 3. No data migration needed
 

@@ -53,8 +53,8 @@ ARROW_STYLES = {
 
 # Base widths for influence types
 INFLUENCE_BASE_WIDTHS = {
-    "Level1": 4.0,    # Op→Strat (thickest - major impact)
-    "Level2": 3.0,    # Strat→Strat
+    "Level1": 4.0,    # Op→Bus (thickest - major impact)
+    "Level2": 3.0,    # Bus→Bus
     "Level3": 2.0     # Op→Op (thinnest)
 }
 
@@ -89,8 +89,8 @@ IMPACT_WIDTHS = {
 
 DASH_PATTERNS = {
     # Influence types
-    "level1": False,           # Solid for Op→Strat
-    "level2": False,           # Solid for Strat→Strat
+    "level1": False,           # Solid for Op→Bus
+    "level2": False,           # Solid for Bus→Bus
     "level3": [8, 4],          # Dashed for Op→Op
     
     # Mitigation effectiveness
@@ -136,8 +136,8 @@ def create_influence_edge_config(edge: Dict[str, Any]) -> Dict[str, Any]:
     Create edge configuration for an INFLUENCES relationship.
     
     Uses standard arrow with color coding by influence type:
-    - Level 1 (Op→Strat): Red, thick, solid - causes consequence
-    - Level 2 (Strat→Strat): Purple, medium, solid - amplifies
+    - Level 1 (Op→Bus): Red, thick, solid - causes consequence
+    - Level 2 (Bus→Bus): Purple, medium, solid - amplifies
     - Level 3 (Op→Op): Blue, thin, dashed - contributes
     
     Args:
@@ -474,7 +474,7 @@ def get_edge_legend_items() -> Dict[str, Any]:
     return {
         "influences": [
             {
-                "label": "Level 1: Op → Strat",
+                "label": "Level 1: Op → Bus",
                 "description": "Causes consequence",
                 "color": INFLUENCE_TYPE_COLORS["Level1"],
                 "width": 4,
@@ -482,7 +482,7 @@ def get_edge_legend_items() -> Dict[str, Any]:
                 "arrow": "arrow"
             },
             {
-                "label": "Level 2: Strat → Strat",
+                "label": "Level 2: Bus → Bus",
                 "description": "Amplifies",
                 "color": INFLUENCE_TYPE_COLORS["Level2"],
                 "width": 3,

@@ -52,7 +52,7 @@ class Influence:
             try:
                 self.influence_type = InfluenceType(self.influence_type)
             except ValueError:
-                # Handle legacy format like "Level1_Op_to_Bus"
+                # Handle legacy format like "Level1_Op_to_Strat"
                 for it in InfluenceType:
                     if it.value in self.influence_type or self.influence_type in it.value:
                         self.influence_type = it
@@ -131,7 +131,7 @@ class Influence:
 @dataclass
 class TPOImpact:
     """
-    Represents an IMPACTS_TPO relationship between a business risk and a TPO.
+    Represents an IMPACTS_TPO relationship between a strategic risk and a TPO.
     
     Attributes:
         id: Unique identifier (UUID)

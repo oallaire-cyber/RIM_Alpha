@@ -18,7 +18,7 @@ class Risk:
     Attributes:
         id: Unique identifier (UUID)
         name: Risk name/title
-        level: Business or Operational
+        level: Strategic or Operational
         origin: New (program-specific) or Legacy (inherited)
         categories: List of domain categories
         status: Active, Contingent, or Archived
@@ -74,8 +74,8 @@ class Risk:
             self.exposure = self.probability * self.impact
     
     @property
-    def is_business(self) -> bool:
-        """Check if risk is business level."""
+    def is_strategic(self) -> bool:
+        """Check if risk is strategic level."""
         return self.level == RiskLevel.STRATEGIC
     
     @property
@@ -142,7 +142,7 @@ class Risk:
         return cls(
             id=data.get("id", ""),
             name=data.get("name", ""),
-            level=data.get("level", "Business"),
+            level=data.get("level", "Strategic"),
             origin=data.get("origin", "New"),
             categories=data.get("categories", []),
             status=data.get("status", "Active"),

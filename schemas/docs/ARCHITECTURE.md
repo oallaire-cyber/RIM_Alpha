@@ -118,7 +118,7 @@ models/
 
 ```python
 class RiskLevel(Enum):
-    BUSINESS = "Business"
+    STRATEGIC = "Strategic"
     OPERATIONAL = "Operational"
 
 class RiskCategory(Enum):
@@ -281,7 +281,7 @@ visualization/
 ```python
 # Shape mapping
 RISK_SHAPES = {
-    "business": "diamond",    # ◆ Pointed = danger
+    "strategic": "diamond",    # ◆ Pointed = danger
     "operational": "dot",      # ● Circle = foundation
 }
 MITIGATION_SHAPE = "box"       # 🛡️ Rounded = shield
@@ -434,7 +434,7 @@ st.session_state.graph_refresh_counter: int
     reference: String!,
     name: String!,
     description: String,
-    level: "Business" | "Operational",
+    level: "Strategic" | "Operational",
     category: String,
     status: "Active" | "Archived",
     likelihood: Integer (1-10),
@@ -553,7 +553,7 @@ tests/
 
 ## Performance Considerations
 
-### Optimization Busegies
+### Optimization Strategies
 
 1. **Lazy loading**: Only load data when tab is active
 2. **Caching**: Use `@st.cache_data` for expensive computations

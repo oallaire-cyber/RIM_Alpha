@@ -17,6 +17,7 @@ from config import (
     RISK_LEVELS,
     RISK_CATEGORIES,
     TPO_CLUSTERS,
+    RISK_LEVEL_CONFIG,
 )
 
 # Database
@@ -100,14 +101,14 @@ def render_help_section():
             
             The **Risk Influence Map** visualizes relationships between:
             
-            - **Strategic Risks** (◆): Consequence-oriented, managed by leadership
+            - **Business Risks** (◆): Consequence-oriented, managed by leadership
             - **Operational Risks** (●): Cause-oriented, managed by teams  
             - **TPOs** (⬡): Top Program Objectives
             - **Mitigations** (🛡️): Risk treatments
             
             **Influence Types:**
-            - **Level 1** (red): Operational → Strategic
-            - **Level 2** (purple): Strategic → Strategic
+            - **Level 1** (red): Operational → Business
+            - **Level 2** (purple): Business → Business
             - **Level 3** (blue): Operational → Operational
             """)
         
@@ -192,7 +193,7 @@ def render_help_section():
             
             **Direction Matters:**
             - Source risk **causes or contributes to** target risk
-            - Operational risks typically influence Strategic risks
+            - Operational risks typically influence Business risks
             
             **Influence Types (Auto-determined):**
             
@@ -340,13 +341,13 @@ def render_welcome_page():
         ### ✨ Key Features
         
         **🎯 Two-Level Risk Architecture**
-        - **Strategic Risks** (◆ Diamond): Consequence-oriented, managed by program leadership
+        - **Business Risks** (◆ Diamond): Consequence-oriented, managed by program leadership
         - **Operational Risks** (● Circle): Cause-oriented, managed by functional teams
         - **Origin Tracking**: Distinguish between New (program-specific) and Legacy (inherited) risks
         
         **🔗 Influence Mapping**
-        - Level 1: Operational → Strategic influences (red, thick)
-        - Level 2: Strategic → Strategic influences (purple, medium)
+        - Level 1: Operational → Business influences (red, thick)
+        - Level 2: Business → Business influences (purple, medium)
         - Level 3: Operational → Operational influences (blue, dashed)
         - Configurable strength and confidence scoring
         
@@ -401,9 +402,15 @@ def render_statistics_dashboard(stats: dict):
         with col1:
             st.metric("🎯 Total Risks", stats.get("total_risks", 0))
         with col2:
-            st.metric("🟣 Strategic", stats.get("strategic_risks", 0))
+            # Schema-driven level 1 display
+            level1_name = stats.get("level1_name", RISK_LEVELS[0] if RISK_LEVELS else "Business")
+            level1_cfg = RISK_LEVEL_CONFIG.get(level1_name, {})
+            st.metric(f"{level1_cfg.get('emoji', '◆')} {level1_name}", stats.get("level1_risks", 0))
         with col3:
-            st.metric("🔵 Operational", stats.get("operational_risks", 0))
+            # Schema-driven level 2 display
+            level2_name = stats.get("level2_name", RISK_LEVELS[1] if len(RISK_LEVELS) > 1 else "Operational")
+            level2_cfg = RISK_LEVEL_CONFIG.get(level2_name, {})
+            st.metric(f"{level2_cfg.get('emoji', '●')} {level2_name}", stats.get("level2_risks", 0))
         with col4:
             st.metric("🆕 New", stats.get("new_risks", 0))
         with col5:
@@ -532,7 +539,10 @@ def render_exposure_dashboard(manager):
                     st.markdown("**Top Risks by Final Exposure:**")
                     
                     for i, r in enumerate(sorted_results[:10]):
-                        level_icon = "🟣" if r.get("level") == "Strategic" else "🔵"
+                        # Schema-driven level icon
+                        risk_level = r.get("level", "")
+                        level_cfg = RISK_LEVEL_CONFIG.get(risk_level, {})
+                        level_icon = level_cfg.get("emoji", "●")
                         mit_info = f"🛡️×{r.get('mitigation_count', 0)}" if r.get('mitigation_count', 0) > 0 else "⚠️ No mit"
                         inf_info = f"↑{r.get('upstream_risk_count', 0)}" if r.get('upstream_risk_count', 0) > 0 else ""
                         
@@ -1090,7 +1100,7 @@ def main():
     
     # Header
     st.markdown(f'<p class="main-header">{APP_ICON} {APP_TITLE}</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Dynamic visualization system for strategic and operational risk management</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">Dynamic visualization system for business and operational risk management</p>', unsafe_allow_html=True)
     
     # Connection sidebar
     render_connection_sidebar()

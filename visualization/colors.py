@@ -15,7 +15,7 @@ from typing import Optional
 # =============================================================================
 
 RISK_COLORS = {
-    "strategic": {
+    "business": {
         "base": "#8E44AD",      # Purple - consequence-oriented
         "light": "#BB8FCE",
         "dark": "#6C3483"
@@ -29,7 +29,7 @@ RISK_COLORS = {
 
 # Legacy compatibility aliases
 LEVEL_COLORS = {
-    "Strategic": RISK_COLORS["strategic"]["base"],
+    "Business": RISK_COLORS["business"]["base"],
     "Operational": RISK_COLORS["operational"]["base"]
 }
 
@@ -100,8 +100,8 @@ TPO_COLORS = {
 # =============================================================================
 
 INFLUENCE_TYPE_COLORS = {
-    "Level1": "#E74C3C",       # Red (Op→Strat) - causes consequence
-    "Level2": "#8E44AD",       # Purple (Strat→Strat) - amplifies
+    "Level1": "#E74C3C",       # Red (Op→Bus) - causes consequence
+    "Level2": "#8E44AD",       # Purple (Bus→Bus) - amplifies
     "Level3": "#2980B9"        # Blue (Op→Op) - contributes
 }
 

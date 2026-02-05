@@ -184,7 +184,7 @@ def render_subgraph(
         direction: "upstream", "downstream", or "both"
         max_depth: Maximum traversal depth
         include_tpos: Whether to include TPO nodes
-        level_filter: Filter to specific level ("Strategic", "Operational", or None for all)
+        level_filter: Filter to specific level ("Business", "Operational", or None for all)
         **kwargs: Additional arguments passed to render_graph
     
     Returns:

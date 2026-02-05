@@ -5,8 +5,8 @@ entities:
   risk:
     neo4j_label: Risk
     levels:
-    - id: business
-      label: Business
+    - id: strategic
+      label: Strategic
       description: Consequence-oriented risks managed by program leadership
       color: '#9b59b6'
       shape: diamond
@@ -195,14 +195,14 @@ relationships:
     neo4j_type: INFLUENCES
     default_confidence: 0.8
     types:
-    - id: level1_op_to_bus
-      label: Level1_Op_to_Bus
-      description: Operational to Business influence
+    - id: level1_op_to_strat
+      label: Level1_Op_to_Strat
+      description: Operational to Strategic influence
       color: '#e74c3c'
       line_style: solid
-    - id: level2_bus_to_bus
-      label: Level2_Bus_to_Bus
-      description: Business to Business influence
+    - id: level2_strat_to_strat
+      label: Level2_Strat_to_Strat
+      description: Strategic to Strategic influence
       color: '#9b59b6'
       line_style: solid
     - id: level3_op_to_op
@@ -324,7 +324,7 @@ ui:
     filters:
       risks:
         levels:
-        - Business
+        - Strategic
         - Operational
         categories:
         - Programme
@@ -344,7 +344,7 @@ ui:
     filters:
       risks:
         levels:
-        - Business
+        - Strategic
         - Operational
         categories:
         - Programme
@@ -358,13 +358,13 @@ ui:
         enabled: false
       mitigations:
         enabled: false
-  - id: business_focus
-    name: ◆ Business Focus
-    description: Focus on business risks only
+  - id: strategic_focus
+    name: ◆ Strategic Focus
+    description: Focus on strategic risks only
     filters:
       risks:
         levels:
-        - Business
+        - Strategic
         categories:
         - Programme
         - Produit
