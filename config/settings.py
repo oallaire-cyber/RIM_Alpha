@@ -129,12 +129,12 @@ if _active_schema:
     }
 else:
     # Fallback defaults
-    RISK_LEVELS = ["Strategic", "Operational"]
+    RISK_LEVELS = ["Business", "Operational"]
     RISK_CATEGORIES = ["Programme", "Produit", "Industriel", "Supply Chain"]
     RISK_STATUSES = ["Active", "Contingent", "Archived"]
     RISK_ORIGINS = ["New", "Legacy"]
     RISK_LEVEL_CONFIG = {
-        "Strategic": {"color": "#9b59b6", "shape": "diamond", "emoji": "◆", "size": 35, "description": ""},
+        "Business": {"color": "#9b59b6", "shape": "diamond", "emoji": "◆", "size": 35, "description": ""},
         "Operational": {"color": "#3498db", "shape": "dot", "emoji": "●", "size": 30, "description": ""}
     }
 

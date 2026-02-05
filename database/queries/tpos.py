@@ -256,11 +256,11 @@ def create_tpo_impact(
     description: str = ""
 ) -> Optional[str]:
     """
-    Create an IMPACTS_TPO relationship from a Strategic Risk to a TPO.
+    Create an IMPACTS_TPO relationship from a Business Risk to a TPO.
     
     Args:
         conn: Database connection
-        risk_id: Risk UUID (must be Strategic)
+        risk_id: Risk UUID (must be Business level)
         tpo_id: TPO UUID
         impact_level: "Low", "Medium", "High", or "Critical"
         description: Impact description
@@ -269,17 +269,17 @@ def create_tpo_impact(
         Created impact ID or None if failed
     
     Raises:
-        ValueError: If risk is not Strategic
+        ValueError: If risk is not Business level
     """
-    # Verify the risk is Strategic
+    # Verify the risk is Business level (consequence-oriented)
     check_query = """
     MATCH (r:Risk {id: $risk_id})
     RETURN r.level as level
     """
     check_result = conn.execute_query(check_query, {"risk_id": risk_id})
     
-    if not check_result or check_result[0]["level"] != "Strategic":
-        raise ValueError("Only Strategic risks can impact TPOs")
+    if not check_result or check_result[0]["level"] != "Business":
+        raise ValueError("Only Business risks can impact TPOs")
     
     query = """
     MATCH (r:Risk {id: $risk_id})

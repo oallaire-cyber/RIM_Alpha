@@ -24,8 +24,8 @@ def create_influence(
     Create an INFLUENCES relationship between two risks.
     
     The influence type is automatically determined based on source/target levels:
-    - Operational → Strategic = Level1_Op_to_Strat
-    - Strategic → Strategic = Level2_Strat_to_Strat
+    - Operational → Business = Level1_Op_to_Bus
+    - Business → Business = Level2_Bus_to_Bus
     - Operational → Operational = Level3_Op_to_Op
     
     Args:
@@ -46,8 +46,8 @@ def create_influence(
     // Determine type based on levels
     WITH source, target,
          CASE 
-            WHEN source.level = 'Operational' AND target.level = 'Strategic' THEN 'Level1_Op_to_Strat'
-            WHEN source.level = 'Strategic' AND target.level = 'Strategic' THEN 'Level2_Strat_to_Strat'
+            WHEN source.level = 'Operational' AND target.level = 'Business' THEN 'Level1_Op_to_Bus'
+            WHEN source.level = 'Business' AND target.level = 'Business' THEN 'Level2_Bus_to_Bus'
             WHEN source.level = 'Operational' AND target.level = 'Operational' THEN 'Level3_Op_to_Op'
             ELSE 'Unknown'
          END as determined_type

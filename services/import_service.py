@@ -202,7 +202,7 @@ class ExcelImporter:
                         continue
                     
                     if pd.isna(row.get('level')) or row.get('level') not in RISK_LEVELS:
-                        result.warnings.append(f"Row {row_num} ({risk_name}): Invalid level, skipped")
+                        result.warnings.append(f"Row {row_num} ({risk_name}): Invalid level '{row.get('level', 'None')}'. Valid: {RISK_LEVELS}")
                         result.risks_skipped += 1
                         continue
                     

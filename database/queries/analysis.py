@@ -286,7 +286,7 @@ def get_influence_network(
         node_id: Starting node UUID
         direction: "upstream", "downstream", or "both"
         max_depth: Maximum traversal depth (None for unlimited)
-        level_filter: "all", "Strategic", or "Operational"
+        level_filter: "all", "Business", or "Operational"
         include_tpos: Whether to include TPOs
     
     Returns:

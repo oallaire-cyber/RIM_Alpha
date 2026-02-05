@@ -33,7 +33,7 @@ def create_risk(
     Args:
         conn: Database connection
         name: Risk name
-        level: "Strategic" or "Operational"
+        level: "Business" or "Operational"
         categories: List of category strings
         description: Risk description
         status: "Active", "Contingent", or "Archived"
@@ -222,7 +222,7 @@ def get_risks_by_level(conn: Neo4jConnection, level: str) -> List[Dict[str, Any]
     
     Args:
         conn: Database connection
-        level: "Strategic" or "Operational"
+        level: "Business" or "Operational"
     
     Returns:
         List of risk dictionaries

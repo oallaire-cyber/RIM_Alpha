@@ -126,7 +126,7 @@ def _render_propagators_tab(
         return
     
     for i, prop in enumerate(propagators[:limit], 1):
-        level_icon = "🟣" if prop.get("level") == "Strategic" else "🔵"
+        level_icon = "🟣" if prop.get("level") == "Business" else "🔵"
         node_id = prop.get("id")
         
         col_info, col_btn = st.columns([4, 1])
@@ -176,7 +176,7 @@ def _render_convergence_tab(
         node_type = conv.get("node_type", "Risk")
         if node_type == "TPO":
             level_icon = "🟡"
-        elif conv.get("level") == "Strategic":
+        elif conv.get("level") == "Business":
             level_icon = "🟣"
         else:
             level_icon = "🔵"
@@ -235,7 +235,7 @@ def _render_critical_paths_tab(
         for node in path["path"]:
             if node["type"] == "TPO":
                 icon = "🟡"
-            elif node["type"] == "Strategic":
+            elif node["type"] == "Business":
                 icon = "🟣"
             else:
                 icon = "🔵"
@@ -263,7 +263,7 @@ def _render_bottlenecks_tab(
         return
     
     for i, bn in enumerate(bottlenecks[:limit], 1):
-        level_icon = "🟣" if bn["level"] == "Strategic" else "🔵"
+        level_icon = "🟣" if bn["level"] == "Business" else "🔵"
         node_id = bn["id"]
         
         col_info, col_btn = st.columns([4, 1])
@@ -302,7 +302,7 @@ def _render_clusters_tab(
         
         # Show level breakdown
         levels = cluster.get("levels", {})
-        level_str = f"🟣 {levels.get('Strategic', 0)} Strategic, 🔵 {levels.get('Operational', 0)} Operational"
+        level_str = f"🟣 {levels.get('Business', 0)} Strategic, 🔵 {levels.get('Operational', 0)} Operational"
         st.caption(f"{level_str} | {cluster['internal_edges']} internal links | Density: {cluster['density']}")
         
         # Show node names (truncated)
@@ -317,7 +317,7 @@ def get_level_icon(level: str, node_type: str = "Risk") -> str:
     """Get the appropriate icon for a node's level/type."""
     if node_type == "TPO":
         return "🟡"
-    elif level == "Strategic":
+    elif level == "Business":
         return "🟣"
     else:
         return "🔵"

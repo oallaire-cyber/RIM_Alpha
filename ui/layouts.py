@@ -111,7 +111,7 @@ class LayoutManager:
 
 def generate_layered_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     """
-    Generate a layered layout with TPOs at top, Strategic in middle, Operational at bottom.
+    Generate a layered layout with TPOs at top, Business in middle, Operational at bottom.
     
     Args:
         nodes: List of node dictionaries
@@ -120,7 +120,7 @@ def generate_layered_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, 
         Position dictionary mapping node IDs to {x, y}
     """
     tpos = [n for n in nodes if n.get("node_type") == "TPO"]
-    strategic = [n for n in nodes if n.get("level") == "Strategic" and n.get("node_type") != "TPO"]
+    strategic = [n for n in nodes if n.get("level") == "Business" and n.get("node_type") != "TPO"]
     operational = [n for n in nodes if n.get("level") == "Operational" and n.get("node_type") != "TPO"]
     mitigations = [n for n in nodes if n.get("node_type") == "Mitigation"]
     
@@ -135,7 +135,7 @@ def generate_layered_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, 
             "y": y_tpo
         }
     
-    # Strategic in middle
+    # Business in middle
     y_strategic = 250
     x_spacing = 800 / max(len(strategic), 1)
     for i, node in enumerate(strategic):
@@ -256,7 +256,7 @@ def generate_tpo_cluster_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[s
             cluster_counts[cluster] += 1
     
     # Place strategic risks in middle
-    strategic = [n for n in nodes if n.get("level") == "Strategic" and n.get("node_type") != "TPO"]
+    strategic = [n for n in nodes if n.get("level") == "Business" and n.get("node_type") != "TPO"]
     x_spacing = 800 / max(len(strategic), 1)
     for i, node in enumerate(strategic):
         positions[node["id"]] = {
@@ -345,7 +345,7 @@ def generate_auto_spread_layout(nodes: List[Dict[str, Any]], edges: List[Dict[st
             return 0  # TPOs always at top
         elif node_type == "Mitigation":
             return 3  # Mitigations in a separate layer
-        elif level == "Strategic":
+        elif level == "Business":
             return 1  # Strategic risks below TPOs
         else:  # Operational
             return 2  # Operational risks below Strategic

@@ -196,7 +196,7 @@ def _render_risk_treatment_mode(
         else:
             status_emoji = "🔶"
         
-        level_icon = "🟣" if r["level"] == "Strategic" else "🔵"
+        level_icon = "🟣" if r["level"] == "Business" else "🔵"
         label = f"{status_emoji} {level_icon} {r['name']} ({mit_count} mitigations)"
         risk_options[label] = risk_id
     
@@ -388,7 +388,7 @@ def _render_mitigation_impact_details(details: Dict[str, Any]):
     
     mit_data = details.get("mitigation", {})
     risks = details.get("risks", [])
-    strategic_impacts = details.get("strategic_impacts", [])
+    business_impacts = details.get("business_impacts", [])
     
     # Display mitigation info
     col_mit1, col_mit2 = st.columns([2, 1])
@@ -403,9 +403,9 @@ def _render_mitigation_impact_details(details: Dict[str, Any]):
             st.metric("Total Exposure Covered", f"{details['total_exposure_covered']:.1f}")
     
     # Show strategic impact if any
-    if strategic_impacts:
-        st.markdown("**🎯 Strategic Impact:**")
-        for impact in strategic_impacts:
+    if business_impacts:
+        st.markdown("**🎯 Business Impact:**")
+        for impact in business_impacts:
             flags_str = ", ".join(impact.get("flags", []))
             st.caption(f"  • {impact.get('risk_name', 'Unknown')} - {flags_str}")
     
@@ -417,12 +417,12 @@ def _render_mitigation_impact_details(details: Dict[str, Any]):
         
         col_strat, col_op = st.columns(2)
         with col_strat:
-            st.markdown(f"🟣 **Strategic:** {details.get('strategic_count', 0)}")
+            st.markdown(f"🟣 **Strategic:** {details.get('business_count', 0)}")
         with col_op:
             st.markdown(f"🔵 **Operational:** {details.get('operational_count', 0)}")
         
         for risk in risks:
-            level_icon = "🟣" if risk.get("level") == "Strategic" else "🔵"
+            level_icon = "🟣" if risk.get("level") == "Business" else "🔵"
             effectiveness = risk.get("effectiveness", "Medium")
             exposure = risk.get("exposure", 0) or 0
             
@@ -438,7 +438,7 @@ def _render_mitigation_impact_details(details: Dict[str, Any]):
             # Check if high-priority
             is_high_priority = any(
                 si.get("risk_id") == risk.get("id")
-                for si in strategic_impacts
+                for si in business_impacts
             )
             priority_badge = " ⭐" if is_high_priority else ""
             
@@ -462,7 +462,7 @@ def _render_coverage_gaps_mode(
         "🚨 High Priority",
         "⚠️ Unmitigated",
         "📋 Proposed Only",
-        "🟣 Strategic Gaps",
+        "🟣 Business Gaps",
         "📊 By Category"
     ])
     
@@ -478,9 +478,9 @@ def _render_coverage_gaps_mode(
     with gap_tabs[2]:
         _render_proposed_only_gaps(gaps.get("proposed_only_high_exposure", []), on_node_select)
     
-    # Tab 4: Strategic Gaps
+    # Tab 4: Business Gaps
     with gap_tabs[3]:
-        _render_strategic_gaps(gaps.get("strategic_gaps", []), on_node_select)
+        _render_business_gaps(gaps.get("business_gaps", []), on_node_select)
     
     # Tab 5: Category Coverage
     with gap_tabs[4]:
@@ -502,7 +502,7 @@ def _render_high_priority_gaps(
         return
     
     for risk in high_priority[:limit]:
-        level_icon = "🟣" if risk.get("level") == "Strategic" else "🔵"
+        level_icon = "🟣" if risk.get("level") == "Business" else "🔵"
         flags = risk.get("influence_flags", [])
         flags_str = " | ".join(f"⚡ {f}" for f in flags)
         
@@ -534,7 +534,7 @@ def _render_critical_unmitigated(
         return
     
     for risk in critical[:limit]:
-        level_icon = "🟣" if risk.get("level") == "Strategic" else "🔵"
+        level_icon = "🟣" if risk.get("level") == "Business" else "🔵"
         exposure = risk.get("exposure", 0)
         categories = risk.get("categories", [])
         
@@ -566,7 +566,7 @@ def _render_proposed_only_gaps(
         return
     
     for risk in proposed_only[:limit]:
-        level_icon = "🟣" if risk.get("level") == "Strategic" else "🔵"
+        level_icon = "🟣" if risk.get("level") == "Business" else "🔵"
         exposure = risk.get("exposure", 0)
         proposed_mits = risk.get("proposed_mitigations", [])
         
@@ -583,21 +583,21 @@ def _render_proposed_only_gaps(
                 st.rerun()
 
 
-def _render_strategic_gaps(
-    strategic_gaps: List[Dict[str, Any]],
+def _render_business_gaps(
+    business_gaps: List[Dict[str, Any]],
     on_node_select: Optional[Callable],
     limit: int = 5
 ):
-    """Render strategic risks without adequate mitigation."""
+    """Render business risks without adequate mitigation."""
     import streamlit as st
     
-    st.markdown("**Strategic risks without adequate mitigation coverage**")
+    st.markdown("**Business risks without adequate mitigation coverage**")
     
-    if not strategic_gaps:
-        st.success("✅ All strategic risks are well covered!")
+    if not business_gaps:
+        st.success("✅ All business risks are well covered!")
         return
     
-    for risk in strategic_gaps[:limit]:
+    for risk in business_gaps[:limit]:
         exposure = risk.get("exposure", 0)
         impl_eff = risk.get("implemented_effectiveness", 0)
         

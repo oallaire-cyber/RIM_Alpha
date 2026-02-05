@@ -252,7 +252,7 @@ class RiskGraphManager:
         impact_level: str,
         description: str = ""
     ) -> bool:
-        """Create an impact relationship from a Strategic Risk to a TPO."""
+        """Create an impact relationship from a Business Risk to a TPO."""
         try:
             result = tpos.create_tpo_impact(
                 self._connection, risk_id, tpo_id, impact_level, description
@@ -581,7 +581,7 @@ class RiskGraphManager:
                         paths_to_tpo.append({"path": path, "score": cum_strength * decay})
                     elif current in risk_dict:
                         risks_reached.add(current)
-                        node_value = 5 if risk_dict[current]["level"] == "Strategic" else 2
+                        node_value = 5 if risk_dict[current]["level"] == "Business" else 2
                         score += node_value * cum_strength * decay
                 
                 if current in outgoing and depth < 10:
@@ -806,7 +806,7 @@ class RiskGraphManager:
                     "internal_edges": internal_edges,
                     "density": round(internal_edges / (len(cluster) * (len(cluster) - 1)) if len(cluster) > 1 else 0, 2),
                     "primary_category": primary_category,
-                    "levels": {"Strategic": levels.count("Strategic"), "Operational": levels.count("Operational")}
+                    "levels": {"Business": levels.count("Business"), "Operational": levels.count("Operational")}
                 })
         
         clusters.sort(key=lambda x: (-x["size"], -x["density"]))
@@ -1102,7 +1102,7 @@ class RiskGraphManager:
             pass
         
         # Count by risk level
-        strategic_count = sum(1 for r in addressed_risks if r.get("level") == "Strategic")
+        strategic_count = sum(1 for r in addressed_risks if r.get("level") == "Business")
         operational_count = sum(1 for r in addressed_risks if r.get("level") == "Operational")
         
         # Calculate total exposure covered
@@ -1140,10 +1140,10 @@ class RiskGraphManager:
             if (r.get("exposure") or 0) >= high_threshold
         ]
         
-        # Strategic gaps (strategic risks without adequate coverage)
+        # Business gaps (business risks without adequate coverage)
         strategic_unmitigated = [
             r for r in unmitigated
-            if r.get("level") == "Strategic"
+            if r.get("level") == "Business"
         ]
         
         # Category coverage
