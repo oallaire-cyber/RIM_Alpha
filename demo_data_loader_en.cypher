@@ -8,14 +8,14 @@
 MATCH (n) DETACH DELETE n;
 
 // =============================================================================
-// 2. CREATION OF STRATEGIC RISKS (8)
+// 2. CREATION OF BUSINESS RISKS (8)
 // =============================================================================
 
 CREATE (rs01:Risk {
   id: 'RS-01',
   name: 'Failure to achieve profitability target',
   description: 'Risk of not achieving the required profitability level within the specified timeframe',
-  level: 'Strategic',
+  level: 'Business',
   status: 'Active',
   origin: 'New',
   categories: ['Programme'],
@@ -34,7 +34,7 @@ CREATE (rs02:Risk {
   id: 'RS-02',
   name: 'Series production start delay',
   description: 'Risk of delay in starting series production scheduled for 2030',
-  level: 'Strategic',
+  level: 'Business',
   status: 'Active',
   origin: 'New',
   categories: ['Programme', 'Industrial'],
@@ -53,7 +53,7 @@ CREATE (rs03:Risk {
   id: 'RS-03',
   name: 'Loss of competitive technological advantage',
   description: 'Risk of losing technological lead against SMR competitors',
-  level: 'Strategic',
+  level: 'Business',
   status: 'Active',
   origin: 'New',
   categories: ['Programme', 'Product'],
@@ -72,7 +72,7 @@ CREATE (rs04:Risk {
   id: 'RS-04',
   name: 'Regulatory safety non-compliance',
   description: 'Risk of non-compliance with nuclear safety standards',
-  level: 'Strategic',
+  level: 'Business',
   status: 'Active',
   origin: 'Legacy',
   categories: ['Programme', 'Product'],
@@ -91,7 +91,7 @@ CREATE (rs05:Risk {
   id: 'RS-05',
   name: 'Fuel supply tension',
   description: 'Risk of geopolitical tension affecting Type A fuel supply',
-  level: 'Strategic',
+  level: 'Business',
   status: 'Contingent',
   origin: 'Legacy',
   categories: ['Programme', 'Supply Chain'],
@@ -112,7 +112,7 @@ CREATE (rs06:Risk {
   id: 'RS-06',
   name: 'Intellectual property compromise',
   description: 'Risk of critical intellectual property leakage or theft via digital backbone',
-  level: 'Strategic',
+  level: 'Business',
   status: 'Contingent',
   origin: 'New',
   categories: ['Programme', 'Product'],
@@ -133,7 +133,7 @@ CREATE (rs07:Risk {
   id: 'RS-07',
   name: 'Insufficient production capacity',
   description: 'Risk of production capacity being insufficient to achieve nominal rate',
-  level: 'Strategic',
+  level: 'Business',
   status: 'Active',
   origin: 'New',
   categories: ['Industrial'],
@@ -152,7 +152,7 @@ CREATE (rs08:Risk {
   id: 'RS-08',
   name: 'Development budget overrun',
   description: 'Risk of significant overrun of allocated development budget',
-  level: 'Strategic',
+  level: 'Business',
   status: 'Active',
   origin: 'Legacy',
   categories: ['Programme'],
@@ -529,13 +529,13 @@ CREATE (m15:Mitigation {
 });
 
 // =============================================================================
-// 6. CREATION OF INFLUENCE LINKS - LEVEL 1 (Op → Strat)
+// 6. CREATION OF INFLUENCE LINKS - LEVEL 1 (Op → Bus)
 // =============================================================================
 
 MATCH (source:Risk {id: 'RO-01'}), (target:Risk {id: 'RS-02'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-01',
-  influence_type: 'Level1_Op_to_Strat',
+  influence_type: 'Level1_Op_to_Bus',
   strength: 'Critical',
   description: 'Critical component supplier failure directly blocks series production',
   confidence: 0.9,
@@ -546,7 +546,7 @@ CREATE (source)-[:INFLUENCES {
 MATCH (source:Risk {id: 'RO-02'}), (target:Risk {id: 'RS-06'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-02',
-  influence_type: 'Level1_Op_to_Strat',
+  influence_type: 'Level1_Op_to_Bus',
   strength: 'Strong',
   description: 'A cyberattack on PLM directly exposes critical intellectual property',
   confidence: 0.85,
@@ -557,7 +557,7 @@ CREATE (source)-[:INFLUENCES {
 MATCH (source:Risk {id: 'RO-03'}), (target:Risk {id: 'RS-04'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-03',
-  influence_type: 'Level1_Op_to_Strat',
+  influence_type: 'Level1_Op_to_Bus',
   strength: 'Critical',
   description: 'Quality drift compromises compliance with nuclear safety standards',
   confidence: 0.95,
@@ -568,7 +568,7 @@ CREATE (source)-[:INFLUENCES {
 MATCH (source:Risk {id: 'RO-04'}), (target:Risk {id: 'RS-02'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-04',
-  influence_type: 'Level1_Op_to_Strat',
+  influence_type: 'Level1_Op_to_Bus',
   strength: 'Strong',
   description: 'Supplier certification delay slows supply chain qualification',
   confidence: 0.8,
@@ -579,7 +579,7 @@ CREATE (source)-[:INFLUENCES {
 MATCH (source:Risk {id: 'RO-05'}), (target:Risk {id: 'RS-03'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-05',
-  influence_type: 'Level1_Op_to_Strat',
+  influence_type: 'Level1_Op_to_Bus',
   strength: 'Strong',
   description: 'Loss of key competencies slows development and innovation',
   confidence: 0.85,
@@ -590,7 +590,7 @@ CREATE (source)-[:INFLUENCES {
 MATCH (source:Risk {id: 'RO-06'}), (target:Risk {id: 'RS-04'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-06',
-  influence_type: 'Level1_Op_to_Strat',
+  influence_type: 'Level1_Op_to_Bus',
   strength: 'Critical',
   description: 'A critical bug in embedded software directly compromises safety',
   confidence: 1.0,
@@ -601,7 +601,7 @@ CREATE (source)-[:INFLUENCES {
 MATCH (source:Risk {id: 'RO-07'}), (target:Risk {id: 'RS-02'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-07',
-  influence_type: 'Level1_Op_to_Strat',
+  influence_type: 'Level1_Op_to_Bus',
   strength: 'Moderate',
   description: 'Digital backbone unavailability slows product development',
   confidence: 0.7,
@@ -610,13 +610,13 @@ CREATE (source)-[:INFLUENCES {
 }]->(target);
 
 // =============================================================================
-// 7. CREATION OF INFLUENCE LINKS - LEVEL 2 (Strat → Strat)
+// 7. CREATION OF INFLUENCE LINKS - LEVEL 2 (Bus → Bus)
 // =============================================================================
 
 MATCH (source:Risk {id: 'RS-02'}), (target:Risk {id: 'RS-01'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-08',
-  influence_type: 'Level2_Strat_to_Strat',
+  influence_type: 'Level2_Bus_to_Bus',
   strength: 'Critical',
   description: 'Production delay directly impacts revenue and therefore profitability',
   confidence: 1.0,
@@ -627,7 +627,7 @@ CREATE (source)-[:INFLUENCES {
 MATCH (source:Risk {id: 'RS-03'}), (target:Risk {id: 'RS-01'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-09',
-  influence_type: 'Level2_Strat_to_Strat',
+  influence_type: 'Level2_Bus_to_Bus',
   strength: 'Strong',
   description: 'Loss of technological advantage reduces margins and market share',
   confidence: 0.85,
@@ -638,7 +638,7 @@ CREATE (source)-[:INFLUENCES {
 MATCH (source:Risk {id: 'RS-04'}), (target:Risk {id: 'RS-02'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-10',
-  influence_type: 'Level2_Strat_to_Strat',
+  influence_type: 'Level2_Bus_to_Bus',
   strength: 'Critical',
   description: 'Safety non-compliance blocks production authorization',
   confidence: 1.0,
@@ -649,7 +649,7 @@ CREATE (source)-[:INFLUENCES {
 MATCH (source:Risk {id: 'RS-05'}), (target:Risk {id: 'RS-02'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-11',
-  influence_type: 'Level2_Strat_to_Strat',
+  influence_type: 'Level2_Bus_to_Bus',
   strength: 'Strong',
   description: 'Fuel supply tension delays first reactor startup',
   confidence: 0.8,
@@ -660,7 +660,7 @@ CREATE (source)-[:INFLUENCES {
 MATCH (source:Risk {id: 'RS-06'}), (target:Risk {id: 'RS-03'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-12',
-  influence_type: 'Level2_Strat_to_Strat',
+  influence_type: 'Level2_Bus_to_Bus',
   strength: 'Strong',
   description: 'IP compromise causes loss of competitive technological advantage',
   confidence: 0.9,
@@ -671,7 +671,7 @@ CREATE (source)-[:INFLUENCES {
 MATCH (source:Risk {id: 'RS-07'}), (target:Risk {id: 'RS-01'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-13',
-  influence_type: 'Level2_Strat_to_Strat',
+  influence_type: 'Level2_Bus_to_Bus',
   strength: 'Strong',
   description: 'Capacity insufficiency limits potential revenues',
   confidence: 0.85,
@@ -682,7 +682,7 @@ CREATE (source)-[:INFLUENCES {
 MATCH (source:Risk {id: 'RS-08'}), (target:Risk {id: 'RS-01'})
 CREATE (source)-[:INFLUENCES {
   id: 'INF-14',
-  influence_type: 'Level2_Strat_to_Strat',
+  influence_type: 'Level2_Bus_to_Bus',
   strength: 'Moderate',
   description: 'Budget overrun directly reduces operating margin',
   confidence: 1.0,
@@ -739,7 +739,7 @@ CREATE (source)-[:INFLUENCES {
 }]->(target);
 
 // =============================================================================
-// 9. CREATION OF TPO IMPACT LINKS (Strategic Risk → TPO)
+// 9. CREATION OF TPO IMPACT LINKS (Business Risk → TPO)
 // =============================================================================
 
 // RS-01 (Profitability failure) → TPO-01 (Profitability 2032)
