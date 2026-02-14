@@ -242,7 +242,7 @@ def get_risks_with_filters(
     
     Args:
         conn: Database connection
-        levels: List of levels to include
+        levels: List of levels to include (None = all, [] = none)
         categories: List of categories to include
         statuses: List of statuses to include
         origins: List of origins to include
@@ -250,6 +250,10 @@ def get_risks_with_filters(
     Returns:
         List of risk dictionaries
     """
+    # Empty list means "show nothing" - return early
+    if levels is not None and len(levels) == 0:
+        return []
+    
     conditions = []
     params = {}
     

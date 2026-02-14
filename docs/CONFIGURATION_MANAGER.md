@@ -38,6 +38,7 @@ Schemas are stored in `schemas/<schema_name>/schema.yaml` and define:
 | **entities.custom_entities** | User-defined entity types (e.g., Asset, Threat Actor) |
 | **relationships** | Influence types/strengths, impact levels, effectiveness levels |
 | **relationships.custom_relationships** | User-defined relationship types between any entities |
+| **scopes** | Named subsets of nodes for focused analysis |
 | **analysis** | Exposure formulas, decay rates, thresholds |
 | **ui** | App title, layout, tabs, filter presets |
 
@@ -74,6 +75,19 @@ Eight sub-tabs for comprehensive schema editing:
 | **📦 Custom Entities** | Define custom node types (e.g., Asset, Threat Actor) with attributes |
 | **🔀 Custom Relationships** | Define custom edge types connecting any entities |
 | **📄 YAML Preview** | Raw YAML view/edit mode with validation |
+
+### 📐 Scopes
+
+Define named subsets of graph nodes for focused analysis:
+
+| Feature | Description |
+|---------|-------------|
+| **Create Scope** | ID, name, description, color, node selection |
+| **Node Picker** | Live node list from Neo4j (or manual UUID entry) |
+| **Edit Scope** | Update name, description, color |
+| **Delete Scope** | Remove scope from schema |
+
+Scopes are stored in `schema.yaml` and selected in the main RIM app sidebar.
 
 **Editing Features:**
 - Form-based editors with live preview
@@ -252,9 +266,9 @@ export RIM_SCHEMA=my_project    # Bash
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `app_config.py` | ~2,000 | Configuration Manager application |
-| `config/schema_loader.py` | ~1,100 | Schema loading and validation |
+| `app_config.py` | ~2,200 | Configuration Manager application |
+| `config/schema_loader.py` | ~1,100 | Schema loading, validation, and scope parsing |
 | `config/settings.py` | ~350 | Dynamic settings from schema |
 | `ui/legend.py` | ~400 | Dynamic legend from schema |
-| `schemas/default/schema.yaml` | ~300 | Default SMR schema |
+| `schemas/default/schema.yaml` | ~300 | Default SMR schema (with scopes) |
 | `schemas/it_security/schema.yaml` | ~500 | IT Security schema with custom entities |

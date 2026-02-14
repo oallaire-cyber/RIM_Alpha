@@ -2,6 +2,22 @@
 Enumeration types for RIM application.
 
 Provides type-safe enumerations for all categorical values used in the system.
+
+DEPRECATION WARNING:
+====================
+This module is DEPRECATED. The hardcoded enums here are being replaced by
+schema-driven values from the SchemaRegistry.
+
+For new code, use the schema-aware accessors in models/schema_compat.py:
+    from models.schema_compat import (
+        SchemaRiskLevels,
+        SchemaRiskStatuses,
+        SchemaInfluenceStrengths,
+        # etc.
+    )
+
+The enums below are kept for backward compatibility with existing code.
+They may be removed in a future version.
 """
 
 from enum import Enum

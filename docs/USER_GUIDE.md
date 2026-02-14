@@ -12,10 +12,11 @@ Complete documentation for the Risk Influence Map application.
 4. [Mitigation Management](#mitigation-management)
 5. [TPO Management](#tpo-management)
 6. [Exposure Calculation](#exposure-calculation)
-7. [Visualization](#visualization)
-8. [Analysis Tools](#analysis-tools)
-9. [Import/Export](#importexport)
-10. [Filter System](#filter-system)
+7. [Analysis Scopes](#analysis-scopes)
+8. [Visualization](#visualization)
+9. [Analysis Tools](#analysis-tools)
+10. [Import/Export](#importexport)
+11. [Filter System](#filter-system)
 
 ---
 
@@ -288,6 +289,79 @@ The exposure calculation quantifies risk severity considering:
 
 ---
 
+## Analysis Scopes
+
+### What Are Scopes?
+
+Analysis scopes let you define **named subsets of your risk graph** for focused analysis. Instead of viewing the Full Graph, you can select a scope that contains only the nodes relevant to a specific area — for example, a particular supply chain, a functional domain, or a risk cluster.
+
+Scopes are saved in `schema.yaml`, making them portable and shareable across team members.
+
+### Creating a Scope
+
+1. Open the **Configuration Manager** (`streamlit run app_config.py`)
+2. Go to the **📐 Scopes** tab
+3. Click **➕ Create New Scope**
+4. Fill in:
+   - **Scope ID**: Machine-readable identifier (e.g., `fuel_chain`)
+   - **Display Name**: Human-readable label (e.g., "⛽ Fuel Supply Chain")
+   - **Description**: Purpose of the scope
+   - **Color**: Scope color for visual identification
+   - **Nodes**: Select nodes from the database or paste UUIDs
+5. Click **Create Scope**
+
+### Selecting Scopes in the Main App
+
+1. Open the main RIM app (`streamlit run app.py`)
+2. In the sidebar, find the **📐 Analysis Scopes** expander
+3. Select one or more scopes from the multiselect
+4. Optionally check **Show connected neighbors** to include 1-hop risk neighbors
+5. The visualization, statistics, CRUD tabs, and all analyses will reflect only the selected scope(s)
+6. Click **🌐 Full Graph** to return to the unscoped view
+
+### Multi-Scope Union
+
+When you select multiple scopes, the displayed graph is the **union** of all selected scopes' node IDs. This lets you compare or combine related analysis areas.
+
+### Smart Scope Expansion
+
+When a scope is active, the system automatically includes:
+- **Mitigations** connected to in-scope risks (via `MITIGATES` relationships)
+- **TPOs** connected to in-scope risks (via `IMPACTS_TPO` relationships)
+- **Risk neighbors** (optional, via "Show connected neighbors" toggle) — adds risks directly connected to scoped risks
+
+This ensures you see the complete context for your scoped risks without manually adding every related node.
+
+### Scoped Features
+
+| Feature | Behavior When Scope Active |
+|---------|----------------------------|
+| **Statistics Dashboard** | Counts only scoped nodes and edges |
+| **Exposure Calculation** | Only considers risks, mitigations, and influences within scope |
+| **Influence Analysis** | Top propagators, convergence points, etc. computed on scoped data |
+| **Mitigation Analysis** | Coverage gaps and effectiveness limited to scoped risks |
+| **CRUD Tabs** (Risks, TPOs, Mitigations, Influences) | List only entities within the expanded scope |
+| **Influence Explorer** | Node selector shows only scoped nodes |
+
+### Scoped Exposure Calculation
+
+When a scope is active, clicking **Calculate Exposure** only considers:
+- **Risks** within the scope (and optionally their 1-hop neighbors)
+- **Influences** between in-scope risks
+- **Mitigations** connected to in-scope risks (found via relationships, not by ID membership)
+- **Mitigates relationships** targeting in-scope risks
+
+> **Note**: Scoped exposure percentages may differ from Full Graph results because influence chains that cross the scope boundary are excluded. This gives you an accurate picture of the risk within the focused area.
+
+### Tips
+
+- Create scopes around **risk clusters** identified by the Influence Analysis panel
+- Use scopes to prepare **focused briefings** for specific stakeholders
+- Compare exposure metrics across scopes to identify the highest-risk areas
+- Toggle **Show connected neighbors** to see how adjacent risks affect your scope
+
+---
+
 ## Visualization
 
 ### Graph Layout Options
@@ -341,7 +415,7 @@ The exposure calculation quantifies risk severity considering:
 
 ### Influence Analysis Panel
 
-Access from **📊 Visualization** tab → **📊 Influence Analysis** expander.
+Access from **📈 Analysis** tab → **📊 Influence Analysis** expander.
 
 | Analysis | Purpose | Key Insight |
 |----------|---------|-------------|
@@ -353,7 +427,7 @@ Access from **📊 Visualization** tab → **📊 Influence Analysis** expander.
 
 ### Mitigation Analysis Panel
 
-Access from **📊 Visualization** tab → **🛡️ Mitigation Analysis** expander.
+Access from **📈 Analysis** tab → **🛡️ Mitigation Analysis** expander.
 
 | Analysis | Purpose | Key Insight |
 |----------|---------|-------------|
@@ -423,20 +497,17 @@ Coverage gaps are flagged if the unmitigated risk is also:
 
 **⚡ Quick Presets**: One-click filter configurations
 
-**🎯 Risk Filters**:
-- Level (Business/Operational)
-- Categories (Programme/Produit/Industriel/Supply Chain)
-- Status (Active/Archived)
-- Origin (New/Legacy)
+**🔷 Core Nodes & Edges**:
 
-**🏆 TPO Filters**:
-- Show/hide TPOs
-- Filter by cluster
+- **🎯 Risk Filters**: Level, Categories, Status, Origin, Exposure threshold
+- **🛡️ Mitigation Filters**: Type (Dedicated/Inherited/Baseline), Status
+- **🔗 Influences Filters**: Strength
+- **🔗 Mitigates Filters**: Effectiveness
 
-**🛡️ Mitigation Filters**:
-- Show/hide mitigations
-- Filter by type (Dedicated/Inherited/Baseline)
-- Filter by status (Implemented/In Progress/Proposed/Deferred)
+**🏆 TPO & Related**:
+
+- **🏆 TPO Filters**: Show/hide TPOs, filter by cluster
+- **🔗 TPO Impact Filters**: Impact level
 
 **🎨 Display Options**:
 - Color mode (by level/by exposure)
@@ -530,4 +601,4 @@ Each multi-select filter has **All** and **None** buttons for quick selection.
 
 ---
 
-*Last updated: February 2026 | Version 2.2.0*
+*Last updated: February 2026 | Version 2.6.0*

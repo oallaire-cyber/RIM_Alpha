@@ -11,8 +11,9 @@ The Risk Influence Map (RIM) methodology documentation, including concepts, form
 3. [Influence Model](#influence-model)
 4. [Mitigation Model](#mitigation-model)
 5. [Exposure Calculation](#exposure-calculation)
-6. [Analysis Algorithms](#analysis-algorithms)
-7. [Calibration & Validation](#calibration--validation)
+6. [Scoped Exposure Calculation](#scoped-exposure-calculation)
+7. [Analysis Algorithms](#analysis-algorithms)
+8. [Calibration & Validation](#calibration--validation)
 
 ---
 
@@ -335,6 +336,69 @@ Max Exposure = max(Final_i)
 
 ---
 
+## Scoped Exposure Calculation
+
+### Overview
+
+When an **Analysis Scope** is active, the exposure calculation only considers entities within the scope boundary. This allows focused analysis of specific risk clusters without interference from unrelated parts of the graph.
+
+### Pre-Filtering Logic
+
+Before the exposure engine runs, all input data is filtered:
+
+```
+1. Risks       → Keep only risks whose id ∈ scope_node_ids
+2. (Optional)  → Expand to 1-hop risk neighbors if "include_neighbors" enabled
+3. Influences  → Keep only if source_id ∈ scope AND target_id ∈ scope
+4. Mitigates   → Keep only if risk_id ∈ scope (find connected mitigations by relationship)
+5. Mitigations → Keep only mitigations referenced by kept mitigates relationships
+```
+
+> **Important**: Mitigations are discovered via their `MITIGATES` relationships to scoped risks, not by checking if the mitigation ID is in the scope set. This ensures that mitigations linked to in-scope risks are always included.
+
+### Neighbor Expansion
+
+When "Show connected neighbors" is enabled:
+- Risks directly connected to scoped risks via influence relationships are added
+- This applies to the visualization, statistics, exposure, and all analysis panels
+- Creates a more complete picture of the risk environment around the focused scope
+
+### Implications
+
+| Scenario | Effect |
+|----------|--------|
+| Risk has upstream influence from **outside** scope | Influence is **excluded** (unless neighbor expansion is on) |
+| Mitigation connected to in-scope risk | Mitigation is **automatically included** via relationship discovery |
+| Risk is in scope but has no mitigations | Risk appears **unmitigated** in scoped calculation |
+| Two connected risks split across scopes | Their influence is **invisible** in either scope (unless neighbors enabled) |
+| Neighbor expansion enabled | 1-hop risks and their mitigations are included in all calculations |
+
+### Interpreting Scoped Metrics
+
+> **Important**: Scoped **Residual Risk %** and **Weighted Risk Score** may differ from Full Graph values. This is expected and intentional.
+
+- A **higher** scoped residual risk may indicate that the scope contains under-mitigated risks
+- A **lower** scoped residual risk may indicate the scope is well-covered by internal mitigations
+- For accurate cross-scope comparison, ensure scopes do not split tightly-coupled risk clusters
+
+### Cross-Scope Mitigation Considerations
+
+When a mitigation addresses risks in multiple scopes:
+
+```
+Scope A: [R1, R2]     ← M1 mitigates R1 → M1 auto-included
+Scope B: [R3, R4]     ← M1 also mitigates R3 → M1 auto-included
+Full Graph: [R1..R4]  ← M1 visible for both
+```
+
+- In **Scope A**, M1 only shows its effect on R1
+- In **Scope B**, M1 only shows its effect on R3
+- In **Full Graph**, M1 covers both R1 and R3
+
+This ensures each scope's metrics are self-consistent.
+
+---
+
 ## Analysis Algorithms
 
 ### Top Propagators
@@ -452,4 +516,4 @@ The `calibration_simulator.py` tool validates the exposure model:
 
 ---
 
-*Last updated: February 2026 | Version 2.2.0*
+*Last updated: February 2026 | Version 2.6.1*

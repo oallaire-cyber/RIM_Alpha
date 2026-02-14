@@ -71,6 +71,7 @@ streamlit run app.py
 | **Mitigation Management** | Dedicated/Inherited/Baseline types with effectiveness tracking |
 | **Exposure Calculation** | Quantitative scoring with influence limitation model |
 | **TPO Impact Tracking** | Link risks to program objectives |
+| **Analysis Scopes** | Define named node subsets for focused analysis with neighbor expansion, scoped statistics, exposure, influence and mitigation analysis |
 
 ### Visualization
 
@@ -81,8 +82,9 @@ streamlit run app.py
 
 ### Analysis Tools
 
-- **Influence Analysis**: Top propagators, convergence points, critical paths, bottlenecks, clusters
-- **Mitigation Analysis**: Coverage gaps, treatment explorer, impact analysis
+- **Influence Analysis**: Top propagators, convergence points, critical paths, bottlenecks, clusters (scope-aware)
+- **Mitigation Analysis**: Coverage gaps, treatment explorer, impact analysis (scope-aware)
+- **Exposure Calculation**: Quantitative scoring with influence limitation model (scope-aware with neighbor expansion)
 - **Monte Carlo Simulator**: Model validation and sensitivity analysis
 
 ## 📚 Documentation
@@ -158,6 +160,9 @@ python -m pytest tests/test_risk.py -v
 | `services/exposure_calculator.py` | `test_exposure_calculator.py` | Partial |
 | `services/influence_analysis.py` | `test_influence_analysis.py` | Partial |
 | `services/mitigation_analysis.py` | `test_mitigation_analysis.py` | Partial |
+| `config/schema_loader.py` (scopes) | `test_scopes.py` | ✓ Complete |
+| `ui/filters.py` (scopes) | `test_scopes.py` | ✓ Complete |
+| `database/manager.py` (scoped exposure) | `test_scopes.py` | ✓ Complete |
 
 ## 🔧 Configuration
 
@@ -212,4 +217,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.5.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.6.1 | See [CHANGELOG.md](CHANGELOG.md) for history

@@ -181,7 +181,7 @@ def create_influence_edge_config(edge: Dict[str, Any]) -> Dict[str, Any]:
     # Format type for display
     type_display = influence_type.replace("_", " → ").replace("Level1", "Level 1").replace("Level2", "Level 2").replace("Level3", "Level 3")
     
-    title_parts = [f"⚡ {type_display}", f"Strength: {strength}"]
+    title_parts = [f"Level: {type_display}", f"Strength: {strength}"]
     if edge.get("description"):
         title_parts.append(f"Description: {edge['description']}")
     title = "\n".join(title_parts)
@@ -249,8 +249,8 @@ def create_mitigates_edge_config(edge: Dict[str, Any]) -> Dict[str, Any]:
     }
     
     title_parts = [
-        f"{eff_icons.get(effectiveness, '🛡️')} Mitigates",
-        f"Effectiveness: {effectiveness}"
+        f"Level: Mitigates",
+        f"Strength: {effectiveness}"
     ]
     if edge.get("description"):
         title_parts.append(f"Description: {edge['description']}")
@@ -319,8 +319,8 @@ def create_tpo_impact_edge_config(edge: Dict[str, Any]) -> Dict[str, Any]:
     }
     
     title_parts = [
-        f"{impact_icons.get(impact_level, '📊')} Impacts TPO",
-        f"Impact Level: {impact_level}"
+        f"Level: Impacts TPO",
+        f"Strength: {impact_level}"
     ]
     if edge.get("description"):
         title_parts.append(f"Description: {edge['description']}")

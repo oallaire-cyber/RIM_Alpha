@@ -8,17 +8,9 @@ import streamlit as st
 from datetime import datetime
 
 # Configuration
-from config import (
-    APP_TITLE,
-    APP_ICON,
-    LAYOUT_MODE,
-    NEO4J_DEFAULT_URI,
-    NEO4J_DEFAULT_USER,
-    RISK_LEVELS,
-    RISK_CATEGORIES,
-    TPO_CLUSTERS,
-    RISK_LEVEL_CONFIG,
-)
+from core import get_registry
+from config import APP_TITLE, APP_ICON, LAYOUT_MODE, NEO4J_DEFAULT_URI, NEO4J_DEFAULT_USER, NEO4J_DEFAULT_PASSWORD, RISK_LEVEL_CONFIG
+from config.schema_loader import SchemaLoader, AnalysisScopeConfig
 
 # Database
 from database import RiskGraphManager
@@ -38,14 +30,16 @@ from ui.legend import (
     render_compact_legend,
 )
 
-# Tab Pages
+# Dynamic UI
+from ui.dynamic_tabs import render_dynamic_tabs
+from ui.dynamic_forms import build_entity_form
+
+# CRUD Tabs
 from ui.tabs import (
     render_risks_tab,
     render_tpos_tab,
     render_mitigations_tab,
     render_influences_tab,
-    render_tpo_impacts_tab,
-    render_risk_mitigations_tab,
     render_import_export_tab,
 )
 
@@ -61,6 +55,36 @@ from ui.layouts import (
     generate_tpo_cluster_layout,
     generate_auto_spread_layout,
 )
+
+
+def _compute_stats_from_graph(nodes, edges):
+    """Compute statistics from pre-filtered graph data (used for scoped stats)."""
+    registry = get_registry()
+    risk_levels = registry.get_risk_levels()
+    # DB stores level labels (e.g. "Business"), not IDs ("business")
+    level1_label = risk_levels[0]["label"] if risk_levels else "Business"
+    level2_label = risk_levels[1]["label"] if len(risk_levels) > 1 else "Operational"
+    
+    risk_nodes = [n for n in nodes if n.get("node_type") == "Risk"]
+    tpo_nodes = [n for n in nodes if n.get("node_type") == "TPO"]
+    mit_nodes = [n for n in nodes if n.get("node_type") == "Mitigation"]
+    
+    influence_edges = [e for e in edges if e.get("edge_type") == "INFLUENCES"]
+    tpo_edges = [e for e in edges if e.get("edge_type") == "IMPACTS_TPO"]
+    mit_edges = [e for e in edges if e.get("edge_type") == "MITIGATES"]
+    
+    return {
+        "total_risks": len(risk_nodes),
+        "level1_risks": len([n for n in risk_nodes if n.get("level") == level1_label]),
+        "level2_risks": len([n for n in risk_nodes if n.get("level") == level2_label]),
+        "new_risks": len([n for n in risk_nodes if n.get("origin") == "New"]),
+        "legacy_risks": len([n for n in risk_nodes if n.get("origin") == "Legacy"]),
+        "total_tpos": len(tpo_nodes),
+        "total_mitigations": len(mit_nodes),
+        "total_influences": len(influence_edges),
+        "total_tpo_impacts": len(tpo_edges),
+        "total_mitigates": len(mit_edges),
+    }
 
 
 def init_session_state():
@@ -90,7 +114,7 @@ def render_help_section():
     with st.sidebar.expander("❓ Help & Documentation", expanded=False):
         help_tab = st.radio(
             "Select topic:",
-            ["Overview", "Exposure Calculation", "Influence Model", "Mitigations", "Layouts"],
+            ["Overview", "Scopes", "Exposure", "Influence", "Mitigations", "Layouts"],
             label_visibility="collapsed",
             horizontal=True
         )
@@ -99,24 +123,89 @@ def render_help_section():
             st.markdown("""
             ### 🎯 RIM Overview
             
-            The **Risk Influence Map** visualizes relationships between:
+            The **Risk Influence Map** transforms static risk registers into
+            **dynamic risk intelligence** by modeling relationships between:
             
-            - **Business Risks** (◆): Consequence-oriented, managed by leadership
-            - **Operational Risks** (●): Cause-oriented, managed by teams  
-            - **TPOs** (⬡): Top Program Objectives
-            - **Mitigations** (🛡️): Risk treatments
+            - **Business Risks** (◆ Diamond): Consequence-oriented, managed by leadership
+            - **Operational Risks** (● Circle): Cause-oriented, managed by teams  
+            - **TPOs** (⬡ Hexagon): Top Program Objectives at risk
+            - **Mitigations** (🛡️ Box): Controls and protective actions
             
-            **Influence Types:**
-            - **Level 1** (red): Operational → Business
-            - **Level 2** (purple): Business → Business
-            - **Level 3** (blue): Operational → Operational
+            ---
+            
+            **Core Capabilities:**
+            
+            | Capability | What it does |
+            |------------|--------------|
+            | 🔗 Influence mapping | Models how risks amplify each other across the network |
+            | ⚡ Exposure calculation | Quantifies composite risk score with mitigation diminishing returns |
+            | 📐 Analysis scopes | Focus all analysis on a named subset of nodes |
+            | 🛡️ Mitigation analysis | Coverage gaps, treatment effectiveness, high-priority flags |
+            | 🎯 TPO tracking | Links risks to program objectives with impact levels |
+            | 📊 Statistics | Live dashboard adapts to active scope |
+            
+            ---
+            
+            **Influence Types (auto-determined by node levels):**
+            - **Level 1** (red): Operational → Business — *causal link*
+            - **Level 2** (purple): Business → Business — *amplification*
+            - **Level 3** (blue): Operational → Operational — *contribution*
             """)
         
-        elif help_tab == "Exposure Calculation":
+        elif help_tab == "Scopes":
+            st.markdown("""
+            ### 📐 Analysis Scopes
+            
+            Scopes let you define **named subsets** of your risk graph
+            for focused analysis. All features respect scope boundaries.
+            
+            ---
+            
+            **Creating a Scope:**
+            1. Open Configuration Manager (`app_config.py`)
+            2. Go to **📐 Scopes** tab
+            3. Pick nodes, set name and color
+            4. Scope is saved in `schema.yaml`
+            
+            ---
+            
+            **Selecting a Scope:**
+            - Sidebar → **📐 Analysis Scopes** expander
+            - Select one or more scopes (union of node IDs)
+            - Click **🌐 Full Graph** to clear
+            
+            ---
+            
+            **Smart Expansion:**
+            
+            When a scope is active, the system automatically includes:
+            - **Mitigations** connected to scoped risks
+            - **TPOs** connected to scoped risks
+            - **1-hop risk neighbors** (toggle "Show connected neighbors")
+            
+            ---
+            
+            **Scoped Features:**
+            
+            | Feature | When scope active |
+            |---------|-------------------|
+            | 📊 Statistics | Counts only scoped entities |
+            | ⚡ Exposure | Risks + connected mitigations only |
+            | 🔍 Influence Analysis | Scoped propagators, convergence, paths |
+            | 🛡️ Mitigation Analysis | Coverage gaps within scope |
+            | CRUD Tabs | List only scoped entities |
+            | Influence Explorer | Node picker shows scoped nodes |
+            
+            > **Tip:** Scoped metrics may differ from Full Graph — this is
+            > expected because cross-boundary chains are excluded.
+            """)
+        
+        elif help_tab == "Exposure":
             st.markdown("""
             ### ⚡ Exposure Calculation
             
-            The exposure model quantifies risk considering three factors:
+            Quantifies risk severity by combining base scores,
+            mitigation effectiveness, and upstream influence limitation.
             
             ---
             
@@ -124,48 +213,41 @@ def render_help_section():
             ```
             Base = Likelihood × Impact
             ```
-            Scale: 1-10 each, so Base ranges 1-100
+            *Scale: 1-10 each → Base ranges 1 to 100*
             
             ---
             
-            **2️⃣ Mitigation Factor**
-            
-            Multiple mitigations combine with **diminishing returns**:
+            **2️⃣ Mitigation Factor** *(diminishing returns)*
             ```
             Factor = ∏(1 - Effectiveness)
             ```
             
-            | Effectiveness | Reduction |
-            |---------------|-----------|
-            | Critical | 90% |
-            | High | 70% |
-            | Medium | 50% |
-            | Low | 30% |
+            | Effectiveness | Reduction | Description |
+            |---------------|-----------|-------------|
+            | Critical | 90% | Near-complete elimination |
+            | High | 70% | Strong protection |
+            | Medium | 50% | Moderate reduction |
+            | Low | 30% | Minimal impact |
             
-            *Example: High + Medium = 0.3 × 0.5 = 0.15 (85% reduction)*
+            *Example: High + Medium = 0.3 × 0.5 = 0.15 → 85% total reduction*
             
             ---
             
             **3️⃣ Influence Limitation**
             
-            Upstream risks **limit** how effective downstream mitigations can be:
+            Upstream risks **limit** downstream mitigation effectiveness:
             ```
             Limitation = Avg(Upstream_Residual × Strength)
             ```
             
-            | Strength | Weight |
-            |----------|--------|
-            | Critical | 1.0 |
-            | Strong | 0.75 |
-            | Moderate | 0.50 |
-            | Weak | 0.25 |
+            *"Fixing symptoms without addressing root causes has limited effect"*
             
-            The effective mitigation becomes:
-            ```
-            Effective = Mit_Factor + (1 - Mit_Factor) × Limitation
-            ```
-            
-            *This models: "fixing symptoms without addressing causes has limited effect"*
+            | Strength | Weight | Interpretation |
+            |----------|--------|----------------|
+            | Critical | 1.0 | Direct, inevitable |
+            | Strong | 0.75 | High probability |
+            | Moderate | 0.50 | Likely contributes |
+            | Weak | 0.25 | Minor contribution |
             
             ---
             
@@ -178,30 +260,35 @@ def render_help_section():
             
             **📊 Global Metrics**
             
-            | Metric | Formula | Purpose |
-            |--------|---------|---------|
-            | Residual % | Σ(Final)/Σ(Base)×100 | Overall effectiveness |
-            | Risk Score | Impact²-weighted (0-100) | Executive metric |
-            | Max Exposure | max(Final) | Hotspot alert |
+            | Metric | Purpose |
+            |--------|---------|
+            | Residual Risk % | How much risk remains after mitigations |
+            | Weighted Risk Score | Impact²-weighted executive metric (0-100) |
+            | Max Single Exposure | Worst-case individual risk alert |
+            
+            > **Scope-aware:** When a scope is active, exposure only
+            > considers in-scope risks and their connected mitigations.
+            > Toggle "Show connected neighbors" to include adjacent risks.
             """)
         
-        elif help_tab == "Influence Model":
+        elif help_tab == "Influence":
             st.markdown("""
             ### 🔗 Influence Model
             
-            Influences represent how risks affect each other:
+            Models how risks propagate through the network.
+            Source risk **causes or amplifies** target risk.
             
-            **Direction Matters:**
-            - Source risk **causes or contributes to** target risk
-            - Operational risks typically influence Business risks
+            ---
             
-            **Influence Types (Auto-determined):**
+            **Influence Types (auto-determined):**
             
             | Type | From → To | Meaning |
             |------|-----------|---------|
-            | Level 1 | Op → Strat | Causes consequence |
-            | Level 2 | Strat → Strat | Amplifies impact |
-            | Level 3 | Op → Op | Contributes to |
+            | Level 1 | Operational → Business | Causes consequence |
+            | Level 2 | Business → Business | Amplifies impact |
+            | Level 3 | Operational → Operational | Contributes to |
+            
+            ---
             
             **Strength Levels:**
             - **Critical**: Direct, inevitable causation
@@ -209,79 +296,110 @@ def render_help_section():
             - **Moderate**: Likely contributes
             - **Weak**: Possible minor contribution
             
-            **Analysis Features:**
-            - **Top Propagators**: Risks with highest downstream impact
-            - **Convergence Points**: Where multiple influences meet
-            - **Critical Paths**: Strongest chains to TPOs
-            - **Bottlenecks**: Single points of failure
+            ---
+            
+            **Analysis Features** *(all scope-aware)*:
+            
+            | Analysis | What it reveals |
+            |----------|-----------------|
+            | 🔝 Top Propagators | Risks with highest downstream impact |
+            | ⚠️ Convergence Points | Where multiple threats converge |
+            | 🔥 Critical Paths | Strongest influence chains to TPOs |
+            | 🚧 Bottlenecks | Single points of failure |
+            | 📦 Clusters | Tightly interconnected risk groups |
+            
+            > **Tip:** Use the Influence Explorer to traverse the network
+            > from any node. When a scope is active, only scoped nodes
+            > appear in the selection dropdown.
             """)
         
         elif help_tab == "Mitigations":
             st.markdown("""
             ### 🛡️ Mitigation Model
             
+            Mitigations represent controls, actions, or safeguards
+            that reduce risk exposure. One mitigation can address
+            multiple risks, and one risk can have multiple mitigations.
+            
+            ---
+            
             **Mitigation Types:**
             
             | Type | Description | Visual |
             |------|-------------|--------|
-            | Dedicated | Program-specific | Teal, solid |
-            | Inherited | From other sources | Blue, dotted |
-            | Baseline | Standards/regulations | Purple, thick |
+            | Dedicated | Program-specific controls | Teal, solid border |
+            | Inherited | From corporate or other programs | Blue, dotted border |
+            | Baseline | Standards, regulations, best practices | Purple, thick border |
+            
+            ---
             
             **Status Levels:**
-            - **Implemented**: Active protection ✅
-            - **In Progress**: Being deployed 🔄
-            - **Proposed**: Planned 📋
-            - **Deferred**: On hold ⏸️
+            - ✅ **Implemented** — Active protection
+            - 🔄 **In Progress** — Being deployed
+            - 📋 **Proposed** — Planned, not yet started
+            - ⏸️ **Deferred** — On hold
+            
+            ---
             
             **Effectiveness Levels:**
             
             | Level | Reduction | When to use |
             |-------|-----------|-------------|
             | Critical | 90% | Eliminates root cause |
-            | High | 70% | Significantly reduces |
+            | High | 70% | Significantly reduces probability or impact |
             | Medium | 50% | Moderate reduction |
             | Low | 30% | Minor reduction |
             
-            **Key Principle:**
-            One mitigation can address multiple risks, and one risk can have multiple mitigations.
+            ---
+            
+            **Mitigation Analysis** *(scope-aware)*:
+            - **Coverage Overview**: Risks with/without mitigations
+            - **Treatment Explorer**: Detailed per-risk mitigation status
+            - **High-Priority Unmitigated**: Flags risks that are unmitigated
+              AND are top propagators, convergence points, or bottlenecks
             
             **Strategic Advice:**
-            - Mitigate upstream risks first (influence limitation)
+            - Mitigate upstream risks first (influence limitation principle)
             - Prioritize high-exposure, high-influence risks
-            - Check coverage gaps regularly
+            - Review coverage gaps regularly in the Analysis tab
             """)
         
         elif help_tab == "Layouts":
             st.markdown("""
             ### 📐 Graph Layouts
             
+            Choose a layout algorithm to organize the risk network
+            visualization. Each layout emphasizes different relationships.
+            
+            ---
+            
             **Predefined Layouts:**
             
-            | Layout | Description |
-            |--------|-------------|
-            | 🌳 Hierarchical | Sugiyama algorithm, minimizes edge crossings |
-            | 📊 Layered | TPO → Strategic → Operational rows |
-            | 🗂️ Categories | 2×2 grid by category |
-            | 🏆 TPO Clusters | Grouped by TPO associations |
+            | Layout | Best for |
+            |--------|----------|
+            | 🌳 Hierarchical (Sugiyama) | Understanding flow, presentations |
+            | 📶 Layered | Seeing the TPO → Business → Operational hierarchy |
+            | 📊 Category Grid | Comparing risk categories (2×2 grid) |
+            | 🎯 TPO Cluster | Analyzing TPO impact groupings |
             
-            **Hierarchical (Sugiyama) Algorithm:**
+            ---
             
-            1. **Layer Assignment**: Nodes assigned to layers based on RIM hierarchy
-            2. **Crossing Minimization**: Barycenter heuristic orders nodes to reduce edge crossings
-            3. **Coordinate Assignment**: Positions nodes with connected nodes aligned
+            **Sugiyama Algorithm:**
+            1. Layer assignment based on RIM hierarchy
+            2. Crossing minimization (barycenter heuristic)
+            3. Coordinate assignment with connected-node alignment
+            
+            ---
             
             **Manual Layout:**
             1. Disable physics (⚙️ Graph Options)
             2. Drag nodes to desired positions
             3. Enable "📍 Position capture"
             4. Click capture button on graph
-            5. Save layout in 💾 Layout Management
+            5. Save in 💾 Layout Management
             
-            **Tips:**
-            - Use Hierarchical for presentations
-            - Disable physics for stable manual layouts
-            - Saved layouts persist across sessions
+            > **Tip:** Saved layouts persist across sessions.
+            > Use Hierarchical for stakeholder presentations.
             """)
 
 
@@ -332,64 +450,90 @@ def render_welcome_page():
         st.markdown("""
         ### What is RIM?
         
-        The **Risk Influence Map (RIM)** is an innovative methodology for visualizing and managing 
-        complex relationships between risks in large-scale programs. It transforms static risk registers 
-        into dynamic risk intelligence.
+        The **Risk Influence Map (RIM)** transforms static risk registers into **dynamic risk
+        intelligence** by modeling how risks influence each other, how mitigations reduce exposure,
+        and which program objectives are at stake.
         
         ---
         
-        ### ✨ Key Features
+        ### 🧩 Core Capabilities
         
         **🎯 Two-Level Risk Architecture**
         - **Business Risks** (◆ Diamond): Consequence-oriented, managed by program leadership
         - **Operational Risks** (● Circle): Cause-oriented, managed by functional teams
-        - **Origin Tracking**: Distinguish between New (program-specific) and Legacy (inherited) risks
+        - **Origin Tracking**: Distinguish New (program-specific) from Legacy (inherited) risks
+        
+        > *Why two levels?* Business risks represent "what could go wrong" at the program level.
+        > Operational risks represent "why it could go wrong" at the team level.
+        > Influence links connect the two, creating a traceable causal network.*
         
         **🔗 Influence Mapping**
-        - Level 1: Operational → Business influences (red, thick)
-        - Level 2: Business → Business influences (purple, medium)
-        - Level 3: Operational → Operational influences (blue, dashed)
-        - Configurable strength and confidence scoring
+        - Level 1: Operational → Business *(causes consequence)*
+        - Level 2: Business → Business *(amplifies impact)*
+        - Level 3: Operational → Operational *(contributes to)*
+        - Each influence has strength and confidence scoring
+        
+        > *Influences are the backbone of RIM. They model how addressing one risk
+        > can reduce exposure across the entire network.*
+        
+        **⚡ Exposure Calculation**
+        - Base exposure = Likelihood × Impact (1-100 scale)
+        - Mitigation factor with **diminishing returns** (realistic stacking)
+        - Upstream **influence limitation** (unresolved causes limit downstream fixes)
+        - Weighted risk score for executive reporting
+        
+        > *The influence limitation model captures a real-world truth: fixing symptoms
+        > without addressing root causes has limited effect.*
+        
+        **📐 Analysis Scopes**
+        - Define named subsets of the risk graph for **focused analysis**
+        - Smart expansion: auto-includes connected mitigations, TPOs, and optional risk neighbors
+        - All features adapt: statistics, exposure, influence/mitigation analysis, CRUD tabs
+        - Multi-scope union for cross-area comparison
+        
+        > *Scopes let you prepare focused briefings per stakeholder, domain, or risk cluster
+        > without losing the ability to analyze the full graph.*
+        
+        **🛡️ Mitigation Management**
+        - **Dedicated** (teal): Program-specific controls
+        - **Inherited** (blue): From corporate or other programs
+        - **Baseline** (purple): Standards, regulations, best practices
+        - Coverage gap analysis with high-priority flagging
+        
+        > *The mitigation analysis cross-references influence analysis to flag unmitigated
+        > risks that are also top propagators, convergence points, or bottlenecks.*
         
         **🏆 Top Program Objectives (TPOs)**
         - ⬡ Gold hexagon visualization
-        - Cluster-based organization (Product, Business, Industrial, Safety, Sustainability)
-        - Impact level tracking with visual indicators
-        
-        **🛡️ Mitigation Management**
-        - **Dedicated** (teal, solid): Program-owned mitigations
-        - **Inherited** (blue, dotted): From corporate or other programs
-        - **Baseline** (purple, thick): Standards, regulations, best practices
-        - Shield-shaped nodes (🛡️) with bar-end arrows showing "blocking" effect
+        - Cluster-based organization
+        - Impact level tracking (Low → Critical)
         
         **⚠️ Contingent Risk Support**
-        - ◇ Hollow diamond shape for potential/contingent risks
+        - ◇ Hollow diamond for potential/contingent risks
         - Decision timeline and activation conditions
-        - Visual distinction with dashed borders
-        
-        **🔍 Advanced Analysis**
-        - Influence Explorer for network traversal
-        - Top propagators and convergence points identification
-        - Critical path analysis
-        - Risk clustering by category
         
         **📊 Import/Export**
-        - Full Excel import/export capability
+        - Full Excel import/export
         - Layout save/load for presentations
         
         ---
         
-        ### 🎨 Visual Legend Quick Reference
+        ### 🎨 Visual Quick Reference
         
         | Element | Shape | Meaning |
         |---------|-------|---------|
-        | ◆ Purple | Diamond | Strategic Risk |
+        | ◆ Purple | Diamond | Business Risk |
         | ● Blue | Circle | Operational Risk |
+        | ◇ Outlined | Diamond | Contingent Risk |
         | 🛡️ Teal/Blue/Purple | Rounded Box | Mitigation |
         | ⬡ Gold | Hexagon | TPO |
-        | → | Standard Arrow | Influence |
-        | ⊣ | Bar-end Arrow | Mitigation link |
-        | ▷ | Vee Arrow | TPO Impact |
+        | → Standard arrow | Solid line | Influence (risk → risk) |
+        | ⊣ Bar-end arrow | Dashed line | Mitigation link (mit → risk) |
+        | ▷ Vee arrow | Dotted line | TPO Impact (risk → TPO) |
+        
+        ---
+        
+        *Version 2.6.1 — See sidebar **❓ Help** for detailed feature documentation.*
         """)
 
 
@@ -400,17 +544,21 @@ def render_statistics_dashboard(stats: dict):
         col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
-            st.metric("🎯 Total Risks", stats.get("total_risks", 0))
+            st.metric("📊 Total Risks", stats.get("total_risks", 0))
         with col2:
             # Schema-driven level 1 display
-            level1_name = stats.get("level1_name", RISK_LEVELS[0] if RISK_LEVELS else "Business")
-            level1_cfg = RISK_LEVEL_CONFIG.get(level1_name, {})
-            st.metric(f"{level1_cfg.get('emoji', '◆')} {level1_name}", stats.get("level1_risks", 0))
+            registry = get_registry()
+            risk_levels = registry.get_risk_levels()
+            level1_name = risk_levels[0]["id"] if risk_levels else "Strategic"
+            level1_label = risk_levels[0]["label"] if risk_levels else "Strategic"
+            level1_emoji = risk_levels[0].get("emoji", "◆")
+            st.metric(f"{level1_emoji} {level1_label}", stats.get("level1_risks", 0))
         with col3:
             # Schema-driven level 2 display
-            level2_name = stats.get("level2_name", RISK_LEVELS[1] if len(RISK_LEVELS) > 1 else "Operational")
-            level2_cfg = RISK_LEVEL_CONFIG.get(level2_name, {})
-            st.metric(f"{level2_cfg.get('emoji', '●')} {level2_name}", stats.get("level2_risks", 0))
+            level2_name = risk_levels[1]["id"] if len(risk_levels) > 1 else "Operational"
+            level2_label = risk_levels[1]["label"] if len(risk_levels) > 1 else "Operational"
+            level2_emoji = risk_levels[1].get("emoji", "●")
+            st.metric(f"{level2_emoji} {level2_label}", stats.get("level2_risks", 0))
         with col4:
             st.metric("🆕 New", stats.get("new_risks", 0))
         with col5:
@@ -441,10 +589,17 @@ def render_exposure_dashboard(manager):
         
         with col_btn:
             if st.button("🔄 Calculate Exposure", type="primary", use_container_width=True,
-                        help="Run exposure calculation for all risks"):
+                        help="Run exposure calculation for all risks (or scoped risks)"):
                 with st.spinner("Calculating exposure scores..."):
                     try:
-                        results = manager.calculate_exposure()
+                        # Pass scope node IDs if scope is active
+                        filter_mgr = st.session_state.get("filter_manager")
+                        scope_ids = filter_mgr.get_scope_node_ids() if filter_mgr else None
+                        include_neighbors = st.session_state.get("scope_include_neighbors", False)
+                        results = manager.calculate_exposure(
+                            scope_node_ids=scope_ids,
+                            include_neighbors=include_neighbors,
+                        )
                         st.session_state.exposure_results = results
                         st.success("✅ Calculation complete!")
                         st.rerun()
@@ -561,8 +716,7 @@ def render_exposure_dashboard(manager):
 
 def render_visualization_filters(manager: RiskGraphManager):
     """Render the visualization filters sidebar."""
-    from config import RISK_STATUSES, RISK_ORIGINS, MITIGATION_TYPES, MITIGATION_STATUSES
-    
+    registry = get_registry()
     filter_mgr = st.session_state.filter_manager
     
     st.markdown("### 🎛️ Filters")
@@ -575,155 +729,163 @@ def render_visualization_filters(manager: RiskGraphManager):
     
     # Filter Presets
     with st.expander("⚡ Quick Presets", expanded=False):
+        presets = filter_mgr.get_presets()
         preset_cols = st.columns(2)
-        col_idx = 0
-        for preset_key, preset_data in FilterManager.PRESETS.items():
-            with preset_cols[col_idx % 2]:
+        for i, preset in enumerate(presets):
+            with preset_cols[i % 2]:
                 if st.button(
-                    preset_data.name,
-                    key=f"preset_{preset_key}",
+                    preset.name,
+                    key=f"preset_{preset.key}",
                     use_container_width=True,
-                    help=preset_data.description
+                    help=preset.description
                 ):
-                    filter_mgr.apply_preset(preset_key)
+                    filter_mgr.apply_preset(preset.key)
                     st.rerun()
-            col_idx += 1
     
-    # Risk Filters
-    with st.expander("🎯 Risk Filters", expanded=True):
-        # Level filter
-        st.markdown("**Level**")
-        col_level_btns = st.columns([1, 1])
-        with col_level_btns[0]:
-            if st.button("All", key="level_all", use_container_width=True):
-                filter_mgr.select_all_levels()
-                st.rerun()
-        with col_level_btns[1]:
-            if st.button("None", key="level_none", use_container_width=True):
-                filter_mgr.deselect_all_levels()
-                st.rerun()
-        
-        level_filter = st.multiselect(
-            "Level",
-            RISK_LEVELS,
-            default=filter_mgr.filters["risks"]["levels"],
-            key="level_filter",
-            label_visibility="collapsed"
-        )
-        filter_mgr.set_risk_levels(level_filter)
-        
-        st.markdown("---")
-        
-        # Status filter
-        st.markdown("**Status**")
-        status_filter = st.multiselect(
-            "Status",
-            RISK_STATUSES,
-            default=filter_mgr.filters["risks"].get("statuses", ["Active", "Contingent"]),
-            key="status_filter",
-            label_visibility="collapsed"
-        )
-        filter_mgr.filters["risks"]["statuses"] = status_filter
-        
-        st.markdown("---")
-        
-        # Origin filter
-        st.markdown("**Origin**")
-        origin_filter = st.multiselect(
-            "Origin",
-            RISK_ORIGINS,
-            default=filter_mgr.filters["risks"].get("origins", RISK_ORIGINS.copy()),
-            key="origin_filter",
-            label_visibility="collapsed"
-        )
-        filter_mgr.filters["risks"]["origins"] = origin_filter
-        
-        st.markdown("---")
-        
-        # Category filter
-        st.markdown("**Categories**")
-        col_cat_btns = st.columns([1, 1])
-        with col_cat_btns[0]:
-            if st.button("All", key="cat_all", use_container_width=True):
-                filter_mgr.select_all_categories()
-                st.rerun()
-        with col_cat_btns[1]:
-            if st.button("None", key="cat_none", use_container_width=True):
-                filter_mgr.deselect_all_categories()
-                st.rerun()
-        
-        category_filter = st.multiselect(
-            "Categories",
-            RISK_CATEGORIES,
-            default=filter_mgr.filters["risks"]["categories"],
-            key="category_filter",
-            label_visibility="collapsed"
-        )
-        filter_mgr.set_risk_categories(category_filter)
-        
-        st.markdown("---")
-        
-        # Exposure threshold filter
-        st.markdown("**Exposure Threshold**")
-        exposure_threshold = st.slider(
-            "Min Exposure",
-            min_value=0.0,
-            max_value=16.0,
-            value=st.session_state.get("exposure_threshold", 0.0),
-            step=0.5,
-            key="exposure_threshold_slider",
-            help="Show only risks with exposure >= this value"
-        )
-        st.session_state.exposure_threshold = exposure_threshold
+    # ==========================================================
+    # CORE NODES & EDGES
+    # ==========================================================
+    st.markdown("#### 🔷 Core Nodes & Edges")
     
-    # TPO Filters
-    with st.expander("🏆 TPO Filters", expanded=False):
-        show_tpos = st.checkbox(
-            "Show TPOs",
-            value=filter_mgr.filters["tpos"]["enabled"],
-            key="show_tpos"
-        )
-        filter_mgr.set_tpo_enabled(show_tpos)
-        
-        if show_tpos:
-            tpo_clusters = st.multiselect(
-                "TPO Clusters",
-                TPO_CLUSTERS,
-                default=filter_mgr.filters["tpos"]["clusters"],
-                key="tpo_cluster_filter"
+    # Core entity filters: risk and mitigation
+    for entity_id in ["risk", "mitigation"]:
+        entity_type = registry.entity_types.get(entity_id)
+        if not entity_type:
+            continue
+        with st.expander(f"{entity_type.emoji} {entity_type.label} Filters", expanded=(entity_id == "risk")):
+            # Enable/Disable toggle
+            is_enabled = st.checkbox(
+                f"Show {entity_type.label}s",
+                value=filter_mgr.filters["entities"].get(entity_id, {}).get("enabled", True),
+                key=f"enabled_{entity_id}"
             )
-            filter_mgr.set_tpo_clusters(tpo_clusters)
-    
-    # Mitigation Filters
-    with st.expander("🛡️ Mitigation Filters", expanded=False):
-        show_mitigations = st.checkbox(
-            "Show Mitigations",
-            value=filter_mgr.filters["mitigations"]["enabled"],
-            key="show_mitigations"
-        )
-        filter_mgr.set_mitigations_enabled(show_mitigations)
-        
-        if show_mitigations:
-            st.markdown("**Mitigation Types**")
-            mit_types = st.multiselect(
-                "Types",
-                MITIGATION_TYPES,
-                default=filter_mgr.filters["mitigations"].get("types", MITIGATION_TYPES.copy()),
-                key="mit_type_filter",
-                label_visibility="collapsed"
-            )
-            filter_mgr.filters["mitigations"]["types"] = mit_types
+            filter_mgr.set_entity_enabled(entity_id, is_enabled)
             
-            st.markdown("**Mitigation Status**")
-            mit_statuses = st.multiselect(
-                "Status",
-                MITIGATION_STATUSES,
-                default=filter_mgr.filters["mitigations"].get("statuses", MITIGATION_STATUSES.copy()),
-                key="mit_status_filter",
-                label_visibility="collapsed"
-            )
-            filter_mgr.filters["mitigations"]["statuses"] = mit_statuses
+            if is_enabled:
+                # Add filters for categorical groups (levels, categories, statuses, origins, etc.)
+                for group_name, group_items in entity_type.categorical_groups.items():
+                    if group_items:
+                        choices = [item.get("label", item.get("id", "")) for item in group_items]
+                        if choices:
+                            st.markdown(f"**{group_name.replace('_', ' ').title()}**")
+                            current_selection = filter_mgr.filters["entities"][entity_id]["attributes"].get(group_name, choices)
+                            selected = st.multiselect(
+                                group_name.replace('_', ' ').title(),
+                                choices,
+                                default=current_selection if isinstance(current_selection, list) else choices,
+                                key=f"filter_{entity_id}_{group_name}",
+                                label_visibility="collapsed"
+                            )
+                            filter_mgr.set_entity_attribute_filter(entity_id, group_name, selected)
+                
+                # Special case: Exposure threshold for risks
+                if entity_id == "risk":
+                    st.markdown("**Exposure Threshold**")
+                    exposure_threshold = st.slider(
+                        "Min Exposure",
+                        min_value=0.0,
+                        max_value=16.0,
+                        value=st.session_state.get("exposure_threshold", 0.0),
+                        step=0.5,
+                        key="exposure_threshold_slider",
+                        help="Show only risks with exposure >= this value"
+                    )
+                    st.session_state.exposure_threshold = exposure_threshold
     
+    # Core relationship filters: influences and mitigates
+    for rel_id in ["influences", "mitigates"]:
+        rel_type = registry.relationship_types.get(rel_id)
+        if not rel_type:
+            continue
+        with st.expander(f"🔗 {rel_type.label} Filters", expanded=False):
+            is_enabled = st.checkbox(
+                f"Show {rel_type.label}",
+                value=filter_mgr.filters["relationships"].get(rel_id, {}).get("enabled", True),
+                key=f"enabled_rel_{rel_id}"
+            )
+            filter_mgr.set_relationship_enabled(rel_id, is_enabled)
+            
+            if is_enabled:
+                for group_name, group_items in rel_type.categorical_groups.items():
+                    if group_items:
+                        choices = [item.get("label", item.get("id", "")) for item in group_items]
+                        if choices:
+                            st.markdown(f"**{group_name.replace('_', ' ').title()}**")
+                            current_selection = filter_mgr.filters["relationships"][rel_id]["attributes"].get(group_name, choices)
+                            selected = st.multiselect(
+                                group_name.replace('_', ' ').title(),
+                                choices,
+                                default=current_selection if isinstance(current_selection, list) else choices,
+                                key=f"filter_rel_{rel_id}_{group_name}",
+                                label_visibility="collapsed"
+                            )
+                            filter_mgr.set_relationship_attribute_filter(rel_id, group_name, selected)
+    
+    st.markdown("---")
+    
+    # ==========================================================
+    # TPO & RELATED
+    # ==========================================================
+    st.markdown("#### 🏆 TPO & Related")
+    
+    # TPO entity filter
+    for entity_id in ["tpo"]:
+        entity_type = registry.entity_types.get(entity_id)
+        if not entity_type:
+            continue
+        with st.expander(f"{entity_type.emoji} {entity_type.label} Filters", expanded=False):
+            is_enabled = st.checkbox(
+                f"Show {entity_type.label}s",
+                value=filter_mgr.filters["entities"].get(entity_id, {}).get("enabled", True),
+                key=f"enabled_{entity_id}"
+            )
+            filter_mgr.set_entity_enabled(entity_id, is_enabled)
+            
+            if is_enabled:
+                for group_name, group_items in entity_type.categorical_groups.items():
+                    if group_items:
+                        choices = [item.get("label", item.get("id", "")) for item in group_items]
+                        if choices:
+                            st.markdown(f"**{group_name.replace('_', ' ').title()}**")
+                            current_selection = filter_mgr.filters["entities"][entity_id]["attributes"].get(group_name, choices)
+                            selected = st.multiselect(
+                                group_name.replace('_', ' ').title(),
+                                choices,
+                                default=current_selection if isinstance(current_selection, list) else choices,
+                                key=f"filter_{entity_id}_{group_name}",
+                                label_visibility="collapsed"
+                            )
+                            filter_mgr.set_entity_attribute_filter(entity_id, group_name, selected)
+    
+    # TPO-related relationship filters: impacts_tpo
+    for rel_id in ["impacts_tpo"]:
+        rel_type = registry.relationship_types.get(rel_id)
+        if not rel_type:
+            continue
+        with st.expander(f"🔗 {rel_type.label} Filters", expanded=False):
+            is_enabled = st.checkbox(
+                f"Show {rel_type.label}",
+                value=filter_mgr.filters["relationships"].get(rel_id, {}).get("enabled", True),
+                key=f"enabled_rel_{rel_id}"
+            )
+            filter_mgr.set_relationship_enabled(rel_id, is_enabled)
+            
+            if is_enabled:
+                for group_name, group_items in rel_type.categorical_groups.items():
+                    if group_items:
+                        choices = [item.get("label", item.get("id", "")) for item in group_items]
+                        if choices:
+                            st.markdown(f"**{group_name.replace('_', ' ').title()}**")
+                            current_selection = filter_mgr.filters["relationships"][rel_id]["attributes"].get(group_name, choices)
+                            selected = st.multiselect(
+                                group_name.replace('_', ' ').title(),
+                                choices,
+                                default=current_selection if isinstance(current_selection, list) else choices,
+                                key=f"filter_rel_{rel_id}_{group_name}",
+                                label_visibility="collapsed"
+                            )
+                            filter_mgr.set_relationship_attribute_filter(rel_id, group_name, selected)
+
     # Color mode
     with st.expander("🎨 Display Options", expanded=False):
         color_by = st.radio(
@@ -734,8 +896,6 @@ def render_visualization_filters(manager: RiskGraphManager):
             key="color_by_radio"
         )
         st.session_state.color_by = color_by
-    
-    return filter_mgr
     
     return filter_mgr
 
@@ -751,8 +911,15 @@ def render_influence_explorer(manager: RiskGraphManager):
         st.session_state.influence_explorer_enabled = explorer_enabled
         
         if explorer_enabled:
-            # Node selection
+            # Node selection — scope-limited when active
             all_nodes = manager.get_all_nodes_for_selection()
+            
+            # Filter to scope nodes if a scope is active
+            _filter_mgr = st.session_state.get("filter_manager")
+            _scope_ids = _filter_mgr.get_scope_node_ids() if _filter_mgr else None
+            if _scope_ids is not None:
+                _scope_set = set(_scope_ids)
+                all_nodes = [n for n in all_nodes if n["id"] in _scope_set]
             
             if all_nodes:
                 node_options = {n["id"]: n["label"] for n in all_nodes}
@@ -982,7 +1149,7 @@ def render_layout_management(manager: RiskGraphManager):
             st.info("No saved layouts.")
 
 
-def render_visualization_tab(manager: RiskGraphManager):
+def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
     """Render the visualization tab content."""
     col_filters, col_display = st.columns([1, 3])
     
@@ -998,22 +1165,6 @@ def render_visualization_tab(manager: RiskGraphManager):
             st.session_state.influence_explorer_enabled = True
             st.session_state.selected_node_id = node_id
             st.session_state.influence_direction = direction
-        
-        # Analysis panels
-        render_influence_analysis_panel(
-            get_analysis_fn=manager.get_influence_analysis,
-            on_node_select=on_node_select
-        )
-        render_mitigation_analysis_panel(
-            get_analysis_fn=manager.get_mitigation_analysis,
-            get_coverage_gaps_fn=manager.get_coverage_gap_analysis,
-            get_all_risks_fn=manager.get_all_risks,
-            get_all_mitigations_fn=manager.get_all_mitigations,
-            get_risk_details_fn=manager.get_risk_mitigation_details,
-            get_mitigation_details_fn=manager.get_mitigation_impact_details,
-            get_mitigation_by_id_fn=manager.get_mitigation_by_id,
-            get_risks_for_mitigation_fn=manager.get_risks_for_mitigation,
-        )
         
         # Prepare graph data
         if (st.session_state.influence_explorer_enabled and 
@@ -1082,6 +1233,66 @@ def render_visualization_tab(manager: RiskGraphManager):
         )
 
 
+def _render_scope_selector():
+    """Render the scope selector in the sidebar."""
+    # Load scopes from schema config
+    try:
+        loader = SchemaLoader()
+        schema_name = st.session_state.get("active_schema_name", "default")
+        schema = loader.load_schema(schema_name)
+        available_scopes = schema.scopes
+    except Exception:
+        available_scopes = []
+    
+    if not available_scopes:
+        return  # No scopes defined, skip rendering
+    
+    with st.sidebar.expander("📐 Analysis Scopes", expanded=False):
+        filter_mgr = st.session_state.filter_manager
+        
+        # Build options: list of scope names
+        scope_map = {s.name: s for s in available_scopes}
+        scope_names = list(scope_map.keys())
+        
+        # Current selection
+        current_names = [s.name for s in filter_mgr.active_scopes]
+        
+        selected_names = st.multiselect(
+            "Select scope(s)",
+            options=scope_names,
+            default=[n for n in current_names if n in scope_names],
+            key="scope_selector",
+            help="Select one or more scopes. Nodes are shown as the union of all selected scopes.",
+        )
+        
+        # Update FilterManager
+        selected_scopes = [scope_map[name] for name in selected_names if name in scope_map]
+        filter_mgr.set_active_scopes(selected_scopes)
+        
+        if selected_scopes:
+            total_nodes = len(set().union(*(s.node_ids for s in selected_scopes)))
+            scope_colors = " ".join(
+                f'<span style="color:{s.color}">●</span>' for s in selected_scopes
+            )
+            st.markdown(
+                f"{scope_colors} **{total_nodes}** nodes in scope",
+                unsafe_allow_html=True,
+            )
+            
+            # Neighbor expansion toggle
+            st.checkbox(
+                "Show connected neighbors",
+                value=st.session_state.get("scope_include_neighbors", False),
+                key="scope_include_neighbors",
+                help="Also display risks directly connected to the scoped nodes.",
+            )
+        
+        if st.button("🌐 Full Graph", use_container_width=True, key="clear_scopes"):
+            filter_mgr.clear_scopes()
+            st.session_state.scope_include_neighbors = False
+            st.rerun()
+
+
 def main():
     """Main application entry point."""
     # Page configuration
@@ -1112,91 +1323,137 @@ def main():
     
     manager = st.session_state.manager
     
-    # Statistics dashboard
-    stats = manager.get_statistics()
-    render_statistics_dashboard(stats)
+    # ── Scope selector in sidebar ────────────────────────────────────────
+    _render_scope_selector()
     
-    # Exposure analysis dashboard
+    # Scope-aware statistics
+    filter_mgr = st.session_state.filter_manager
+    scope_ids = filter_mgr.get_scope_node_ids()
+    
+    if scope_ids is not None:
+        scope_names = [s.name for s in filter_mgr.active_scopes]
+        st.info(f"📐 Active scope{'s' if len(scope_names) > 1 else ''}: **{', '.join(scope_names)}** — showing {len(scope_ids)} scoped risk nodes")
+        
+        # Build scoped filters and compute stats from filtered graph data
+        scoped_filters = filter_mgr.get_filters_for_query()
+        scoped_filters["scope_include_neighbors"] = st.session_state.get("scope_include_neighbors", False)
+        scoped_nodes, scoped_edges = manager.get_graph_data(scoped_filters)
+        scoped_stats = _compute_stats_from_graph(scoped_nodes, scoped_edges)
+        render_statistics_dashboard(scoped_stats)
+    else:
+        stats = manager.get_statistics()
+        render_statistics_dashboard(stats)
+    
+    # Exposure analysis dashboard (scope-aware)
     render_exposure_dashboard(manager)
     
     st.markdown("---")
     
-    # Main tabs
-    tab_viz, tab_risks, tab_tpos, tab_mitigations, tab_influences, tab_tpo_impacts, tab_risk_mitigations, tab_import = st.tabs([
-        "📊 Visualization",
-        "🎯 Risks",
-        "🏆 TPOs",
-        "🛡️ Mitigations",
-        "🔗 Influences",
-        "📌 TPO Impacts",
-        "💊 Risk Mitigations",
-        "📥 Import/Export"
-    ])
-    
-    # Visualization Tab
-    with tab_viz:
-        render_visualization_tab(manager)
-    
-    # Risks Tab
-    with tab_risks:
-        render_risks_tab(
-            get_all_risks_fn=manager.get_all_risks,
-            create_risk_fn=manager.create_risk,
-            delete_risk_fn=manager.delete_risk
+    # Custom renderers for complex tabs
+    def render_analysis_tab(manager_inst, config):
+        """Render the analysis tab content."""
+        # Pass scope filter to influence analysis, with optional neighbor expansion
+        _scope_ids = filter_mgr.get_scope_node_ids()
+        _include_nbrs = st.session_state.get("scope_include_neighbors", False)
+        # If neighbors enabled, expand scope IDs for analysis
+        if _scope_ids is not None and _include_nbrs:
+            _expanded_scope = set(_scope_ids)
+            _inf_list = manager_inst.get_all_influences()
+            for _inf in _inf_list:
+                _s, _t = _inf.get("source_id"), _inf.get("target_id")
+                if _s in _expanded_scope:
+                    _expanded_scope.add(_t)
+                if _t in _expanded_scope:
+                    _expanded_scope.add(_s)
+            _scope_ids = list(_expanded_scope)
+        render_influence_analysis_panel(
+            get_analysis_fn=lambda: manager_inst.get_influence_analysis(scope_node_ids=_scope_ids),
+            on_node_select=lambda node_id, direction: None
+        )
+        render_mitigation_analysis_panel(
+            get_analysis_fn=lambda: manager_inst.get_mitigation_analysis(scope_node_ids=_scope_ids),
+            get_coverage_gaps_fn=manager_inst.get_coverage_gap_analysis,
+            get_all_risks_fn=_scoped_getter(manager_inst.get_all_risks, _scope_ids if _scope_ids is None else _expanded_crud_ids),
+            get_all_mitigations_fn=_scoped_getter(manager_inst.get_all_mitigations, _scope_ids if _scope_ids is None else _expanded_crud_ids),
+            get_risk_details_fn=manager_inst.get_risk_mitigation_details,
+            get_mitigation_details_fn=manager_inst.get_mitigation_impact_details,
+            get_mitigation_by_id_fn=manager_inst.get_mitigation_by_id,
+            get_risks_for_mitigation_fn=manager_inst.get_risks_for_mitigation,
         )
     
-    # TPOs Tab
-    with tab_tpos:
-        render_tpos_tab(
-            get_all_tpos_fn=manager.get_all_tpos,
-            create_tpo_fn=manager.create_tpo,
-            delete_tpo_fn=manager.delete_tpo
-        )
+    # ── Scope-aware CRUD helpers ──────────────────────────────────────────
+    def _scoped_getter(getter_fn, scope_ids, id_field="id"):
+        """Wrap a getter to filter results by scope."""
+        def wrapped(*args, **kwargs):
+            results = getter_fn(*args, **kwargs)
+            if scope_ids is None:
+                return results
+            _scope_set = set(scope_ids)
+            return [r for r in results if r.get(id_field) in _scope_set]
+        return wrapped
+
+    def _scoped_edge_getter(getter_fn, scope_ids, src_field, tgt_field):
+        """Wrap an edge getter to filter by scope."""
+        def wrapped(*args, **kwargs):
+            results = getter_fn(*args, **kwargs)
+            if scope_ids is None:
+                return results
+            _scope_set = set(scope_ids)
+            return [r for r in results if r.get(src_field) in _scope_set or r.get(tgt_field) in _scope_set]
+        return wrapped
+
+    # Build the expanded scope set (risks + connected mits/tpos) for CRUD
+    _crud_scope_ids = filter_mgr.get_scope_node_ids()
+    _expanded_crud_ids = None
+    if _crud_scope_ids is not None:
+        _expanded = set(_crud_scope_ids)
+        # Optionally expand 1-hop risk neighbors
+        if st.session_state.get("scope_include_neighbors", False):
+            _all_influences = manager.get_all_influences()
+            for inf in _all_influences:
+                src, tgt = inf.get("source_id"), inf.get("target_id")
+                if src in _expanded:
+                    _expanded.add(tgt)
+                if tgt in _expanded:
+                    _expanded.add(src)
+        # Add connected mitigations
+        _all_mitigates = manager.get_all_mitigates_relationships()
+        _connected_mit_ids = {mr["mitigation_id"] for mr in _all_mitigates if mr.get("risk_id") in _expanded}
+        # Add connected TPOs
+        _all_tpo_impacts = manager.get_all_tpo_impacts()
+        _connected_tpo_ids = {i["tpo_id"] for i in _all_tpo_impacts if i.get("risk_id") in _expanded}
+        _expanded_crud_ids = list(_expanded | _connected_mit_ids | _connected_tpo_ids)
+
+    tab_renderers = {
+        "visualization": render_visualization_tab,
+        "risks": lambda m, c: render_risks_tab(
+            get_all_risks_fn=_scoped_getter(m.get_all_risks, _expanded_crud_ids),
+            create_risk_fn=m.create_risk,
+            delete_risk_fn=m.delete_risk,
+        ),
+        "tpos": lambda m, c: render_tpos_tab(
+            get_all_tpos_fn=_scoped_getter(m.get_all_tpos, _expanded_crud_ids),
+            create_tpo_fn=m.create_tpo,
+            delete_tpo_fn=m.delete_tpo,
+        ),
+        "mitigations": lambda m, c: render_mitigations_tab(
+            get_all_mitigations_fn=_scoped_getter(m.get_all_mitigations, _expanded_crud_ids),
+            create_mitigation_fn=m.create_mitigation,
+            delete_mitigation_fn=m.delete_mitigation,
+            get_risks_for_mitigation_fn=m.get_risks_for_mitigation,
+        ),
+        "influences": lambda m, c: render_influences_tab(
+            get_all_risks_fn=_scoped_getter(m.get_all_risks, _expanded_crud_ids),
+            get_all_influences_fn=_scoped_edge_getter(m.get_all_influences, _expanded_crud_ids, "source_id", "target_id"),
+            create_influence_fn=m.create_influence,
+            delete_influence_fn=m.delete_influence,
+        ),
+        "analysis": render_analysis_tab,
+        "import_export": lambda m, c: render_import_export_tab(m.export_to_excel, m.import_from_excel),
+    }
     
-    # Mitigations Tab
-    with tab_mitigations:
-        render_mitigations_tab(
-            get_all_mitigations_fn=manager.get_all_mitigations,
-            create_mitigation_fn=manager.create_mitigation,
-            delete_mitigation_fn=manager.delete_mitigation,
-            get_risks_for_mitigation_fn=manager.get_risks_for_mitigation
-        )
-    
-    # Influences Tab
-    with tab_influences:
-        render_influences_tab(
-            get_all_risks_fn=manager.get_all_risks,
-            get_all_influences_fn=manager.get_all_influences,
-            create_influence_fn=manager.create_influence,
-            delete_influence_fn=manager.delete_influence
-        )
-    
-    # TPO Impacts Tab
-    with tab_tpo_impacts:
-        render_tpo_impacts_tab(
-            get_all_risks_fn=manager.get_all_risks,
-            get_all_tpos_fn=manager.get_all_tpos,
-            get_all_tpo_impacts_fn=manager.get_all_tpo_impacts,
-            create_tpo_impact_fn=manager.create_tpo_impact,
-            delete_tpo_impact_fn=manager.delete_tpo_impact
-        )
-    
-    # Risk Mitigations Tab
-    with tab_risk_mitigations:
-        render_risk_mitigations_tab(
-            get_all_risks_fn=manager.get_all_risks,
-            get_all_mitigations_fn=manager.get_all_mitigations,
-            get_all_mitigates_fn=manager.get_all_mitigates_relationships,
-            create_mitigates_fn=manager.create_mitigates_relationship,
-            delete_mitigates_fn=manager.delete_mitigates_relationship
-        )
-    
-    # Import/Export Tab
-    with tab_import:
-        render_import_export_tab(
-            export_fn=manager.export_to_excel,
-            import_fn=manager.import_from_excel
-        )
+    # Render main tabs dynamically from schema
+    render_dynamic_tabs(manager, tab_renderers)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,8 @@ This module loads configuration from the active YAML schema, falling back
 to hardcoded defaults if schema loading fails.
 
 Schema changes require app restart to take effect.
+
+NEW (v2): Prefer using get_schema_registry() for schema-driven operations.
 """
 
 # =============================================================================
@@ -16,6 +18,7 @@ from pathlib import Path
 
 _active_schema = None
 _active_schema_name = "default"
+_schema_registry = None
 
 def _get_schema_name_from_config():
     """
@@ -56,8 +59,22 @@ def _load_active_schema():
         _active_schema = None
         return False
 
+
+def _load_schema_registry():
+    """Load the SchemaRegistry for new-style access."""
+    global _schema_registry
+    try:
+        from core import load_schema
+        _schema_registry = load_schema(_active_schema_name)
+        return True
+    except Exception:
+        _schema_registry = None
+        return False
+
+
 # Try to load schema at module import
 _schema_loaded = _load_active_schema()
+_registry_loaded = _load_schema_registry()
 
 
 def get_active_schema():
@@ -70,6 +87,23 @@ def get_active_schema_name():
     return _active_schema_name
 
 
+def get_schema_registry():
+    """
+    Get the SchemaRegistry instance.
+    
+    This is the preferred way to access schema configuration for new code.
+    The registry provides type-safe access to entity types, relationship types,
+    and all categorical values.
+    
+    Returns:
+        SchemaRegistry instance or None if loading failed
+    """
+    global _schema_registry
+    if _schema_registry is None:
+        _load_schema_registry()
+    return _schema_registry
+
+
 def set_active_schema(schema_name: str):
     """
     Set the active schema by name.
@@ -77,9 +111,10 @@ def set_active_schema(schema_name: str):
     Note: This requires reimporting the module or restarting the app
     for changes to take effect in module-level constants.
     """
-    global _active_schema_name
+    global _active_schema_name, _schema_registry
     _active_schema_name = schema_name
     _load_active_schema()
+    _load_schema_registry()
 
 
 # =============================================================================

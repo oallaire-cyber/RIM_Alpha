@@ -4,6 +4,123 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.6.1] - 2026-02-14
+
+### Scope Improvements
+
+**New Features:**
+
+- **Smart Scope Filtering** (`database/queries/analysis.py`)
+  - Scoped graph automatically includes mitigations and TPOs connected to in-scope risks
+  - Optional 1-hop risk neighbor expansion via "Show connected neighbors" toggle
+  - Edges filtered to only include those between the expanded node set
+
+- **Scoped CRUD Tabs** (`app.py`)
+  - Risks, TPOs, Mitigations, and Influences tabs now show only entities within the active scope
+  - Scope expansion includes connected mitigations, TPOs, and optional risk neighbors
+
+- **Scoped Analysis** (`database/manager.py`)
+  - `get_influence_analysis(scope_node_ids=...)` pre-filters risks, influences, and TPO impacts
+  - `get_mitigation_analysis(scope_node_ids=...)` pre-filters risks, mitigations, and mitigates relationships
+  - Internal cross-reference calls also pass scope for consistent results
+
+- **Scoped Statistics Dashboard** (`app.py`)
+  - `_compute_stats_from_graph()` computes statistics from filtered graph data when scope is active
+  - Correctly counts risk levels, origins, TPOs, mitigations, and edge types
+
+- **Scope-Limited Influence Explorer** (`app.py`)
+  - Node selector dropdown filtered to only show nodes within the active scope
+
+- **Exposure with Neighbor Expansion** (`database/manager.py`)
+  - `calculate_exposure(scope_node_ids=..., include_neighbors=...)` optionally includes 1-hop risk neighbors
+  - Mitigations found via MITIGATES relationships (not by scope ID membership)
+
+**Bug Fixes:**
+
+- Fixed statistics dashboard showing 0 for all counts (wrong field names: `type`/`label` → `node_type`/`edge_type`)
+- Fixed Business/Operational risk counts at 0 (comparing schema IDs vs DB labels)
+- Fixed exposure calculation ignoring mitigations when scope active (mitigations filtered by scope set which only contains risk IDs)
+- Fixed CRUD tabs showing "No renderer for tab" errors (missing tab renderers)
+
+**Files Modified:**
+- `app.py` — CRUD tab scoping, stats fix, influence explorer scoping, neighbor toggle, exposure neighbor pass-through
+- `database/queries/analysis.py` — Smart scope expansion in `get_graph_data()`
+- `database/manager.py` — `scope_node_ids` on `get_influence_analysis()`, `get_mitigation_analysis()`, `calculate_exposure()` mitigation fix
+- `ui/filters.py` — `scope_include_neighbors` passthrough
+
+---
+
+## [v2.6.0] - 2026-02-14
+
+### Analysis Scopes
+
+**New Features:**
+
+- **Scope Data Model** (`config/schema_loader.py`)
+  - `AnalysisScopeConfig` dataclass: `id`, `name`, `description`, `node_ids`, `include_connected_edges`, `show_boundary_edges`, `color`
+  - Scopes stored in `schema.yaml` under `scopes` key — portable, versionable, shareable
+  - Full round-trip YAML parsing and serialization via `_parse_scopes()` / `_scope_to_dict()`
+
+- **Scope CRUD Tab** (`app_config.py`)
+  - New "📐 Scopes" tab in Configuration Manager
+  - Create scopes with node picker (live from Neo4j) or manual UUID entry
+  - Edit name, description, color; delete scopes
+  - Changes persisted to `schema.yaml`
+
+- **Scope Selector** (`app.py`)
+  - Sidebar "📐 Analysis Scopes" expander with multi-select
+  - Multiple scopes create a union of node IDs
+  - Scope indicator badge showing active scope names and node count
+  - "🌐 Full Graph" button to clear scope selection
+
+- **Scoped Filtering** (`ui/filters.py`)
+  - `FilterManager` methods: `set_active_scopes()`, `clear_scopes()`, `get_scope_node_ids()`, `add_node_to_scope()`, `remove_node_from_scope()`
+  - `scope_node_ids` included in `get_filters_for_query()` output
+
+- **Scoped Graph Data** (`database/queries/analysis.py`)
+  - `get_graph_data()` post-filters nodes and edges to scope boundary
+  - Only edges with both endpoints in scope are included
+
+- **Scoped Exposure Calculation** (`database/manager.py`)
+  - `calculate_exposure(scope_node_ids=...)` pre-filters risks, influences, mitigations, and mitigates relationships
+  - Exposure dashboard passes active scope automatically
+
+- **Test Suite** (`tests/test_scopes.py`)
+  - 26 unit tests across 6 classes
+  - Covers: dataclass, schema parsing, FilterManager, graph data filtering, exposure scoping
+
+**Files Added:**
+- `tests/test_scopes.py` (~400 lines)
+
+**Files Modified:**
+- `config/schema_loader.py` — Added `AnalysisScopeConfig`, parsing, serialization
+- `schemas/default/schema.yaml` — Added `scopes: []` placeholder
+- `ui/filters.py` — Added scope management methods
+- `database/queries/analysis.py` — Scope filtering in `get_graph_data()`
+- `database/manager.py` — `scope_node_ids` parameter in `calculate_exposure()`
+- `app.py` — Scope selector sidebar, scoped exposure, scope indicator
+- `app_config.py` — "📐 Scopes" CRUD tab
+
+---
+
+## [v2.5.2] - 2026-02-12
+
+### Bug Fixes
+
+- **Filters**: Reorganized into Core (Risks, Mitigations, Influences, Mitigates) and TPO & Related sections
+- **Node spacing**: Doubled physics spring length for better readability
+- **Node tooltips**: Now show name, level, origin, category, exposure
+- **Edge tooltips**: Now show level and strength
+- **CRUD tabs**: Fixed "No renderer" error by adding `entity_type`/`relationship_type` to schema tab configs
+- **Analysis tab**: Registered renderer; moved panels out of Visualization tab to avoid duplicate keys
+- **Import/Export tab**: Fixed routing in `_determine_tab_type`
+- **Statistics dashboard**: Added missing Total Risks metric
+- **UI**: Removed duplicate horizontal divider
+
+**Files Modified:** `app.py`, `schemas/default/schema.yaml`, `ui/dynamic_tabs.py`, `visualization/graph_options.py`, `visualization/node_styles.py`, `visualization/edge_styles.py`
+
+---
+
 ## [v2.5.1] - 2026-02-05
 
 ### Terminology Update: Strategic → Business Risks

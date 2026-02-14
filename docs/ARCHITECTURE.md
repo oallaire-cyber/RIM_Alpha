@@ -44,7 +44,8 @@ RIM follows a **modular architecture** with clear separation of concerns:
 ```
 config/
 ├── __init__.py      # Exports all settings
-└── settings.py      # Constants and configuration
+├── settings.py      # Constants and configuration
+└── schema_loader.py # YAML schema system (SchemaConfig, AnalysisScopeConfig, etc.)
 ```
 
 **Key exports**:
@@ -99,7 +100,26 @@ class RiskGraphManager:
     
     # Analysis
     def get_graph_for_visualization(self) -> Tuple[nodes, edges]
-    def calculate_exposure(self) -> dict
+    def calculate_exposure(self, scope_node_ids=None) -> dict
+```
+
+**Schema Dataclass Hierarchy** (`schema_loader.py`):
+
+```python
+@dataclass
+class AnalysisScopeConfig:
+    id: str                             # Machine-readable identifier
+    name: str                           # Display name
+    description: str = ""               # Purpose of the scope
+    node_ids: List[str] = field(...)     # UUIDs of nodes in scope
+    include_connected_edges: bool = True # Auto-include edges between scope nodes
+    show_boundary_edges: bool = False    # Show edges crossing scope boundary
+    color: str = "#808080"              # Scope color for visualization
+
+@dataclass
+class SchemaConfig:
+    # ... other fields ...
+    scopes: List[AnalysisScopeConfig]    # Zero or more scope definitions
 ```
 
 ### `/models` - Data Models
@@ -239,11 +259,19 @@ class FilterManager:
     
     def __init__(self, session_state):
         self.state = session_state
+        self.active_scopes = []          # List[AnalysisScopeConfig]
     
     def apply_preset(self, preset_name: str)
     def get_filter_summary(self) -> str
     def filter_nodes(self, nodes: List) -> List
     def filter_edges(self, edges: List) -> List
+    
+    # Scope management
+    def set_active_scopes(self, scopes: List)
+    def clear_scopes(self)
+    def get_scope_node_ids(self) -> Optional[Set[str]]
+    def add_node_to_scope(self, scope_id: str, node_id: str)
+    def remove_node_from_scope(self, scope_id: str, node_id: str)
 ```
 
 **LayoutManager** (`layouts.py`):
@@ -391,6 +419,42 @@ ExposureResult dataclass
 render_exposure_dashboard() [app.py]
 ```
 
+### Scope Filtering Flow
+
+```
+User selects scope(s) in sidebar
+    │
+    ▼
+_render_scope_selector() [app.py]
+    │
+    ├─── SchemaLoader.load_schema() → schema.scopes
+    ├─── Optional: "Show connected neighbors" toggle
+    │
+    ▼
+FilterManager.set_active_scopes() [ui/filters.py]
+    │
+    ├─── Stores active scopes
+    ├─── get_scope_node_ids() → union of all node IDs
+    ├─── get_filters_for_query() → {scope_node_ids, scope_include_neighbors}
+    │
+    ▼
+get_graph_data(filters) [database/queries/analysis.py]
+    │
+    ├─── Smart scope expansion:
+    │    ├─── Keep risks whose id ∈ scope_node_ids
+    │    ├─── Add mitigations connected to scoped risks
+    │    ├─── Add TPOs connected to scoped risks
+    │    └─── (Optional) Add 1-hop risk neighbors
+    └─── Filter edges: keep only if both endpoints in expanded set
+    │
+    ├──► Visualization shows scoped subgraph
+    ├──► _compute_stats_from_graph() → Scoped statistics dashboard
+    ├──► CRUD tabs filtered via _scoped_getter() wrappers
+    ├──► get_influence_analysis(scope_node_ids) → Scoped influence analysis
+    ├──► get_mitigation_analysis(scope_node_ids) → Scoped mitigation analysis
+    └──► calculate_exposure(scope_node_ids, include_neighbors) → Scoped exposure
+```
+
 ---
 
 ## Session State Management
@@ -520,6 +584,7 @@ tests/
 ├── test_exposure_calculator.py
 ├── test_influence_analysis.py
 ├── test_filters.py
+├── test_scopes.py              # Scope feature: 26 tests
 └── fixtures/
     └── sample_data.py
 ```
@@ -591,4 +656,4 @@ flake8>=6.0.0
 
 ---
 
-*Last updated: February 2026 | Version 2.2.0*
+*Last updated: February 2026 | Version 2.6.0*

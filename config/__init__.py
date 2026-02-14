@@ -32,6 +32,7 @@ APP_ICON = APP_CONFIG["page_icon"]
 LAYOUT_MODE = APP_CONFIG["layout"]
 NEO4J_DEFAULT_URI = NEO4J_DEFAULTS["uri"]
 NEO4J_DEFAULT_USER = NEO4J_DEFAULTS["username"]
+NEO4J_DEFAULT_PASSWORD = NEO4J_DEFAULTS.get("password", "")
 
 __all__ = [
     "APP_CONFIG",
@@ -51,6 +52,7 @@ __all__ = [
     "NEO4J_DEFAULTS",
     "NEO4J_DEFAULT_URI",
     "NEO4J_DEFAULT_USER",
+    "NEO4J_DEFAULT_PASSWORD",
     "GRAPH_DEFAULTS",
     "ANALYSIS_CACHE_TIMEOUT",
     # Schema config items

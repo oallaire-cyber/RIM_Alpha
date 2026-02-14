@@ -181,6 +181,113 @@ def render_active_schema_selector():
 
 
 # =============================================================================
+# GENERIC EDITOR COMPONENTS
+# =============================================================================
+
+def render_attribute_editor(attributes: List[AttributeConfig], prefix: str):
+    """Generic editor for a list of attributes."""
+    if attributes:
+        for j, attr in enumerate(attributes):
+            cols = st.columns([2, 1, 1, 1])
+            with cols[0]:
+                st.text(attr.name)
+            with cols[1]:
+                st.text(attr.type)
+            with cols[2]:
+                st.text("Required" if attr.required else "Optional")
+            with cols[3]:
+                if st.button("🗑️", key=f"{prefix}_attr_del_{j}"):
+                    attributes.pop(j)
+                    st.session_state.schema_modified = True
+                    st.rerun()
+    else:
+        st.caption("No attributes defined.")
+
+    # Add attribute popover
+    with st.popover("➕ Add Attribute"):
+        attr_name = st.text_input("Attribute Name", key=f"{prefix}_new_attr_name")
+        attr_type = st.selectbox("Type", ["string", "int", "float", "boolean", "date"], key=f"{prefix}_new_attr_type")
+        attr_required = st.checkbox("Required", key=f"{prefix}_new_attr_req")
+        attr_desc = st.text_input("Description", key=f"{prefix}_new_attr_desc")
+        
+        if st.button("Add", key=f"{prefix}_add_attr_btn") and attr_name:
+            attributes.append(AttributeConfig(
+                name=attr_name,
+                type=attr_type,
+                required=attr_required,
+                description=attr_desc
+            ))
+            st.session_state.schema_modified = True
+            st.rerun()
+
+
+def render_generic_entity_config(entity_type: Any, prefix: str, is_kernel: bool = False):
+    """Generic editor for an entity type configuration."""
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if not is_kernel:
+            new_id = st.text_input("ID", value=entity_type.id, key=f"{prefix}_id")
+            if new_id != entity_type.id:
+                entity_type.id = new_id
+                st.session_state.schema_modified = True
+        
+        # label is common
+        label_val = getattr(entity_type, 'label', '')
+        new_label = st.text_input("Label", value=label_val, key=f"{prefix}_label")
+        if new_label != label_val:
+            entity_type.label = new_label
+            st.session_state.schema_modified = True
+        
+        new_neo4j = st.text_input("Neo4j Label", value=entity_type.neo4j_label, key=f"{prefix}_neo4j")
+        if new_neo4j != entity_type.neo4j_label:
+            entity_type.neo4j_label = new_neo4j
+            st.session_state.schema_modified = True
+        
+        desc_val = getattr(entity_type, 'description', '')
+        new_desc = st.text_area("Description", value=desc_val, key=f"{prefix}_desc", height=80)
+        if new_desc != desc_val:
+            entity_type.description = new_desc
+            st.session_state.schema_modified = True
+    
+    with col2:
+        color_val = getattr(entity_type, 'color', '#808080')
+        new_color = st.color_picker("Color", value=color_val, key=f"{prefix}_color")
+        if new_color != color_val:
+            entity_type.color = new_color
+            st.session_state.schema_modified = True
+        
+        shape_options = ["dot", "box", "diamond", "hexagon", "star", "triangle", "triangleDown", "square"]
+        shape_val = getattr(entity_type, 'shape', 'dot')
+        current_shape_idx = shape_options.index(shape_val) if shape_val in shape_options else 0
+        new_shape = st.selectbox("Shape", shape_options, index=current_shape_idx, key=f"{prefix}_shape")
+        if new_shape != shape_val:
+            entity_type.shape = new_shape
+            st.session_state.schema_modified = True
+        
+        emoji_val = getattr(entity_type, 'emoji', '📦')
+        new_emoji = st.text_input("Emoji", value=emoji_val, key=f"{prefix}_emoji")
+        if new_emoji != emoji_val:
+            entity_type.emoji = new_emoji
+            st.session_state.schema_modified = True
+        
+        size_val = getattr(entity_type, 'size', 30)
+        new_size = st.number_input("Size", value=size_val, min_value=10, max_value=100, key=f"{prefix}_size")
+        if new_size != size_val:
+            entity_type.size = new_size
+            st.session_state.schema_modified = True
+    
+    # Generic Attributes editor
+    st.markdown("##### Standard Attributes")
+    render_attribute_editor(entity_type.attributes, f"{prefix}_std")
+    
+    # Custom Attributes editor (if applicable)
+    if hasattr(entity_type, 'custom_attributes'):
+        st.markdown("##### Custom Attributes")
+        render_attribute_editor(entity_type.custom_attributes, f"{prefix}_cust")
+
+
+# =============================================================================
 # SCHEMA MANAGEMENT TAB
 # =============================================================================
 
@@ -388,6 +495,12 @@ def render_risk_config(schema: SchemaConfig):
     """Render risk configuration section."""
     st.subheader("🎯 Risk Configuration")
     
+    # Generic Entity Config (Visual Tokens)
+    with st.expander("🎨 Visual Tokens & Attributes", expanded=False):
+        render_generic_entity_config(schema.risk, "risk", is_kernel=True)
+    
+    st.markdown("---")
+    
     # Risk Levels
     st.markdown("### 📊 Risk Levels")
     render_level_editor(schema)
@@ -576,11 +689,12 @@ def render_origin_editor(schema: SchemaConfig):
                         st.rerun()
     
     if st.button("➕ Add Origin"):
-        origins.append({
-            "id": f"new_origin_{len(origins)}",
-            "label": "New Origin",
-            "description": ""
-        })
+        from config.schema_loader import OriginConfig
+        origins.append(OriginConfig(
+            id=f"new_origin_{len(origins)}",
+            label="New Origin",
+            description=""
+        ))
         st.session_state.schema_modified = True
         st.rerun()
 
@@ -588,6 +702,12 @@ def render_origin_editor(schema: SchemaConfig):
 def render_tpo_config(schema: SchemaConfig):
     """Render TPO configuration section."""
     st.subheader("🏆 TPO Configuration")
+    
+    # Generic Entity Config (Visual Tokens)
+    with st.expander("🎨 Visual Tokens & Attributes", expanded=False):
+        render_generic_entity_config(schema.tpo, "tpo", is_kernel=True)
+    
+    st.markdown("---")
     
     st.markdown("### 🎯 TPO Clusters")
     clusters = schema.tpo.clusters
@@ -629,6 +749,12 @@ def render_tpo_config(schema: SchemaConfig):
 def render_mitigation_config(schema: SchemaConfig):
     """Render mitigation configuration section."""
     st.subheader("🛡️ Mitigation Configuration")
+    
+    # Generic Entity Config (Visual Tokens)
+    with st.expander("🎨 Visual Tokens & Attributes", expanded=False):
+        render_generic_entity_config(schema.mitigation, "mitigation", is_kernel=True)
+    
+    st.markdown("---")
     
     st.markdown("### 📦 Mitigation Types")
     types = schema.mitigation.types
@@ -840,88 +966,10 @@ def render_custom_entities_config(schema: SchemaConfig):
     # Display existing custom entities
     for i, entity in enumerate(custom_entities):
         with st.expander(f"{entity.emoji} {entity.label} ({entity.neo4j_label})", expanded=i == 0):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                new_id = st.text_input("ID", value=entity.id, key=f"ce_id_{i}")
-                if new_id != entity.id:
-                    entity.id = new_id
-                    st.session_state.schema_modified = True
-                
-                new_label = st.text_input("Label", value=entity.label, key=f"ce_label_{i}")
-                if new_label != entity.label:
-                    entity.label = new_label
-                    st.session_state.schema_modified = True
-                
-                new_neo4j = st.text_input("Neo4j Label", value=entity.neo4j_label, key=f"ce_neo4j_{i}")
-                if new_neo4j != entity.neo4j_label:
-                    entity.neo4j_label = new_neo4j
-                    st.session_state.schema_modified = True
-                
-                new_desc = st.text_area("Description", value=entity.description, key=f"ce_desc_{i}", height=80)
-                if new_desc != entity.description:
-                    entity.description = new_desc
-                    st.session_state.schema_modified = True
-            
-            with col2:
-                new_color = st.color_picker("Color", value=entity.color, key=f"ce_color_{i}")
-                if new_color != entity.color:
-                    entity.color = new_color
-                    st.session_state.schema_modified = True
-                
-                shape_options = ["dot", "box", "diamond", "hexagon", "star", "triangle", "triangleDown", "square"]
-                current_shape_idx = shape_options.index(entity.shape) if entity.shape in shape_options else 0
-                new_shape = st.selectbox("Shape", shape_options, index=current_shape_idx, key=f"ce_shape_{i}")
-                if new_shape != entity.shape:
-                    entity.shape = new_shape
-                    st.session_state.schema_modified = True
-                
-                new_emoji = st.text_input("Emoji", value=entity.emoji, key=f"ce_emoji_{i}")
-                if new_emoji != entity.emoji:
-                    entity.emoji = new_emoji
-                    st.session_state.schema_modified = True
-                
-                new_size = st.number_input("Size", value=entity.size, min_value=10, max_value=100, key=f"ce_size_{i}")
-                if new_size != entity.size:
-                    entity.size = new_size
-                    st.session_state.schema_modified = True
-            
-            # Attributes editor
-            st.markdown("##### Attributes")
-            if entity.attributes:
-                for j, attr in enumerate(entity.attributes):
-                    cols = st.columns([2, 1, 1, 1])
-                    with cols[0]:
-                        st.text(attr.name)
-                    with cols[1]:
-                        st.text(attr.type)
-                    with cols[2]:
-                        st.text("Required" if attr.required else "Optional")
-                    with cols[3]:
-                        if st.button("🗑️", key=f"ce_attr_del_{i}_{j}"):
-                            entity.attributes.pop(j)
-                            st.session_state.schema_modified = True
-                            st.rerun()
-            
-            # Add attribute
-            with st.popover("➕ Add Attribute"):
-                attr_name = st.text_input("Attribute Name", key=f"ce_new_attr_name_{i}")
-                attr_type = st.selectbox("Type", ["string", "int", "float", "boolean", "date"], key=f"ce_new_attr_type_{i}")
-                attr_required = st.checkbox("Required", key=f"ce_new_attr_req_{i}")
-                attr_desc = st.text_input("Description", key=f"ce_new_attr_desc_{i}")
-                
-                if st.button("Add Attribute", key=f"ce_add_attr_{i}") and attr_name:
-                    from config.schema_loader import AttributeConfig
-                    entity.attributes.append(AttributeConfig(
-                        name=attr_name,
-                        type=attr_type,
-                        required=attr_required,
-                        description=attr_desc
-                    ))
-                    st.session_state.schema_modified = True
-                    st.rerun()
+            render_generic_entity_config(entity, f"ce_{i}")
             
             # Delete entity button
+            st.markdown("---")
             if st.button(f"🗑️ Delete {entity.label}", key=f"ce_delete_{i}", type="secondary"):
                 schema.custom_entities.pop(i)
                 st.session_state.schema_modified = True
@@ -1017,40 +1065,10 @@ def render_custom_relationships_config(schema: SchemaConfig):
             
             # Relationship attributes
             st.markdown("##### Relationship Attributes")
-            if rel.attributes:
-                for j, attr in enumerate(rel.attributes):
-                    cols = st.columns([2, 1, 1, 1])
-                    with cols[0]:
-                        st.text(attr.name)
-                    with cols[1]:
-                        st.text(attr.type)
-                    with cols[2]:
-                        st.text("Required" if attr.required else "Optional")
-                    with cols[3]:
-                        if st.button("🗑️", key=f"cr_attr_del_{i}_{j}"):
-                            rel.attributes.pop(j)
-                            st.session_state.schema_modified = True
-                            st.rerun()
-            
-            # Add attribute
-            with st.popover("➕ Add Attribute"):
-                attr_name = st.text_input("Attribute Name", key=f"cr_new_attr_name_{i}")
-                attr_type = st.selectbox("Type", ["string", "int", "float", "boolean", "date"], key=f"cr_new_attr_type_{i}")
-                attr_required = st.checkbox("Required", key=f"cr_new_attr_req_{i}")
-                attr_desc = st.text_input("Description", key=f"cr_new_attr_desc_{i}")
-                
-                if st.button("Add Attribute", key=f"cr_add_attr_{i}") and attr_name:
-                    from config.schema_loader import AttributeConfig
-                    rel.attributes.append(AttributeConfig(
-                        name=attr_name,
-                        type=attr_type,
-                        required=attr_required,
-                        description=attr_desc
-                    ))
-                    st.session_state.schema_modified = True
-                    st.rerun()
+            render_attribute_editor(rel.attributes, f"cr_{i}")
             
             # Delete relationship button
+            st.markdown("---")
             if st.button(f"🗑️ Delete {rel.label}", key=f"cr_delete_{i}", type="secondary"):
                 schema.custom_relationships.pop(i)
                 st.session_state.schema_modified = True
@@ -2070,6 +2088,126 @@ def render_health_report(report: Dict[str, Any]):
 
 
 # =============================================================================
+# SCOPES TAB
+# =============================================================================
+
+def render_scopes_tab():
+    """Render analysis scopes CRUD tab."""
+    schema = st.session_state.active_schema
+    
+    if not schema:
+        st.warning("No schema loaded. Select a schema from the sidebar.")
+        return
+    
+    st.subheader("📐 Analysis Scopes")
+    st.info("Define named subsets of graph nodes for focused analysis.")
+    
+    # Current scopes
+    scopes = schema.scopes or []
+    
+    # ── Create new scope ──────────────────────────────────────────
+    with st.expander("➕ Create New Scope", expanded=not scopes):
+        with st.form("new_scope_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                new_id = st.text_input("Scope ID", placeholder="fuel_chain")
+                new_name = st.text_input("Display Name", placeholder="⛽ Fuel Supply Chain")
+            with col2:
+                new_desc = st.text_area("Description", placeholder="Risks related to fuel supply", height=68)
+                new_color = st.color_picker("Scope Color", "#808080")
+            
+            # Node picker — list nodes from DB if connected
+            node_options = []
+            if st.session_state.get("config_connected"):
+                try:
+                    conn = st.session_state.config_connection
+                    result = conn.execute_query(
+                        "MATCH (n) WHERE n.id IS NOT NULL AND n.name IS NOT NULL "
+                        "RETURN n.id AS id, n.name AS name, labels(n)[0] AS label ORDER BY label, n.name"
+                    )
+                    node_options = [
+                        {"id": r["id"], "display": f"[{r['label']}] {r['name']}"}
+                        for r in result
+                    ]
+                except Exception:
+                    pass
+            
+            if node_options:
+                display_map = {n["display"]: n["id"] for n in node_options}
+                selected_displays = st.multiselect("Select Nodes", list(display_map.keys()))
+                selected_node_ids = [display_map[d] for d in selected_displays]
+            else:
+                raw_ids = st.text_area("Node IDs (one per line)", placeholder="Paste UUIDs, one per line")
+                selected_node_ids = [x.strip() for x in raw_ids.split("\n") if x.strip()]
+            
+            include_edges = st.checkbox("Include connected edges", value=True)
+            
+            submitted = st.form_submit_button("Create Scope", type="primary")
+            if submitted and new_id and new_name:
+                # Check for duplicate ID
+                if any(s.id == new_id for s in scopes):
+                    st.error(f"A scope with ID '{new_id}' already exists.")
+                else:
+                    from config.schema_loader import AnalysisScopeConfig
+                    new_scope = AnalysisScopeConfig(
+                        id=new_id,
+                        name=new_name,
+                        description=new_desc,
+                        node_ids=selected_node_ids,
+                        include_connected_edges=include_edges,
+                        color=new_color,
+                    )
+                    schema.scopes.append(new_scope)
+                    _save_active_schema(schema)
+                    st.success(f"Scope '{new_name}' created with {len(selected_node_ids)} nodes.")
+                    st.rerun()
+    
+    # ── Existing scopes ───────────────────────────────────────────
+    if not scopes:
+        st.caption("No scopes defined yet — create one above.")
+        return
+    
+    for i, scope in enumerate(scopes):
+        with st.expander(f"{scope.name}  •  {len(scope.node_ids)} nodes", expanded=False):
+            col1, col2, col3 = st.columns([4, 4, 1])
+            with col1:
+                edited_name = st.text_input("Name", scope.name, key=f"scope_name_{scope.id}")
+                edited_desc = st.text_area("Description", scope.description, key=f"scope_desc_{scope.id}", height=68)
+            with col2:
+                edited_color = st.color_picker("Color", scope.color, key=f"scope_color_{scope.id}")
+                st.caption(f"**ID:** `{scope.id}`")
+                st.caption(f"**Edges included:** {'Yes' if scope.include_connected_edges else 'No'}")
+            with col3:
+                if st.button("🗑️", key=f"del_scope_{scope.id}", help="Delete this scope"):
+                    schema.scopes.pop(i)
+                    _save_active_schema(schema)
+                    st.rerun()
+            
+            # Save edits
+            if edited_name != scope.name or edited_desc != scope.description or edited_color != scope.color:
+                if st.button("💾 Save Changes", key=f"save_scope_{scope.id}"):
+                    scope.name = edited_name
+                    scope.description = edited_desc
+                    scope.color = edited_color
+                    _save_active_schema(schema)
+                    st.success("Scope updated.")
+                    st.rerun()
+            
+            # Node list
+            if scope.node_ids:
+                st.markdown(f"**Nodes ({len(scope.node_ids)}):**")
+                st.code("\n".join(scope.node_ids[:50]) + ("\n..." if len(scope.node_ids) > 50 else ""))
+
+
+def _save_active_schema(schema):
+    """Save the active schema back to its YAML file."""
+    loader = get_loader()
+    schema_name = st.session_state.active_schema_name
+    loader.save_schema(schema, schema_name)
+    st.session_state.active_schema = schema
+
+
+# =============================================================================
 # MAIN APPLICATION
 # =============================================================================
 
@@ -2091,8 +2229,9 @@ def main():
         render_active_schema_selector()
     
     # Main tabs
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📋 Schema Management",
+        "📐 Scopes",
         "🗄️ Database",
         "📊 Data Management",
         "🔍 Health Check"
@@ -2102,12 +2241,15 @@ def main():
         render_schema_management()
     
     with tab2:
-        render_database_tab()
+        render_scopes_tab()
     
     with tab3:
-        render_data_management()
+        render_database_tab()
     
     with tab4:
+        render_data_management()
+    
+    with tab5:
         render_health_check()
 
 

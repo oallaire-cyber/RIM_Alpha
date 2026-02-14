@@ -249,6 +249,22 @@ class AnalysisConfig:
 
 
 # =============================================================================
+# ANALYSIS SCOPE CONFIGURATION
+# =============================================================================
+
+@dataclass
+class AnalysisScopeConfig:
+    """Analysis scope configuration — a named subset of graph nodes."""
+    id: str
+    name: str
+    description: str = ""
+    node_ids: List[str] = field(default_factory=list)
+    include_connected_edges: bool = True
+    show_boundary_edges: bool = False
+    color: str = "#808080"
+
+
+# =============================================================================
 # UI CONFIGURATION
 # =============================================================================
 
@@ -314,6 +330,9 @@ class SchemaConfig:
     
     # UI
     ui: UIConfig = field(default_factory=UIConfig)
+    
+    # Analysis Scopes
+    scopes: List[AnalysisScopeConfig] = field(default_factory=list)
 
     # Helper properties for backward compatibility
     @property
@@ -485,6 +504,9 @@ class SchemaLoader:
         
         # Parse UI config
         schema.ui = self._parse_ui(data.get("ui", {}))
+        
+        # Parse analysis scopes
+        schema.scopes = self._parse_scopes(data.get("scopes", []))
         
         return schema
     
@@ -804,6 +826,21 @@ class SchemaLoader:
         
         return ui
     
+    def _parse_scopes(self, scopes_data: List[Dict[str, Any]]) -> List[AnalysisScopeConfig]:
+        """Parse analysis scopes from YAML data."""
+        scopes = []
+        for scope_data in scopes_data:
+            scopes.append(AnalysisScopeConfig(
+                id=scope_data.get("id", ""),
+                name=scope_data.get("name", ""),
+                description=scope_data.get("description", ""),
+                node_ids=scope_data.get("node_ids", []),
+                include_connected_edges=scope_data.get("include_connected_edges", True),
+                show_boundary_edges=scope_data.get("show_boundary_edges", False),
+                color=scope_data.get("color", "#808080"),
+            ))
+        return scopes
+    
     def save_schema(self, schema: SchemaConfig, schema_name: str) -> Path:
         """
         Save a schema to its YAML file.
@@ -857,6 +894,11 @@ class SchemaLoader:
             result["relationships"]["custom_relationships"] = [
                 self._custom_relationship_to_dict(cr) for cr in schema.custom_relationships
             ]
+        
+        # Add scopes
+        result["scopes"] = [
+            self._scope_to_dict(scope) for scope in schema.scopes
+        ]
         
         return result
     
@@ -1048,6 +1090,18 @@ class SchemaLoader:
                 {"id": p.id, "name": p.name, "description": p.description, "filters": p.filters}
                 for p in ui.presets
             ],
+        }
+    
+    def _scope_to_dict(self, scope: AnalysisScopeConfig) -> Dict[str, Any]:
+        """Convert AnalysisScopeConfig to dictionary."""
+        return {
+            "id": scope.id,
+            "name": scope.name,
+            "description": scope.description,
+            "node_ids": scope.node_ids,
+            "include_connected_edges": scope.include_connected_edges,
+            "show_boundary_edges": scope.show_boundary_edges,
+            "color": scope.color,
         }
     
     def validate_schema(self, schema: SchemaConfig) -> List[str]:

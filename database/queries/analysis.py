@@ -82,23 +82,94 @@ def get_graph_data(
         nodes.extend(mitigation_nodes)
         mitigation_ids = [n["id"] for n in mitigation_nodes]
     
-    # Get edges
+    # Get edges (respecting relationship filters)
     edges = []
     
-    # Influence edges between risks
-    if risk_ids:
+    # Influence edges between risks (only if show_influences is True)
+    show_influences = filters.get("show_influences", True)
+    if show_influences and risk_ids:
         influence_edges = influences.get_influence_edges(conn, risk_ids)
+        # Filter by strength if specified
+        strength_filter = filters.get("influence_strengths")
+        if strength_filter:
+            influence_edges = [
+                e for e in influence_edges
+                if e.get("strength", "") in strength_filter
+                or not e.get("strength")  # keep edges without strength set
+            ]
         edges.extend(influence_edges)
     
-    # TPO impact edges
-    if show_tpos and risk_ids and tpo_ids:
+    # TPO impact edges (only if show_tpo_impacts is True)
+    show_tpo_impacts = filters.get("show_tpo_impacts", True)
+    if show_tpos and show_tpo_impacts and risk_ids and tpo_ids:
         tpo_edges = tpos.get_tpo_impact_edges(conn, risk_ids, tpo_ids)
+        # Filter by impact level if specified
+        impact_level_filter = filters.get("tpo_impact_levels")
+        if impact_level_filter:
+            tpo_edges = [
+                e for e in tpo_edges
+                if e.get("impact_level", "") in impact_level_filter
+                or not e.get("impact_level")  # keep edges without impact_level set
+            ]
         edges.extend(tpo_edges)
     
-    # Mitigates edges
-    if show_mitigations and risk_ids and mitigation_ids:
+    # Mitigates edges (only if show_mitigates is True)
+    show_mitigates = filters.get("show_mitigates", True)
+    if show_mitigations and show_mitigates and risk_ids and mitigation_ids:
         mitigates_edges = mitigations.get_mitigates_edges(conn, mitigation_ids, risk_ids)
+        # Filter by effectiveness if specified
+        effectiveness_filter = filters.get("mitigation_effectiveness")
+        if effectiveness_filter:
+            mitigates_edges = [
+                e for e in mitigates_edges
+                if e.get("effectiveness", "") in effectiveness_filter
+                or not e.get("effectiveness")  # keep edges without effectiveness set
+            ]
         edges.extend(mitigates_edges)
+    
+    # Apply scope filtering — smart expansion beyond explicit scope IDs
+    scope_node_ids = filters.get("scope_node_ids")
+    if scope_node_ids is not None:
+        scope_set = set(scope_node_ids)
+        
+        # Step 1: Collect in-scope risk IDs
+        scoped_risk_ids = scope_set & set(risk_ids)
+        
+        # Step 2: Optionally expand to 1-hop risk neighbors
+        if filters.get("scope_include_neighbors"):
+            neighbor_risk_ids = set()
+            for e in edges:
+                src, tgt = e.get("source"), e.get("target")
+                if src in scoped_risk_ids and tgt in set(risk_ids):
+                    neighbor_risk_ids.add(tgt)
+                if tgt in scoped_risk_ids and src in set(risk_ids):
+                    neighbor_risk_ids.add(src)
+            scoped_risk_ids |= neighbor_risk_ids
+        
+        # Step 3: Keep mitigations/TPOs connected to scoped risks
+        connected_mit_ids = set()
+        connected_tpo_ids = set()
+        for e in edges:
+            src, tgt = e.get("source"), e.get("target")
+            # Mitigations connect via MITIGATES edges (mitigation → risk)
+            if tgt in scoped_risk_ids and src in set(mitigation_ids):
+                connected_mit_ids.add(src)
+            if src in scoped_risk_ids and tgt in set(mitigation_ids):
+                connected_mit_ids.add(tgt)
+            # TPOs connect via IMPACTS_TPO edges (risk → tpo)
+            if src in scoped_risk_ids and tgt in set(tpo_ids):
+                connected_tpo_ids.add(tgt)
+            if tgt in scoped_risk_ids and src in set(tpo_ids):
+                connected_tpo_ids.add(src)
+        
+        # Step 4: Build expanded node set
+        expanded_set = scoped_risk_ids | connected_mit_ids | connected_tpo_ids
+        
+        nodes = [n for n in nodes if n.get("id") in expanded_set]
+        edges = [
+            e for e in edges
+            if e.get("source") in expanded_set and e.get("target") in expanded_set
+        ]
     
     return nodes, edges
 

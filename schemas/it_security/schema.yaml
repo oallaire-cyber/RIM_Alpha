@@ -1,7 +1,7 @@
 # RIM IT Security Schema
 # Example cybersecurity profile demonstrating schema flexibility
 
-version: "1.0"
+version: "2.0"
 name: "IT Security"
 description: "IT Security and Cybersecurity risk management schema"
 

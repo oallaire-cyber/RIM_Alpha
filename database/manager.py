@@ -484,7 +484,7 @@ class RiskGraphManager:
     # ADVANCED ANALYSIS (TO BE MOVED TO SERVICES MODULE IN PHASE 3)
     # =========================================================================
     
-    def get_influence_analysis(self) -> Dict[str, Any]:
+    def get_influence_analysis(self, scope_node_ids=None) -> Dict[str, Any]:
         """
         Comprehensive influence analysis including:
         - Top Propagators (risks with highest downstream impact)
@@ -492,6 +492,9 @@ class RiskGraphManager:
         - Critical Paths (strongest influence chains)
         - Bottlenecks (nodes appearing in many paths)
         - Risk Clusters (tightly interconnected groups)
+        
+        Args:
+            scope_node_ids: Optional list of node IDs to restrict analysis to.
         """
         analysis = {
             "top_propagators": [],
@@ -510,6 +513,22 @@ class RiskGraphManager:
         all_tpos = self.get_all_tpos()
         all_influences = self.get_all_influences()
         all_tpo_impacts = self.get_all_tpo_impacts()
+        
+        # Pre-filter by scope if provided
+        if scope_node_ids is not None:
+            scope_set = set(scope_node_ids)
+            all_risks = [r for r in all_risks if r["id"] in scope_set]
+            all_influences = [
+                i for i in all_influences
+                if i["source_id"] in scope_set or i["target_id"] in scope_set
+            ]
+            all_tpo_impacts = [
+                i for i in all_tpo_impacts
+                if i["risk_id"] in scope_set
+            ]
+            # Keep TPOs that are reached by scoped risks
+            reached_tpo_ids = {i["tpo_id"] for i in all_tpo_impacts}
+            all_tpos = [t for t in all_tpos if t["id"] in reached_tpo_ids]
         
         if not all_risks:
             return analysis
@@ -814,13 +833,16 @@ class RiskGraphManager:
         
         return analysis
     
-    def get_mitigation_analysis(self) -> Dict[str, Any]:
+    def get_mitigation_analysis(self, scope_node_ids=None) -> Dict[str, Any]:
         """
         Comprehensive mitigation analysis including:
         - Coverage overview (risks with/without mitigations)
         - Mitigation effectiveness distribution
         - Unmitigated high-priority risks
         - Cross-reference with influence analysis
+        
+        Args:
+            scope_node_ids: Optional list of risk IDs to restrict analysis to.
         """
         analysis = {
             "coverage_stats": {},
@@ -836,6 +858,16 @@ class RiskGraphManager:
         all_risks = self.get_all_risks()
         all_mitigations = self.get_all_mitigations()
         all_mitigates = self.get_all_mitigates_relationships()
+        
+        # Pre-filter by scope if provided
+        if scope_node_ids is not None:
+            scope_set = set(scope_node_ids)
+            all_risks = [r for r in all_risks if r["id"] in scope_set]
+            # Keep mitigates relationships targeting scoped risks
+            all_mitigates = [mr for mr in all_mitigates if mr.get("risk_id") in scope_set]
+            # Keep only mitigations connected to scoped risks
+            connected_mit_ids = {mr["mitigation_id"] for mr in all_mitigates}
+            all_mitigations = [m for m in all_mitigations if m["id"] in connected_mit_ids]
         
         if not all_risks:
             return analysis
@@ -942,7 +974,7 @@ class RiskGraphManager:
         
         # Get influence analysis to cross-reference
         try:
-            influence_analysis = self.get_influence_analysis()
+            influence_analysis = self.get_influence_analysis(scope_node_ids=scope_node_ids)
             
             top_propagator_ids = set(p["id"] for p in influence_analysis.get("top_propagators", []))
             convergence_ids = set(c["id"] for c in influence_analysis.get("convergence_points", []) if c.get("node_type") == "Risk")
@@ -1245,14 +1277,21 @@ class RiskGraphManager:
     # EXPOSURE CALCULATION
     # =========================================================================
     
-    def calculate_exposure(self) -> Dict[str, Any]:
+    def calculate_exposure(self, scope_node_ids=None, include_neighbors=False) -> Dict[str, Any]:
         """
-        Calculate exposure scores for all risks.
+        Calculate exposure scores for all risks (or scoped risks).
         
         This method runs the exposure calculation considering:
         - Base exposure (Likelihood × Impact)
         - Mitigation effectiveness
         - Influence limitations from upstream risks
+        
+        Args:
+            scope_node_ids: Optional list of node IDs to restrict calculation to.
+                           When provided, only risks within this set (and their
+                           connected mitigations/influences) are included.
+            include_neighbors: If True and scope_node_ids is set, also include
+                             1-hop risk neighbors of the scoped risks.
         
         Returns:
             GlobalExposureResult as dictionary with all metrics
@@ -1265,6 +1304,40 @@ class RiskGraphManager:
         mitigations = self.get_all_mitigations()
         mitigates_rels = self.get_all_mitigates_relationships()
         
+        # Apply scope filtering if active
+        if scope_node_ids is not None:
+            scope_set = set(scope_node_ids)
+            
+            # Step 1: Get risk IDs in scope
+            risk_ids = {r["id"] for r in risks if r["id"] in scope_set}
+            
+            # Step 2: Optionally expand to 1-hop risk neighbors
+            if include_neighbors:
+                for inf in influences:
+                    src, tgt = inf.get("source_id"), inf.get("target_id")
+                    if src in risk_ids:
+                        risk_ids.add(tgt)
+                    if tgt in risk_ids:
+                        risk_ids.add(src)
+            
+            # Step 3: Filter risks to scoped set
+            risks = [r for r in risks if r["id"] in risk_ids]
+            
+            # Step 4: Keep influences between scoped risks
+            influences = [
+                i for i in influences
+                if i.get("source_id") in risk_ids and i.get("target_id") in risk_ids
+            ]
+            
+            # Step 5: Keep mitigates relationships that target scoped risks,
+            # then keep only the mitigations involved in those relationships
+            mitigates_rels = [
+                mr for mr in mitigates_rels
+                if mr.get("risk_id") in risk_ids
+            ]
+            connected_mit_ids = {mr["mitigation_id"] for mr in mitigates_rels}
+            mitigations = [m for m in mitigations if m["id"] in connected_mit_ids]
+        
         # Run calculation
         result = calculate_exposure(
             risks=risks,
@@ -1274,3 +1347,245 @@ class RiskGraphManager:
         )
         
         return result.to_dict()
+    
+    # =========================================================================
+    # GENERIC ENTITY OPERATIONS (Schema-Driven)
+    # =========================================================================
+    
+    def create_entity(self, entity_type_id: str, data: Dict[str, Any]) -> Optional[Dict]:
+        """
+        Create any entity type using schema registry.
+        
+        Args:
+            entity_type_id: Entity type ID from schema (e.g., "risk", "mitigation", "tpo")
+            data: Entity data dictionary
+            
+        Returns:
+            Created entity or None
+        """
+        from core import get_registry
+        from database.queries.generic_entity import create_entity, EntityValidationError
+        
+        registry = get_registry()
+        entity_type = registry.get_entity_type(entity_type_id)
+        
+        if not entity_type:
+            raise ValueError(f"Unknown entity type: {entity_type_id}")
+        
+        if not self._connection:
+            raise RuntimeError("Not connected to database")
+        
+        try:
+            return create_entity(self._connection._driver, entity_type, data)
+        except EntityValidationError as e:
+            import streamlit as st
+            st.error(str(e))
+            return None
+    
+    def get_entities(
+        self, entity_type_id: str, filters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict]:
+        """
+        Get all entities of a type with optional filters.
+        
+        Args:
+            entity_type_id: Entity type ID from schema
+            filters: Optional attribute filters
+            
+        Returns:
+            List of entity dictionaries
+        """
+        from core import get_registry
+        from database.queries.generic_entity import get_all_entities
+        
+        registry = get_registry()
+        entity_type = registry.get_entity_type(entity_type_id)
+        
+        if not entity_type:
+            return []
+        
+        if not self._connection:
+            return []
+        
+        return get_all_entities(self._connection._driver, entity_type, filters)
+    
+    def get_entity_by_id(
+        self, entity_type_id: str, entity_id: str
+    ) -> Optional[Dict]:
+        """
+        Get a single entity by ID.
+        
+        Args:
+            entity_type_id: Entity type ID from schema
+            entity_id: Entity ID
+            
+        Returns:
+            Entity dictionary or None
+        """
+        from core import get_registry
+        from database.queries.generic_entity import get_entity_by_id
+        
+        registry = get_registry()
+        entity_type = registry.get_entity_type(entity_type_id)
+        
+        if not entity_type or not self._connection:
+            return None
+        
+        return get_entity_by_id(self._connection._driver, entity_type, entity_id)
+    
+    def update_entity(
+        self, entity_type_id: str, entity_id: str, data: Dict[str, Any]
+    ) -> Optional[Dict]:
+        """
+        Update an entity.
+        
+        Args:
+            entity_type_id: Entity type ID from schema
+            entity_id: Entity ID
+            data: Updated data
+            
+        Returns:
+            Updated entity or None
+        """
+        from core import get_registry
+        from database.queries.generic_entity import update_entity, EntityValidationError
+        
+        registry = get_registry()
+        entity_type = registry.get_entity_type(entity_type_id)
+        
+        if not entity_type or not self._connection:
+            return None
+        
+        try:
+            return update_entity(self._connection._driver, entity_type, entity_id, data)
+        except EntityValidationError as e:
+            import streamlit as st
+            st.error(str(e))
+            return None
+    
+    def delete_entity(self, entity_type_id: str, entity_id: str) -> bool:
+        """
+        Delete an entity.
+        
+        Args:
+            entity_type_id: Entity type ID from schema
+            entity_id: Entity ID
+            
+        Returns:
+            True if deleted
+        """
+        from core import get_registry
+        from database.queries.generic_entity import delete_entity
+        
+        registry = get_registry()
+        entity_type = registry.get_entity_type(entity_type_id)
+        
+        if not entity_type or not self._connection:
+            return False
+        
+        return delete_entity(self._connection._driver, entity_type, entity_id)
+    
+    # =========================================================================
+    # GENERIC RELATIONSHIP OPERATIONS (Schema-Driven)
+    # =========================================================================
+    
+    def create_relationship(
+        self,
+        rel_type_id: str,
+        source_id: str,
+        target_id: str,
+        source_entity_type_id: str,
+        target_entity_type_id: str,
+        data: Optional[Dict[str, Any]] = None
+    ) -> Optional[Dict]:
+        """
+        Create a relationship using schema registry.
+        
+        Args:
+            rel_type_id: Relationship type ID from schema
+            source_id: Source entity ID
+            target_id: Target entity ID
+            source_entity_type_id: Source entity type ID
+            target_entity_type_id: Target entity type ID
+            data: Relationship properties
+            
+        Returns:
+            Created relationship or None
+        """
+        from core import get_registry
+        from database.queries.generic_relationship import (
+            create_relationship, ConstraintViolationError, RelationshipValidationError
+        )
+        
+        registry = get_registry()
+        rel_type = registry.get_relationship_type(rel_type_id)
+        source_entity_type = registry.get_entity_type(source_entity_type_id)
+        target_entity_type = registry.get_entity_type(target_entity_type_id)
+        
+        if not rel_type or not source_entity_type or not target_entity_type:
+            return None
+        
+        if not self._connection:
+            return None
+        
+        try:
+            return create_relationship(
+                self._connection._driver,
+                rel_type,
+                source_id,
+                target_id,
+                source_entity_type,
+                target_entity_type,
+                data
+            )
+        except (ConstraintViolationError, RelationshipValidationError) as e:
+            import streamlit as st
+            st.error(str(e))
+            return None
+    
+    def get_relationships(
+        self, rel_type_id: str, filters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict]:
+        """
+        Get all relationships of a type.
+        
+        Args:
+            rel_type_id: Relationship type ID from schema
+            filters: Optional property filters
+            
+        Returns:
+            List of relationship dictionaries
+        """
+        from core import get_registry
+        from database.queries.generic_relationship import get_all_relationships
+        
+        registry = get_registry()
+        rel_type = registry.get_relationship_type(rel_type_id)
+        
+        if not rel_type or not self._connection:
+            return []
+        
+        return get_all_relationships(self._connection._driver, rel_type, filters)
+    
+    def delete_relationship(self, rel_type_id: str, rel_id: str) -> bool:
+        """
+        Delete a relationship.
+        
+        Args:
+            rel_type_id: Relationship type ID from schema
+            rel_id: Relationship ID
+            
+        Returns:
+            True if deleted
+        """
+        from core import get_registry
+        from database.queries.generic_relationship import delete_relationship
+        
+        registry = get_registry()
+        rel_type = registry.get_relationship_type(rel_type_id)
+        
+        if not rel_type or not self._connection:
+            return False
+        
+        return delete_relationship(self._connection._driver, rel_type, rel_id)
+

@@ -7,10 +7,8 @@ filter state tracking, and query conversion.
 
 from typing import Dict, List, Any, Tuple, Optional
 from dataclasses import dataclass, field
-from config.settings import (
-    RISK_LEVELS, RISK_CATEGORIES, RISK_STATUSES, RISK_ORIGINS,
-    TPO_CLUSTERS, MITIGATION_TYPES, MITIGATION_STATUSES
-)
+import warnings
+from core import get_registry
 
 
 @dataclass
@@ -22,575 +20,298 @@ class FilterPreset:
     config: Dict[str, Any]
 
 
-# Define all filter presets
-FILTER_PRESETS: Dict[str, FilterPreset] = {
-    "full_view": FilterPreset(
-        key="full_view",
-        name="🌐 Full View",
-        description="Show all risks and TPOs (no mitigations)",
-        config={
-            "risks": {
-                "levels": RISK_LEVELS.copy(),
-                "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Active", "Contingent"],
-                "origins": RISK_ORIGINS.copy()
-            },
-            "tpos": {
-                "enabled": True,
-                "clusters": TPO_CLUSTERS.copy()
-            },
-            "mitigations": {
-                "enabled": False,
-                "types": [],
-                "statuses": []
-            }
-        }
-    ),
-    "strategic_only": FilterPreset(
-        key="strategic_only",
-        name="🟣 Strategic Focus",
-        description="Strategic risks and TPOs only",
-        config={
-            "risks": {
-                "levels": ["Strategic"],
-                "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Active", "Contingent"],
-                "origins": RISK_ORIGINS.copy()
-            },
-            "tpos": {
-                "enabled": True,
-                "clusters": TPO_CLUSTERS.copy()
-            },
-            "mitigations": {
-                "enabled": False,
-                "types": [],
-                "statuses": []
-            }
-        }
-    ),
-    "operational_only": FilterPreset(
-        key="operational_only",
-        name="🔵 Operational Focus",
-        description="Operational risks only, no TPOs",
-        config={
-            "risks": {
-                "levels": ["Operational"],
-                "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Active", "Contingent"],
-                "origins": RISK_ORIGINS.copy()
-            },
-            "tpos": {
-                "enabled": False,
-                "clusters": []
-            },
-            "mitigations": {
-                "enabled": False,
-                "types": [],
-                "statuses": []
-            }
-        }
-    ),
-    "active_only": FilterPreset(
-        key="active_only",
-        name="✅ Active Risks Only",
-        description="Only active risks (no contingent)",
-        config={
-            "risks": {
-                "levels": RISK_LEVELS.copy(),
-                "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Active"],
-                "origins": RISK_ORIGINS.copy()
-            },
-            "tpos": {
-                "enabled": True,
-                "clusters": TPO_CLUSTERS.copy()
-            },
-            "mitigations": {
-                "enabled": False,
-                "types": [],
-                "statuses": []
-            }
-        }
-    ),
-    "contingent_only": FilterPreset(
-        key="contingent_only",
-        name="⚠️ Contingent Risks",
-        description="Only contingent/future risks",
-        config={
-            "risks": {
-                "levels": RISK_LEVELS.copy(),
-                "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Contingent"],
-                "origins": RISK_ORIGINS.copy()
-            },
-            "tpos": {
-                "enabled": False,
-                "clusters": []
-            },
-            "mitigations": {
-                "enabled": False,
-                "types": [],
-                "statuses": []
-            }
-        }
-    ),
-    "risks_no_tpo": FilterPreset(
-        key="risks_no_tpo",
-        name="🎯 Risks Only",
-        description="All risks without TPOs",
-        config={
-            "risks": {
-                "levels": RISK_LEVELS.copy(),
-                "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Active", "Contingent"],
-                "origins": RISK_ORIGINS.copy()
-            },
-            "tpos": {
-                "enabled": False,
-                "clusters": []
-            },
-            "mitigations": {
-                "enabled": False,
-                "types": [],
-                "statuses": []
-            }
-        }
-    ),
-    "new_risks_only": FilterPreset(
-        key="new_risks_only",
-        name="🆕 New Risks Only",
-        description="Program-specific new risks",
-        config={
-            "risks": {
-                "levels": RISK_LEVELS.copy(),
-                "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Active", "Contingent"],
-                "origins": ["New"]
-            },
-            "tpos": {
-                "enabled": True,
-                "clusters": TPO_CLUSTERS.copy()
-            },
-            "mitigations": {
-                "enabled": False,
-                "types": [],
-                "statuses": []
-            }
-        }
-    ),
-    "legacy_risks_only": FilterPreset(
-        key="legacy_risks_only",
-        name="📜 Legacy Risks Only",
-        description="Inherited/Enterprise level risks",
-        config={
-            "risks": {
-                "levels": RISK_LEVELS.copy(),
-                "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Active", "Contingent"],
-                "origins": ["Legacy"]
-            },
-            "tpos": {
-                "enabled": True,
-                "clusters": TPO_CLUSTERS.copy()
-            },
-            "mitigations": {
-                "enabled": False,
-                "types": [],
-                "statuses": []
-            }
-        }
-    ),
-    "with_mitigations": FilterPreset(
-        key="with_mitigations",
-        name="🛡️ Risks + Mitigations",
-        description="Show risks with their mitigations",
-        config={
-            "risks": {
-                "levels": RISK_LEVELS.copy(),
-                "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Active", "Contingent"],
-                "origins": RISK_ORIGINS.copy()
-            },
-            "tpos": {
-                "enabled": False,
-                "clusters": []
-            },
-            "mitigations": {
-                "enabled": True,
-                "types": MITIGATION_TYPES.copy(),
-                "statuses": MITIGATION_STATUSES.copy()
-            }
-        }
-    ),
-    "mitigations_focus": FilterPreset(
-        key="mitigations_focus",
-        name="🛡️ Mitigations Focus",
-        description="Focus on mitigations and mitigated risks",
-        config={
-            "risks": {
-                "levels": RISK_LEVELS.copy(),
-                "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Active", "Contingent"],
-                "origins": RISK_ORIGINS.copy()
-            },
-            "tpos": {
-                "enabled": False,
-                "clusters": []
-            },
-            "mitigations": {
-                "enabled": True,
-                "types": MITIGATION_TYPES.copy(),
-                "statuses": ["Implemented", "In Progress"]
-            }
-        }
-    ),
-    "full_map": FilterPreset(
-        key="full_map",
-        name="🗺️ Full Map",
-        description="Everything: Risks, TPOs, and Mitigations",
-        config={
-            "risks": {
-                "levels": RISK_LEVELS.copy(),
-                "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Active", "Contingent"],
-                "origins": RISK_ORIGINS.copy()
-            },
-            "tpos": {
-                "enabled": True,
-                "clusters": TPO_CLUSTERS.copy()
-            },
-            "mitigations": {
-                "enabled": True,
-                "types": MITIGATION_TYPES.copy(),
-                "statuses": MITIGATION_STATUSES.copy()
-            }
-        }
-    )
-}
-
-
 class FilterManager:
     """
     Centralized filter management for the Risk Influence Map.
     
     Handles filter state, presets, and conversion to query format.
+    Now schema-driven, discovering filterable types from registry.
     """
     
-    # Class attribute referencing module-level presets
-    PRESETS = FILTER_PRESETS
-    
-    def __init__(self):
+    def __init__(self, registry=None):
         """Initialize with default filter state."""
+        self._registry = registry or get_registry()
+        self.active_scopes = []  # List of AnalysisScopeConfig
         self.reset_to_default()
+    
+    @property
+    def registry(self):
+        return self._registry or get_registry()
     
     def reset_to_default(self):
         """Reset filters to full map view (show everything)."""
+        registry = self.registry
+        
         self.filters = {
-            "risks": {
-                "levels": RISK_LEVELS.copy(),
-                "categories": RISK_CATEGORIES.copy(),
-                "statuses": ["Active", "Contingent"],
-                "origins": RISK_ORIGINS.copy()
-            },
-            "tpos": {
-                "enabled": True,
-                "clusters": TPO_CLUSTERS.copy()
-            },
-            "mitigations": {
-                "enabled": True,
-                "types": MITIGATION_TYPES.copy(),
-                "statuses": MITIGATION_STATUSES.copy()
-            }
+            "entities": {},      # type_id -> {attr_id -> List[values]}
+            "relationships": {}, # type_id -> {enabled: bool, attr_id -> List[values]}
         }
+        
+        # Initialize entity filters
+        for entity_id, entity_type in registry.entity_types.items():
+            self.filters["entities"][entity_id] = {
+                "enabled": True,
+                "attributes": {}
+            }
+            # Add filters for categorical groups (levels, categories, statuses, etc.)
+            for group_name, group_items in entity_type.categorical_groups.items():
+                if group_items:
+                    # Extract labels from group items
+                    choices = [item.get("label", item.get("id", "")) for item in group_items]
+                    if choices:
+                        self.filters["entities"][entity_id]["attributes"][group_name] = choices
+        
+        # Initialize relationship filters
+        for rel_id, rel_type in registry.relationship_types.items():
+            self.filters["relationships"][rel_id] = {
+                "enabled": True,
+                "attributes": {}
+            }
+            # Add filters for categorical groups
+            for group_name, group_items in rel_type.categorical_groups.items():
+                if group_items:
+                    choices = [item.get("label", item.get("id", "")) for item in group_items]
+                    if choices:
+                        self.filters["relationships"][rel_id]["attributes"][group_name] = choices
     
+    def get_presets(self) -> List[FilterPreset]:
+        """
+        Get list of available presets.
+        In the future, these could also come from the schema.
+        """
+        registry = self.registry
+        risk_type = registry.get_risk_type()
+        
+        # Basic presets that work with any schema
+        presets = [
+            FilterPreset(
+                "full_view", "🌐 Full View", "Show all entities and relationships",
+                {} # Config applied by resetting
+            )
+        ]
+        
+        # Add a "Risk Only" preset if risk exists
+        if risk_type:
+            presets.append(FilterPreset(
+                "risks_only", "🎯 Risks Only", "Show only risks and their influences",
+                {"entities": {risk_type.id: {"enabled": True}}, "hide_others": True}
+            ))
+            
+        return presets
+
     def apply_preset(self, preset_key: str) -> bool:
-        """
-        Apply a predefined filter preset.
+        """Apply a predefined filter preset."""
+        if preset_key == "full_view":
+            self.reset_to_default()
+            return True
         
-        Args:
-            preset_key: Key of the preset to apply
-        
-        Returns:
-            True if preset was applied, False if not found
-        """
-        if preset_key not in FILTER_PRESETS:
-            return False
-        
-        preset = FILTER_PRESETS[preset_key]
-        config = preset.config
-        
-        self.filters = {
-            "risks": {
-                "levels": config["risks"]["levels"].copy(),
-                "categories": config["risks"]["categories"].copy(),
-                "statuses": config["risks"]["statuses"].copy(),
-                "origins": config["risks"].get("origins", RISK_ORIGINS.copy()).copy()
-            },
-            "tpos": {
-                "enabled": config["tpos"]["enabled"],
-                "clusters": config["tpos"]["clusters"].copy()
-            },
-            "mitigations": {
-                "enabled": config.get("mitigations", {}).get("enabled", False),
-                "types": config.get("mitigations", {}).get("types", []).copy() or MITIGATION_TYPES.copy(),
-                "statuses": config.get("mitigations", {}).get("statuses", []).copy() or MITIGATION_STATUSES.copy()
-            }
-        }
-        return True
+        if preset_key == "risks_only":
+            # Keep risks enabled, disable everything else
+            self.reset_to_default()
+            for entity_id in self.filters["entities"]:
+                if entity_id == "risk":
+                    self.filters["entities"][entity_id]["enabled"] = True
+                else:
+                    self.filters["entities"][entity_id]["enabled"] = False
+            return True
+            
+        return False
     
-    # Risk filter setters
-    def set_risk_levels(self, levels: List[str]):
-        """Set risk level filter."""
-        self.filters["risks"]["levels"] = levels
+    # Generic setters for schema-driven UI
+    def set_entity_enabled(self, entity_id: str, enabled: bool):
+        if entity_id in self.filters["entities"]:
+            self.filters["entities"][entity_id]["enabled"] = enabled
+            
+    def set_entity_attribute_filter(self, entity_id: str, attr_id: str, values: List[Any]):
+        if entity_id in self.filters["entities"]:
+            self.filters["entities"][entity_id]["attributes"][attr_id] = values
+            
+    def set_relationship_enabled(self, rel_id: str, enabled: bool):
+        if rel_id in self.filters["relationships"]:
+            self.filters["relationships"][rel_id]["enabled"] = enabled
+
+    def set_relationship_attribute_filter(self, rel_id: str, attr_id: str, values: List[Any]):
+        if rel_id in self.filters["relationships"]:
+            self.filters["relationships"][rel_id]["attributes"][attr_id] = values
     
-    def set_risk_categories(self, categories: List[str]):
-        """Set risk category filter."""
-        self.filters["risks"]["categories"] = categories
+    # ── Scope management ────────────────────────────────────────────────
     
-    def set_risk_statuses(self, statuses: List[str]):
-        """Set risk status filter."""
-        self.filters["risks"]["statuses"] = statuses
+    def set_active_scopes(self, scopes: list):
+        """Set the active analysis scopes. Accepts list of AnalysisScopeConfig."""
+        self.active_scopes = list(scopes)
     
-    def set_risk_origins(self, origins: List[str]):
-        """Set risk origin filter."""
-        self.filters["risks"]["origins"] = origins
+    def clear_scopes(self):
+        """Remove all active scopes (show full graph)."""
+        self.active_scopes = []
     
-    # TPO filter setters
-    def set_tpo_enabled(self, enabled: bool):
-        """Enable or disable TPO display."""
-        self.filters["tpos"]["enabled"] = enabled
-        if not enabled:
-            self.filters["tpos"]["clusters"] = []
+    def get_scope_node_ids(self) -> Optional[List[str]]:
+        """Get the union of all active scope node IDs, or None if no scope active."""
+        if not self.active_scopes:
+            return None
+        ids = set()
+        for scope in self.active_scopes:
+            ids.update(scope.node_ids)
+        return list(ids)
     
-    def set_tpo_clusters(self, clusters: List[str]):
-        """Set TPO cluster filter."""
-        self.filters["tpos"]["clusters"] = clusters
+    def add_node_to_scope(self, scope_id: str, node_id: str) -> bool:
+        """Add a node ID to a specific active scope. Returns True if added."""
+        for scope in self.active_scopes:
+            if scope.id == scope_id and node_id not in scope.node_ids:
+                scope.node_ids.append(node_id)
+                return True
+        return False
     
-    # Mitigation filter setters
-    def set_mitigations_enabled(self, enabled: bool):
-        """Enable or disable mitigation display."""
-        self.filters["mitigations"]["enabled"] = enabled
-        if not enabled:
-            self.filters["mitigations"]["types"] = []
-            self.filters["mitigations"]["statuses"] = []
-    
-    def set_mitigation_types(self, types: List[str]):
-        """Set mitigation type filter."""
-        self.filters["mitigations"]["types"] = types
-    
-    def set_mitigation_statuses(self, statuses: List[str]):
-        """Set mitigation status filter."""
-        self.filters["mitigations"]["statuses"] = statuses
-    
-    # Select/Deselect all helpers
-    def select_all_levels(self):
-        """Select all risk levels."""
-        self.filters["risks"]["levels"] = RISK_LEVELS.copy()
-    
-    def deselect_all_levels(self):
-        """Deselect all risk levels."""
-        self.filters["risks"]["levels"] = []
-    
-    def select_all_categories(self):
-        """Select all risk categories."""
-        self.filters["risks"]["categories"] = RISK_CATEGORIES.copy()
-    
-    def deselect_all_categories(self):
-        """Deselect all risk categories."""
-        self.filters["risks"]["categories"] = []
-    
-    def select_all_statuses(self):
-        """Select all risk statuses."""
-        self.filters["risks"]["statuses"] = RISK_STATUSES.copy()
-    
-    def deselect_all_statuses(self):
-        """Deselect all risk statuses."""
-        self.filters["risks"]["statuses"] = []
-    
-    def select_all_origins(self):
-        """Select all risk origins."""
-        self.filters["risks"]["origins"] = RISK_ORIGINS.copy()
-    
-    def deselect_all_origins(self):
-        """Deselect all risk origins."""
-        self.filters["risks"]["origins"] = []
-    
-    def select_all_clusters(self):
-        """Select all TPO clusters."""
-        self.filters["tpos"]["clusters"] = TPO_CLUSTERS.copy()
-    
-    def deselect_all_clusters(self):
-        """Deselect all TPO clusters."""
-        self.filters["tpos"]["clusters"] = []
-    
-    def select_all_mitigation_types(self):
-        """Select all mitigation types."""
-        self.filters["mitigations"]["types"] = MITIGATION_TYPES.copy()
-    
-    def deselect_all_mitigation_types(self):
-        """Deselect all mitigation types."""
-        self.filters["mitigations"]["types"] = []
-    
-    def select_all_mitigation_statuses(self):
-        """Select all mitigation statuses."""
-        self.filters["mitigations"]["statuses"] = MITIGATION_STATUSES.copy()
-    
-    def deselect_all_mitigation_statuses(self):
-        """Deselect all mitigation statuses."""
-        self.filters["mitigations"]["statuses"] = []
+    def remove_node_from_scope(self, scope_id: str, node_id: str) -> bool:
+        """Remove a node ID from a specific active scope. Returns True if removed."""
+        for scope in self.active_scopes:
+            if scope.id == scope_id and node_id in scope.node_ids:
+                scope.node_ids.remove(node_id)
+                return True
+        return False
     
     def get_filters_for_query(self) -> Dict[str, Any]:
         """
-        Convert filters to format expected by database queries.
+        Convert schema-driven filters to the flat format expected by database queries.
         
-        Returns:
-            Dictionary with query-compatible filter parameters
+        The database queries expect:
+            - level: List of risk levels
+            - categories: List of categories
+            - status: List of statuses
+            - origins: List of origins
+            - show_tpos: Boolean
+            - tpo_clusters: List of TPO clusters
+            - show_mitigations: Boolean
+            - mitigation_types: List of mitigation types
+            - mitigation_statuses: List of mitigation statuses
+            - show_influences: Boolean
+            - show_tpo_impacts: Boolean
+            - show_mitigates: Boolean
         """
-        query_filters = {
-            "show_tpos": self.filters["tpos"]["enabled"],
-            "show_mitigations": self.filters.get("mitigations", {}).get("enabled", False)
-        }
+        query_filters = {}
         
-        if self.filters["risks"]["levels"]:
-            query_filters["level"] = self.filters["risks"]["levels"]
+        # Risk entity filters
+        risk_filters = self.filters["entities"].get("risk", {})
+        if not risk_filters.get("enabled", True):
+            # If risks are disabled, return empty level filter (no risks shown)
+            query_filters["level"] = []
+        else:
+            risk_attrs = risk_filters.get("attributes", {})
+            if "levels" in risk_attrs:
+                query_filters["level"] = risk_attrs["levels"]
+            if "categories" in risk_attrs:
+                query_filters["categories"] = risk_attrs["categories"]
+            if "statuses" in risk_attrs:
+                query_filters["status"] = risk_attrs["statuses"]
+            if "origins" in risk_attrs:
+                query_filters["origins"] = risk_attrs["origins"]
         
-        if self.filters["risks"]["categories"]:
-            query_filters["categories"] = self.filters["risks"]["categories"]
+        # TPO entity filters
+        tpo_filters = self.filters["entities"].get("tpo", {})
+        query_filters["show_tpos"] = tpo_filters.get("enabled", True)
+        if tpo_filters.get("enabled", True):
+            tpo_attrs = tpo_filters.get("attributes", {})
+            if "clusters" in tpo_attrs:
+                query_filters["tpo_clusters"] = tpo_attrs["clusters"]
         
-        if self.filters["risks"]["statuses"]:
-            query_filters["status"] = self.filters["risks"]["statuses"]
+        # Mitigation entity filters
+        mit_filters = self.filters["entities"].get("mitigation", {})
+        query_filters["show_mitigations"] = mit_filters.get("enabled", True)
+        if mit_filters.get("enabled", True):
+            mit_attrs = mit_filters.get("attributes", {})
+            if "types" in mit_attrs:
+                query_filters["mitigation_types"] = mit_attrs["types"]
+            if "statuses" in mit_attrs:
+                query_filters["mitigation_statuses"] = mit_attrs["statuses"]
         
-        if self.filters["risks"].get("origins"):
-            query_filters["origins"] = self.filters["risks"]["origins"]
+        # Relationship filters
+        influences_filters = self.filters["relationships"].get("influences", {})
+        query_filters["show_influences"] = influences_filters.get("enabled", True)
+        if influences_filters.get("enabled", True):
+            influences_attrs = influences_filters.get("attributes", {})
+            if "strengths" in influences_attrs:
+                query_filters["influence_strengths"] = influences_attrs["strengths"]
         
-        if self.filters["tpos"]["enabled"] and self.filters["tpos"]["clusters"]:
-            query_filters["tpo_clusters"] = self.filters["tpos"]["clusters"]
+        impacts_tpo_filters = self.filters["relationships"].get("impacts_tpo", {})
+        query_filters["show_tpo_impacts"] = impacts_tpo_filters.get("enabled", True)
+        if impacts_tpo_filters.get("enabled", True):
+            impacts_attrs = impacts_tpo_filters.get("attributes", {})
+            if "impact_levels" in impacts_attrs:
+                query_filters["tpo_impact_levels"] = impacts_attrs["impact_levels"]
         
-        # Mitigation filters
-        if self.filters.get("mitigations", {}).get("enabled"):
-            if self.filters["mitigations"].get("types"):
-                query_filters["mitigation_types"] = self.filters["mitigations"]["types"]
-            if self.filters["mitigations"].get("statuses"):
-                query_filters["mitigation_statuses"] = self.filters["mitigations"]["statuses"]
+        mitigates_filters = self.filters["relationships"].get("mitigates", {})
+        query_filters["show_mitigates"] = mitigates_filters.get("enabled", True)
+        if mitigates_filters.get("enabled", True):
+            mitigates_attrs = mitigates_filters.get("attributes", {})
+            if "effectiveness_levels" in mitigates_attrs:
+                query_filters["mitigation_effectiveness"] = mitigates_attrs["effectiveness_levels"]
+        
+        # Scope filtering — pass scope_node_ids if any scope is active
+        scope_ids = self.get_scope_node_ids()
+        if scope_ids is not None:
+            query_filters["scope_node_ids"] = scope_ids
+            # Check session state for neighbor expansion toggle
+            try:
+                import streamlit as st
+                query_filters["scope_include_neighbors"] = st.session_state.get("scope_include_neighbors", False)
+            except Exception:
+                pass
         
         return query_filters
     
     def get_filter_summary(self) -> str:
-        """
-        Get a human-readable summary of current filters.
+        """Get a human-readable summary of current filters."""
+        enabled_entities = [e_id for e_id, f in self.filters["entities"].items() if f["enabled"]]
+        enabled_rels = [r_id for r_id, f in self.filters["relationships"].items() if f["enabled"]]
         
-        Returns:
-            Summary string
-        """
-        parts = []
+        scope_text = ""
+        if self.active_scopes:
+            scope_names = [s.name for s in self.active_scopes]
+            scope_text = f" | Scopes: {', '.join(scope_names)}"
         
-        # Risk levels
-        if len(self.filters["risks"]["levels"]) == len(RISK_LEVELS):
-            parts.append("All levels")
-        elif self.filters["risks"]["levels"]:
-            parts.append(f"Levels: {', '.join(self.filters['risks']['levels'])}")
-        else:
-            parts.append("No levels selected")
-        
-        # Risk categories
-        if len(self.filters["risks"]["categories"]) == len(RISK_CATEGORIES):
-            parts.append("All categories")
-        elif self.filters["risks"]["categories"]:
-            parts.append(f"{len(self.filters['risks']['categories'])} categories")
-        else:
-            parts.append("No categories")
-        
-        # Risk origins
-        origins = self.filters["risks"].get("origins", RISK_ORIGINS.copy())
-        if len(origins) == len(RISK_ORIGINS):
-            pass  # Don't show if all selected (default)
-        elif origins:
-            parts.append(f"Origins: {', '.join(origins)}")
-        else:
-            parts.append("No origins selected")
-        
-        # TPOs
-        if self.filters["tpos"]["enabled"]:
-            if len(self.filters["tpos"]["clusters"]) == len(TPO_CLUSTERS):
-                parts.append("All TPOs")
-            elif self.filters["tpos"]["clusters"]:
-                parts.append(f"{len(self.filters['tpos']['clusters'])} TPO clusters")
-            else:
-                parts.append("No TPO clusters")
-        else:
-            parts.append("TPOs hidden")
-        
-        # Mitigations
-        if self.filters.get("mitigations", {}).get("enabled"):
-            mit_types = self.filters["mitigations"].get("types", [])
-            mit_statuses = self.filters["mitigations"].get("statuses", [])
-            if len(mit_types) == len(MITIGATION_TYPES) and len(mit_statuses) == len(MITIGATION_STATUSES):
-                parts.append("All Mitigations")
-            else:
-                parts.append(f"{len(mit_types)} mit. types, {len(mit_statuses)} statuses")
-        else:
-            parts.append("Mitigations hidden")
-        
-        return " | ".join(parts)
+        return f"Entities: {len(enabled_entities)} | Relationships: {len(enabled_rels)}{scope_text}"
     
     def validate(self) -> Tuple[bool, Optional[str]]:
-        """
-        Validate current filter configuration.
-        
-        Returns:
-            Tuple of (is_valid, message)
-        """
-        origins = self.filters["risks"].get("origins", RISK_ORIGINS.copy())
-        has_risks = (
-            len(self.filters["risks"]["levels"]) > 0 and
-            len(self.filters["risks"]["categories"]) > 0 and
-            len(self.filters["risks"]["statuses"]) > 0 and
-            len(origins) > 0
-        )
-        has_tpos = (
-            self.filters["tpos"]["enabled"] and
-            len(self.filters["tpos"]["clusters"]) > 0
-        )
-        
-        if not has_risks and not has_tpos:
-            return False, "No data to display. Please select at least one filter option."
-        
-        if not has_risks and has_tpos:
-            return True, "Showing TPOs only (no risk filters match)."
-        
+        """Validate current filter configuration."""
+        if not any(f["enabled"] for f in self.filters["entities"].values()):
+            return False, "Please select at least one entity type to display."
         return True, None
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert current filter state to dictionary."""
-        return self.filters.copy()
-    
-    def from_dict(self, filters: Dict[str, Any]):
-        """Load filter state from dictionary."""
-        self.filters = filters.copy()
 
 
+# Backward compatibility functions
 def get_preset_list() -> List[Dict[str, str]]:
-    """
-    Get list of presets for UI display.
-    
-    Returns:
-        List of preset info dictionaries
-    """
+    """Get list of presets for UI display."""
+    manager = FilterManager()
     return [
         {
-            "key": preset.key,
-            "name": preset.name,
-            "description": preset.description
+            "key": p.key,
+            "name": p.name,
+            "description": p.description
         }
-        for preset in FILTER_PRESETS.values()
+        for p in manager.get_presets()
     ]
 
 
 def get_preset_names() -> Dict[str, str]:
-    """
-    Get mapping of preset keys to names.
-    
-    Returns:
-        Dictionary of key -> name
-    """
-    return {preset.key: preset.name for preset in FILTER_PRESETS.values()}
+    """Get mapping of preset keys to names."""
+    manager = FilterManager()
+    return {p.key: p.name for p in manager.get_presets()}
+
+
+# Backward-compatible constant (DEPRECATED: use FilterManager.get_presets())
+# This is a static snapshot; new code should use get_preset_list() or FilterManager
+FILTER_PRESETS: Dict[str, FilterPreset] = {}
+
+def _init_filter_presets():
+    """Initialize the FILTER_PRESETS dict for backward compatibility."""
+    global FILTER_PRESETS
+    try:
+        manager = FilterManager()
+        FILTER_PRESETS = {p.key: p for p in manager.get_presets()}
+    except Exception:
+        # If schema not loaded yet, provide minimal defaults
+        FILTER_PRESETS = {
+            "full_view": FilterPreset("full_view", "🌐 Full View", "Show all", {})
+        }
+
+# Initialize on import (lazy, will re-init if schema changes)
+_init_filter_presets()

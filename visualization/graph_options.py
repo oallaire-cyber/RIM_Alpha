@@ -46,9 +46,9 @@ def get_network_options(physics_enabled: bool = True) -> str:
             "enabled": {physics_str},
             "solver": "forceAtlas2Based",
             "forceAtlas2Based": {{
-                "gravitationalConstant": -150,
+                "gravitationalConstant": -300,
                 "centralGravity": 0.01,
-                "springLength": 300,
+                "springLength": 600,
                 "springConstant": 0.05
             }},
             "stabilization": {{
