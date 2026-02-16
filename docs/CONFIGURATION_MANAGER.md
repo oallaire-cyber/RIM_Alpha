@@ -6,7 +6,8 @@ A standalone Streamlit application for managing RIM application configuration th
 
 ```bash
 # From project root with venv activated
-streamlit run app_config.py
+streamlit run app.py
+# Then navigate to "⚙️ Configuration" in the sidebar
 ```
 
 Opens at: `http://localhost:8501`

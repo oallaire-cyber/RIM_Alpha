@@ -10,7 +10,8 @@ from datetime import datetime
 # Configuration
 from core import get_registry
 from config import APP_TITLE, APP_ICON, LAYOUT_MODE, NEO4J_DEFAULT_URI, NEO4J_DEFAULT_USER, NEO4J_DEFAULT_PASSWORD, RISK_LEVEL_CONFIG
-from config.schema_loader import SchemaLoader, AnalysisScopeConfig
+from config.schema_loader import SchemaLoader
+from utils.db_manager import init_connection_state
 
 # Database
 from database import RiskGraphManager
@@ -89,10 +90,9 @@ def _compute_stats_from_graph(nodes, edges):
 
 def init_session_state():
     """Initialize Streamlit session state variables."""
-    if "manager" not in st.session_state:
-        st.session_state.manager = None
-    if "connected" not in st.session_state:
-        st.session_state.connected = False
+    # Use shared init
+    init_connection_state()
+    
     if "filter_manager" not in st.session_state:
         st.session_state.filter_manager = FilterManager()
     if "layout_manager" not in st.session_state:
@@ -403,19 +403,42 @@ def render_help_section():
             """)
 
 
+
 def render_connection_sidebar():
     """Render the Neo4j connection sidebar."""
     st.sidebar.markdown("## 🔌 Neo4j Connection")
     
+    # Use session state for connection details to persist across pages
+    if "neo4j_uri" not in st.session_state:
+        st.session_state.neo4j_uri = NEO4J_DEFAULT_URI
+    if "neo4j_user" not in st.session_state:
+        st.session_state.neo4j_user = NEO4J_DEFAULT_USER
+    
     with st.sidebar.expander("Connection Settings", expanded=not st.session_state.connected):
-        uri = st.text_input("URI", value=NEO4J_DEFAULT_URI, key="neo4j_uri")
-        user = st.text_input("User", value=NEO4J_DEFAULT_USER, key="neo4j_user")
-        password = st.text_input("Password", type="password", key="neo4j_password")
+        uri = st.text_input("URI", value=st.session_state.neo4j_uri, key="input_neo4j_uri")
+        user = st.text_input("User", value=st.session_state.neo4j_user, key="input_neo4j_user")
+        password = st.text_input("Password", type="password", key="input_neo4j_password")
         
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Connect", type="primary", use_container_width=True):
-                manager = RiskGraphManager(uri, user, password)
+                # Update session state with inputs
+                st.session_state.neo4j_uri = uri
+                st.session_state.neo4j_user = user
+                
+                # Use the cached manager provider, but we need to handle the connection lifecycle
+                # Since we want to update credentials, we might need to invalidate cache or just instantiate new
+                # For simplicity in this refactor, we'll keep the direct instantiation but store in session_state
+                # which is shared across pages.
+                
+                # However, to be "interesting" and efficient as requested:
+                # We can use the utility to get a manager.
+                from utils.db_manager import get_risk_graph_manager
+                
+                # Note: st.cache_resource caches based on args. 
+                # So if args change (new user/pass), it returns a new instance. Perfect.
+                manager = get_risk_graph_manager(uri, user, password)
+                
                 if manager.connect():
                     st.session_state.manager = manager
                     st.session_state.connected = True
@@ -440,6 +463,7 @@ def render_connection_sidebar():
         render_graph_legend(expanded=False)
         st.sidebar.markdown("---")
         render_help_section()
+
 
 
 def render_welcome_page():

@@ -6,7 +6,8 @@ A standalone Streamlit application for validating and calibrating the RIM exposu
 
 ```bash
 # From project root with venv activated
-streamlit run calibration_simulator.py
+streamlit run app.py
+# Then navigate to "🎲 Simulation" in the sidebar
 ```
 
 Opens at: `http://localhost:8501`

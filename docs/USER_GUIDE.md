@@ -26,11 +26,15 @@ Complete documentation for the Risk Influence Map application.
 
 1. Start the Neo4j database: `docker-compose up -d`
 2. Open the RIM application: `streamlit run app.py`
-3. In the sidebar, verify connection settings:
+3. The application now uses a **multi-page layout**:
+   - **Home**: Dashboard and Graph Visualization
+   - **Configuration**: Schema and Database Management
+   - **Simulation**: Calibration Simulator
+4. In the sidebar (on any page), verify connection settings:
    - **URI**: `bolt://localhost:7687`
    - **Username**: `neo4j`
    - **Password**: Your configured password
-4. Click **Connect**
+5. Click **Connect** (Connection persists across pages)
 
 ### Interface Overview
 

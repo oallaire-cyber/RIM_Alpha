@@ -5,6 +5,7 @@ A standalone configuration tool for managing RIM application settings through
 YAML schemas without modifying code.
 """
 
+
 import streamlit as st
 import yaml
 import json
@@ -13,6 +14,10 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 import pandas as pd
+import sys
+
+# Add parent directory to path to allow imports from root
+sys.path.append(str(Path(__file__).parent.parent))
 
 # Internal imports
 from config.schema_loader import (
@@ -23,14 +28,20 @@ from config.schema_loader import (
     validate_schema, save_schema, get_loader
 )
 from database.connection import Neo4jConnection
+from utils.db_manager import get_active_manager, init_connection_state
+
 
 
 # =============================================================================
 # SESSION STATE INITIALIZATION
 # =============================================================================
 
+
 def init_session_state():
     """Initialize Streamlit session state variables."""
+    # Use shared connection state
+    init_connection_state()
+
     if "config_connection" not in st.session_state:
         st.session_state.config_connection = None
     if "config_connected" not in st.session_state:
@@ -45,6 +56,7 @@ def init_session_state():
         st.session_state.db_stats = None
     if "health_report" not in st.session_state:
         st.session_state.health_report = None
+
 
 
 def load_active_schema():
@@ -63,42 +75,52 @@ def load_active_schema():
 # SIDEBAR COMPONENTS
 # =============================================================================
 
+
 def render_connection_panel():
     """Render Neo4j connection settings in sidebar."""
     st.sidebar.markdown("## 🔌 Database Connection")
     
-    with st.sidebar.expander("Connection Settings", expanded=not st.session_state.config_connected):
-        uri = st.text_input("URI", value="bolt://localhost:7687", key="cfg_neo4j_uri")
-        user = st.text_input("User", value="neo4j", key="cfg_neo4j_user")
-        password = st.text_input("Password", type="password", key="cfg_neo4j_password")
-        
-        col1, col2 = st.columns(2)
-        with col1:
+    # Check shared connection
+    manager = get_active_manager()
+    if manager:
+        st.session_state.config_connected = True
+        st.session_state.config_connection = manager._connection
+    
+    if st.session_state.get("connected", False) and manager:
+         st.sidebar.success(f"✅ Connected (Shared)")
+         if st.sidebar.button("Disconnect Shared"):
+             if st.session_state.manager:
+                 st.session_state.manager.close()
+             st.session_state.manager = None
+             st.session_state.connected = False
+             st.session_state.config_connected = False
+             st.session_state.config_connection = None
+             st.rerun()
+    else:
+        with st.sidebar.expander("Connection Settings", expanded=not st.session_state.get("connected", False)):
+            uri = st.text_input("URI", value="bolt://localhost:7687", key="cfg_neo4j_uri")
+            user = st.text_input("User", value="neo4j", key="cfg_neo4j_user")
+            password = st.text_input("Password", type="password", key="cfg_neo4j_password")
+            
             if st.button("Connect", type="primary", use_container_width=True):
+                from database import RiskGraphManager
                 try:
-                    conn = Neo4jConnection(uri, user, password)
-                    conn.connect()
-                    st.session_state.config_connection = conn
-                    st.session_state.config_connected = True
-                    st.success("Connected!")
-                    st.rerun()
+                    manager = RiskGraphManager(uri, user, password)
+                    if manager.connect():
+                        st.session_state.manager = manager
+                        st.session_state.connected = True
+                        st.session_state.config_connection = manager._connection
+                        st.session_state.config_connected = True
+                        st.success("Connected!")
+                        st.rerun()
                 except Exception as e:
                     st.error(f"Connection failed: {e}")
-        
-        with col2:
-            if st.button("Disconnect", use_container_width=True, 
-                        disabled=not st.session_state.config_connected):
-                if st.session_state.config_connection:
-                    st.session_state.config_connection.close()
-                st.session_state.config_connection = None
-                st.session_state.config_connected = False
-                st.session_state.db_stats = None
-                st.rerun()
     
     if st.session_state.config_connected:
         st.sidebar.success("✅ Connected to Neo4j")
     else:
         st.sidebar.warning("⚠️ Not connected")
+
 
 
 def render_active_schema_selector():

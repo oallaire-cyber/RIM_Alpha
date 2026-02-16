@@ -18,6 +18,11 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional
 import random
 from datetime import datetime
+import sys
+from pathlib import Path
+
+# Add parent directory to path to allow imports from root
+sys.path.append(str(Path(__file__).parent.parent))
 
 
 # =============================================================================

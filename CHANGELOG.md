@@ -4,6 +4,40 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.7.0] - 2026-02-16
+
+### Multi-page Application Structure
+
+**Major Refactoring:**
+
+- **Multi-page Architecture**
+  - Converted single-page app to Streamlit multi-page structure
+  - **Home**: `app.py` (Dashboard, Visualization, Analysis)
+  - **Configuration**: `pages/1_⚙️_Configuration.py` (formerly `app_config.py`)
+  - **Simulation**: `pages/2_🎲_Simulation.py` (formerly `calibration_simulator.py`)
+
+- **Singleton Database Connection** (`utils/db_manager.py`)
+  - Implemented `RiskGraphManager` as a singleton using `st.cache_resource`
+  - Database connection persisted across page navigation
+  - Sidebar connection panel synchronized across all pages
+
+- **UX/UI Improvements**
+  - Streamlines navigation via sidebar
+  - Cleaner interface with separated concerns (Config vs Analysis vs Simulation)
+
+**Files Added:**
+- `pages/1_⚙️_Configuration.py`
+- `pages/2_🎲_Simulation.py`
+- `utils/db_manager.py`
+- `tests/test_db_connection_pooling.py`
+
+**Files Modified:**
+- `app.py` — Refactored to remove Config/Sim logic, integrated db_manager
+- `README.md` — Updated navigation instructions
+- `docs/` — Updated to reflect new structure
+
+---
+
 ## [v2.6.1] - 2026-02-14
 
 ### Scope Improvements

@@ -8,12 +8,27 @@ Technical documentation for developers working on the Risk Influence Map applica
 
 RIM follows a **modular architecture** with clear separation of concerns:
 
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                         app.py                               │
-│                    (Main Entry Point)                        │
-│                      1,193 lines                             │
+│                   (Home / Dashboard)                         │
 └─────────────────────┬───────────────────────────────────────┘
+                      │
+          ┌───────────┴───────────┐
+          ▼                       ▼
+┌───────────────────┐   ┌───────────────────┐
+│ pages/1_Config.py │   │ pages/2_Sim.py    │
+│ (Configuration)   │   │ (Simulation)      │
+└─────────┬─────────┘   └─────────┬─────────┘
+          │                       │
+          └───────────┬───────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    utils/db_manager.py                       │
+│               (Shared Singleton Connection)                  │
+└─────────────────────┬───────────────────────────────────────┘
+
                       │
         ┌─────────────┼─────────────┬─────────────┐
         ▼             ▼             ▼             ▼

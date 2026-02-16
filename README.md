@@ -57,8 +57,9 @@ streamlit run app.py
 
 1. Open http://localhost:8501 in your browser
 2. Connect to Neo4j (default credentials: neo4j/password)
-3. Load demo data via **Import/Export** tab
-4. Explore the risk network in the **Visualization** tab
+3. Navigate between **Home**, **Configuration**, and **Simulation** via the sidebar
+4. Load demo data via **Import/Export** tab on the Home page
+5. Explore the risk network in the **Visualization** tab
 
 ## ✨ Key Features
 
