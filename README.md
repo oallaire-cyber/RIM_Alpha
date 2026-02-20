@@ -184,14 +184,31 @@ NEO4J_PASSWORD=your_password
 
 ## 📊 Demo Data
 
-Load the `Apex Nuclear Systems` demo dataset to explore:
-- 15+ Business Risks
-- 30+ Operational Risks
-- Multiple influence chains
-- Mitigation coverage scenarios
-- TPO impact mappings
+RIM ships with a fully integrated demo package combining two datasets:
 
-Import via **Import/Export** → **Import from Excel** using `demo_data_apex.xlsx`.
+### SNR Nuclear Program (`demo_data_loader_en.cypher`)
+- 15 Business Risks (RS-01–08) + Operational Risks (RO-01–07)
+- Multiple influence chains, mitigation scenarios, and TPO impact mappings
+- Pre-configured `snr_demo` scope in `schemas/default/schema.yaml`
+
+### TC01-TC07 Test Cases (`demo_tc_dataset.cypher`)
+- **37 risks**, **25 mitigations**, **18 influences**, **2 TPOs**, **3 TPO impacts**
+- 7 scenarios (baseline, propagation, convergence, mitigation effectiveness, etc.)
+- UUID v5 deterministic IDs — stable across reloads, no post-import fix-up needed
+- Entities prefixed `[TCxx]` to coexist with SNR data
+- 7 pre-configured scopes (`tc01_baseline` … `tc07_influence_strengths`)
+
+### Loading the Demo
+
+**Option A — Reset Demo Data button (recommended)**
+1. Go to **⚙️ Configuration** → **📊 Data Management** tab
+2. Tick the confirmation checkbox
+3. Click **🔄 Reset Demo Data** — wipes the database and reloads both datasets
+
+**Option B — Manual Excel import**
+Import `test_datasets/DEMO_Complete.xlsx` via **Import/Export** → **Import from Excel**.
+
+After loading, activate any of the 8 pre-configured scopes in the sidebar **📐 Analysis Scopes** expander, or select all 8 to view the full combined graph.
 
 ## 🤝 Contributing
 
@@ -218,4 +235,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.6.1 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.8.0 | See [CHANGELOG.md](CHANGELOG.md) for history

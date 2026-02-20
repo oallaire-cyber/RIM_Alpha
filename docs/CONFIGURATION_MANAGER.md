@@ -114,8 +114,9 @@ Data operations (requires Neo4j connection):
 
 | Operation | Description |
 |-----------|-------------|
-| **Clear Database** | Delete all nodes/relationships (requires confirmation) |
-| **Load Demo Data** | Insert sample data for testing |
+| **🔄 Reset Demo Data** | Wipes the entire database and reloads both `demo_data_loader_en.cypher` (SNR) and `demo_tc_dataset.cypher` (TC01-TC07). Requires confirmation checkbox. Shows two progress bars and a before/after node count on completion. |
+| **Clear Database** | Delete all nodes/relationships (requires `DELETE ALL` text confirmation) |
+| **Load Demo Data** | Insert SNR sample data for testing (individual load without TC dataset) |
 | **Backup to JSON** | Export entire database to JSON file |
 | **Restore from JSON** | Import JSON backup (replaces existing data) |
 

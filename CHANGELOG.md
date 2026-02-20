@@ -4,7 +4,55 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.8.0] - 2026-02-20
+
+### Unified Demo Dataset & Reset Button
+
+**New Features:**
+
+- **Unified TC01-TC07 Demo Dataset** (`demo_tc_dataset.cypher`)
+  - Self-contained Cypher loader for 7 test cases (TC01–TC07) covering all major RIM scenario types
+  - **37 risks**, **25 mitigations**, **18 influences**, **2 TPOs**, **3 TPO impacts**
+  - Idempotent `MERGE`-based statements using UUID v5 deterministic IDs — safe to reload without creating duplicates
+  - Entities prefixed `[TCxx]` to coexist with SNR demo data in the same database
+
+- **Excel Demo Dataset** (`test_datasets/DEMO_Complete.xlsx`)
+  - Excel equivalent of `demo_tc_dataset.cypher`, color-coded by test case
+  - Use for Import/Export feature demonstrations
+
+- **8 Pre-configured Analysis Scopes** (`schemas/default/schema.yaml`)
+  - `snr_demo` — Full SNR nuclear program (RS-01–08, RO-01–07 + connected mitigations/TPOs via `include_connected_edges`)
+  - `tc01_baseline` through `tc07_influence_strengths` — One scope per test case, each with pre-wired UUID `node_ids`
+  - TC scopes use deterministic UUIDs matching `demo_tc_dataset.cypher` — no post-import update step required
+  - Selecting all 8 scopes simultaneously yields the full combined graph
+
+- **🔄 Reset Demo Data Button** (`pages/1_⚙️_Configuration.py` → Data Management tab)
+  - One-click wipe + reload of the entire demo dataset to a reproducible state
+  - Loads **both** `demo_data_loader_en.cypher` (SNR) and `demo_tc_dataset.cypher` (TC01-TC07) in sequence
+  - File availability status shown before the button; button disabled if files are missing
+  - Two separate progress bars (SNR then TC), each vanishing on completion
+  - Before/after node count shown in success message
+  - Automatically invalidates the Database tab's cached stats on completion
+
+**Bug Fixes:**
+
+- Fixed `TypeError: argument of type 'NoneType' is not iterable` crash on graph render when an `INFLUENCES` edge has a `null` `influence_type` property in Neo4j (`visualization/colors.py`, `visualization/edge_styles.py`, `ui/tabs/influences_tab.py`)
+
+**Files Added:**
+- `demo_tc_dataset.cypher` — TC01-TC07 idempotent Cypher loader (~49 KB)
+- `test_datasets/DEMO_Complete.xlsx` — Color-coded Excel demo dataset
+
+**Files Modified:**
+- `schemas/default/schema.yaml` — Added 8 analysis scopes (snr_demo + tc01–tc07)
+- `pages/1_⚙️_Configuration.py` — Added `render_demo_reset_section()` and `_execute_demo_reset()`, hoisted DB guard in `render_data_management()`
+- `visualization/colors.py` — None-guard in `get_influence_color()`
+- `visualization/edge_styles.py` — None-guard in `create_influence_edge_config()`
+- `ui/tabs/influences_tab.py` — None-guard in `_render_influence_list()`
+
+---
+
 ## [v2.7.0] - 2026-02-16
+
 
 ### Multi-page Application Structure
 

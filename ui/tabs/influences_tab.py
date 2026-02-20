@@ -104,7 +104,7 @@ def _render_influence_list(
     
     for inf in influences:
         # Type emoji based on influence level
-        inf_type = inf.get('influence_type', '')
+        inf_type = inf.get('influence_type') or ''
         if "Level1" in inf_type:
             type_emoji = "🔴"
         elif "Level2" in inf_type:

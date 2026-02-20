@@ -59,11 +59,17 @@ The application has three main areas:
 | 🛡️↔⚠️ Risk Mitigations | Assign mitigations to risks |
 | 📥📤 Import/Export | Data exchange |
 
+### Loading Demo Data (Quick Start)
+
+RIM includes a complete demo dataset covering the SNR nuclear program and TC01-TC07 test scenarios:
+
+1. Go to **⚙️ Configuration** → **📊 Data Management** tab
+2. Tick the confirmation checkbox under **🔄 Reset Demo Data**
+3. Click the **🔄 Reset Demo Data** button — wipes the database and reloads both datasets
+4. Return to the Home page and activate any of the 8 pre-configured scopes from the sidebar
+
 ---
 
-## Risk Management
-
-### Risk Levels
 
 | Level | Description | Managed By |
 |-------|-------------|------------|
@@ -357,6 +363,23 @@ When a scope is active, clicking **Calculate Exposure** only considers:
 
 > **Note**: Scoped exposure percentages may differ from Full Graph results because influence chains that cross the scope boundary are excluded. This gives you an accurate picture of the risk within the focused area.
 
+### Pre-built Demo Scopes
+
+When using the bundled demo dataset, 8 scopes are pre-configured in `schemas/default/schema.yaml`:
+
+| Scope ID | Description |
+|---|---|
+| `snr_demo` | Full SNR nuclear program (RS-01–08, RO-01–07) with connected mitigations and TPOs |
+| `tc01_baseline` | TC01 — Simple 3-risk baseline scenario |
+| `tc02_propagation` | TC02 — Influence propagation chain |
+| `tc03_convergence` | TC03 — Multiple risks converging on one target |
+| `tc04_mitigation` | TC04 — Mitigation effectiveness comparison |
+| `tc05_tpo` | TC05 — TPO impact with multiple risk paths |
+| `tc06_mixed` | TC06 — Mixed Business/Operational risk types |
+| `tc07_influence_strengths` | TC07 — Influence strength gradation |
+
+All TC scopes use deterministic UUIDs that match `demo_tc_dataset.cypher` — no post-import update step required.
+
 ### Tips
 
 - Create scopes around **risk clusters** identified by the Influence Analysis panel
@@ -605,4 +628,4 @@ Each multi-select filter has **All** and **None** buttons for quick selection.
 
 ---
 
-*Last updated: February 2026 | Version 2.6.0*
+*Last updated: February 2026 | Version 2.8.0*

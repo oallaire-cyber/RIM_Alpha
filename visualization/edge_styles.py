@@ -147,7 +147,7 @@ def create_influence_edge_config(edge: Dict[str, Any]) -> Dict[str, Any]:
         PyVis edge configuration dictionary
     """
     strength = edge.get("strength", "Moderate")
-    influence_type = edge.get("influence_type", "Unknown")
+    influence_type = edge.get("influence_type") or "Unknown"
     
     # =========================
     # COLOR
@@ -172,7 +172,7 @@ def create_influence_edge_config(edge: Dict[str, Any]) -> Dict[str, Any]:
     # DASH PATTERN
     # =========================
     dashes = False
-    if "Level3" in influence_type:
+    if influence_type and "Level3" in influence_type:
         dashes = DASH_PATTERNS["level3"]
     
     # =========================

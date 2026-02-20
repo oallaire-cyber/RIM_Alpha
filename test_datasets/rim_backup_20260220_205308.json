@@ -1,0 +1,2399 @@
+{
+  "timestamp": "2026-02-20T20:53:07.836073",
+  "risks": [
+    {
+      "owner": "CISO",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Business",
+      "probability": 6.0,
+      "origin": "New",
+      "impact": 9.0,
+      "created_at": "2026-02-20T19:11:33.570000000+00:00",
+      "description": "Risk of critical intellectual property leakage or theft via digital backbone",
+      "last_review_date": "2026-02-20T19:11:33.570000000+00:00",
+      "next_review_date": "2026-05-21T19:11:33.570000000+00:00",
+      "updated_at": "2026-02-20T19:11:33.570000000+00:00",
+      "exposure": 54.0,
+      "activation_decision_date": "2026-09-30",
+      "name": "Intellectual property compromise",
+      "id": "RS-06",
+      "categories": [
+        "Programme",
+        "Product"
+      ],
+      "activation_condition": "If digital backbone architecture opens to external ecosystem",
+      "status": "Contingent"
+    },
+    {
+      "owner": "Plant Director",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Business",
+      "probability": 6.0,
+      "impact": 7.0,
+      "origin": "New",
+      "created_at": "2026-02-20T19:11:33.911000000+00:00",
+      "description": "Risk of production capacity being insufficient to achieve nominal rate",
+      "last_review_date": "2026-02-20T19:11:33.911000000+00:00",
+      "next_review_date": "2026-05-21T19:11:33.911000000+00:00",
+      "updated_at": "2026-02-20T19:11:33.911000000+00:00",
+      "exposure": 42.0,
+      "name": "Insufficient production capacity",
+      "id": "RS-07",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "CFO",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Business",
+      "probability": 7.0,
+      "impact": 6.0,
+      "origin": "Legacy",
+      "created_at": "2026-02-20T19:11:34.229000000+00:00",
+      "description": "Risk of significant overrun of allocated development budget",
+      "last_review_date": "2026-02-20T19:11:34.229000000+00:00",
+      "next_review_date": "2026-05-21T19:11:34.229000000+00:00",
+      "updated_at": "2026-02-20T19:11:34.229000000+00:00",
+      "exposure": 42.0,
+      "name": "Development budget overrun",
+      "id": "RS-08",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "Critical Procurement Manager",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Operational",
+      "probability": 6.0,
+      "impact": 8.0,
+      "origin": "New",
+      "created_at": "2026-02-20T19:11:34.567000000+00:00",
+      "description": "Failure or bankruptcy of sole supplier of critical control system components",
+      "last_review_date": "2026-02-20T19:11:34.567000000+00:00",
+      "next_review_date": "2026-05-21T19:11:34.567000000+00:00",
+      "updated_at": "2026-02-20T19:11:34.567000000+00:00",
+      "exposure": 48.0,
+      "name": "Critical control system component supplier failure",
+      "id": "RO-01",
+      "categories": [
+        "Supply Chain",
+        "Product"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "CISO",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Operational",
+      "probability": 5.0,
+      "impact": 8.0,
+      "origin": "Legacy",
+      "created_at": "2026-02-20T19:11:34.913000000+00:00",
+      "description": "Targeted attack on PLM system causing data leakage or unavailability",
+      "last_review_date": "2026-02-20T19:11:34.913000000+00:00",
+      "next_review_date": "2026-05-21T19:11:34.913000000+00:00",
+      "updated_at": "2026-02-20T19:11:34.913000000+00:00",
+      "exposure": 40.0,
+      "name": "Cyberattack on PLM infrastructure",
+      "id": "RO-02",
+      "categories": [
+        "Programme",
+        "Product"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "Quality Manager",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Operational",
+      "probability": 5.0,
+      "impact": 7.0,
+      "origin": "New",
+      "created_at": "2026-02-20T19:11:35.289000000+00:00",
+      "description": "Progressive degradation of manufacturing process quality",
+      "last_review_date": "2026-02-20T19:11:35.289000000+00:00",
+      "next_review_date": "2026-05-21T19:11:35.289000000+00:00",
+      "updated_at": "2026-02-20T19:11:35.289000000+00:00",
+      "exposure": 35.0,
+      "name": "Manufacturing process quality drift",
+      "id": "RO-03",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "Supply Chain Manager",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Operational",
+      "probability": 7.0,
+      "impact": 6.0,
+      "origin": "New",
+      "created_at": "2026-02-20T19:11:35.666000000+00:00",
+      "description": "Delay in obtaining required certifications for a strategic supplier",
+      "last_review_date": "2026-02-20T19:11:35.666000000+00:00",
+      "next_review_date": "2026-05-21T19:11:35.666000000+00:00",
+      "updated_at": "2026-02-20T19:11:35.666000000+00:00",
+      "exposure": 42.0,
+      "name": "Critical supplier certification delay",
+      "id": "RO-04",
+      "categories": [
+        "Supply Chain"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "HR Director",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Operational",
+      "probability": 6.0,
+      "impact": 7.0,
+      "origin": "Legacy",
+      "created_at": "2026-02-20T19:11:36.302000000+00:00",
+      "description": "Departure of critical R&D experts to competitors",
+      "last_review_date": "2026-02-20T19:11:36.302000000+00:00",
+      "next_review_date": "2026-05-21T19:11:36.302000000+00:00",
+      "updated_at": "2026-02-20T19:11:36.302000000+00:00",
+      "exposure": 42.0,
+      "name": "Key R&D team competency loss",
+      "id": "RO-05",
+      "categories": [
+        "Programme",
+        "Product"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "Lead Embedded Developer",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Operational",
+      "probability": 4.0,
+      "impact": 9.0,
+      "origin": "New",
+      "created_at": "2026-02-20T19:11:36.746000000+00:00",
+      "description": "Undetected critical software defect in control-command system",
+      "last_review_date": "2026-02-20T19:11:36.746000000+00:00",
+      "next_review_date": "2026-05-21T19:11:36.746000000+00:00",
+      "updated_at": "2026-02-20T19:11:36.746000000+00:00",
+      "exposure": 36.0,
+      "name": "Critical safety embedded software bug",
+      "id": "RO-06",
+      "categories": [
+        "Product"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "IT Director",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Operational",
+      "probability": 4.0,
+      "impact": 6.0,
+      "origin": "Legacy",
+      "created_at": "2026-02-20T19:11:36.997000000+00:00",
+      "description": "Major failure or crash of digital backbone infrastructure",
+      "last_review_date": "2026-02-20T19:11:36.997000000+00:00",
+      "next_review_date": "2026-05-21T19:11:36.997000000+00:00",
+      "updated_at": "2026-02-20T19:11:36.997000000+00:00",
+      "exposure": 24.0,
+      "name": "Extended digital infrastructure unavailability",
+      "id": "RO-07",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "Program Director",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Business",
+      "probability": 6.0,
+      "impact": 9.0,
+      "origin": "New",
+      "created_at": "2026-02-20T19:11:30.970000000+00:00",
+      "description": "Risk of not achieving the required profitability level within the specified timeframe",
+      "last_review_date": "2026-02-20T19:11:30.970000000+00:00",
+      "next_review_date": "2026-05-21T19:11:30.970000000+00:00",
+      "updated_at": "2026-02-20T19:11:30.970000000+00:00",
+      "exposure": 54.0,
+      "name": "Failure to achieve profitability target",
+      "id": "RS-01",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "VP Industrialization",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Business",
+      "probability": 7.0,
+      "impact": 8.0,
+      "origin": "New",
+      "created_at": "2026-02-20T19:11:32.052000000+00:00",
+      "description": "Risk of delay in starting series production scheduled for 2030",
+      "last_review_date": "2026-02-20T19:11:32.052000000+00:00",
+      "next_review_date": "2026-05-21T19:11:32.052000000+00:00",
+      "updated_at": "2026-02-20T19:11:32.052000000+00:00",
+      "exposure": 56.0,
+      "name": "Series production start delay",
+      "id": "RS-02",
+      "categories": [
+        "Programme",
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "CTO",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Business",
+      "probability": 5.0,
+      "impact": 9.0,
+      "origin": "New",
+      "created_at": "2026-02-20T19:11:32.445000000+00:00",
+      "description": "Risk of losing technological lead against SMR competitors",
+      "last_review_date": "2026-02-20T19:11:32.445000000+00:00",
+      "next_review_date": "2026-05-21T19:11:32.445000000+00:00",
+      "updated_at": "2026-02-20T19:11:32.445000000+00:00",
+      "exposure": 45.0,
+      "name": "Loss of competitive technological advantage",
+      "id": "RS-03",
+      "categories": [
+        "Programme",
+        "Product"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "Safety Manager",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Business",
+      "probability": 3.0,
+      "impact": 10.0,
+      "origin": "Legacy",
+      "created_at": "2026-02-20T19:11:32.818000000+00:00",
+      "description": "Risk of non-compliance with nuclear safety standards",
+      "last_review_date": "2026-02-20T19:11:32.818000000+00:00",
+      "next_review_date": "2026-05-21T19:11:32.818000000+00:00",
+      "updated_at": "2026-02-20T19:11:32.818000000+00:00",
+      "exposure": 30.0,
+      "name": "Regulatory safety non-compliance",
+      "id": "RS-04",
+      "categories": [
+        "Programme",
+        "Product"
+      ],
+      "status": "Active"
+    },
+    {
+      "owner": "VP Supply Chain",
+      "current_score_type": "Qualitative_4x4",
+      "level": "Business",
+      "probability": 8.0,
+      "origin": "Legacy",
+      "impact": 7.0,
+      "created_at": "2026-02-20T19:11:33.177000000+00:00",
+      "description": "Risk of geopolitical tension affecting Type A fuel supply",
+      "last_review_date": "2026-02-20T19:11:33.177000000+00:00",
+      "next_review_date": "2026-05-21T19:11:33.177000000+00:00",
+      "updated_at": "2026-02-20T19:11:33.177000000+00:00",
+      "exposure": 56.0,
+      "activation_decision_date": "2026-09-30",
+      "name": "Fuel supply tension",
+      "id": "RS-05",
+      "categories": [
+        "Programme",
+        "Supply Chain"
+      ],
+      "activation_condition": "If Type A enriched uranium fuel is selected in Q3 2026 decision",
+      "status": "Contingent"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:47.153000000+00:00",
+      "level": "Business",
+      "probability": 1,
+      "impact": 1,
+      "origin": "New",
+      "name": "[TC01] Business Risk 1",
+      "created_at": "2026-02-20T19:11:47.153000000+00:00",
+      "description": "[TC01 - Baseline] Baseline business risk - L=1, I=1",
+      "id": "545446b4-26eb-5572-bd14-8699594e7a40",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:47.611000000+00:00",
+      "level": "Business",
+      "probability": 1,
+      "impact": 1,
+      "origin": "New",
+      "name": "[TC01] Business Risk 2",
+      "created_at": "2026-02-20T19:11:47.611000000+00:00",
+      "description": "[TC01 - Baseline] Baseline business risk - L=1, I=1",
+      "id": "c1002844-5da5-5fcc-8fef-26c72e11efc3",
+      "categories": [
+        "Product"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:47.795000000+00:00",
+      "level": "Operational",
+      "probability": 1,
+      "impact": 1,
+      "origin": "New",
+      "name": "[TC01] Operational Risk 1",
+      "created_at": "2026-02-20T19:11:47.795000000+00:00",
+      "description": "[TC01 - Baseline] Baseline operational risk - L=1, I=1",
+      "id": "a3fca39e-52d0-577d-be2d-065c0a3ffe3b",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:47.976000000+00:00",
+      "level": "Operational",
+      "probability": 1,
+      "impact": 1,
+      "origin": "New",
+      "name": "[TC01] Operational Risk 2",
+      "created_at": "2026-02-20T19:11:47.976000000+00:00",
+      "description": "[TC01 - Baseline] Baseline operational risk - L=1, I=1",
+      "id": "3cd50776-6b8e-516c-b584-045a230744a7",
+      "categories": [
+        "Supply Chain"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:48.124000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC02] Operational Risk 1",
+      "created_at": "2026-02-20T19:11:48.124000000+00:00",
+      "description": "[TC02 - Simple Chain] Source risk - HIGH exposure (10\u00d710=100), NO mitigation",
+      "id": "cbc7e0a8-c4ed-5455-bff2-e63341428395",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:48.267000000+00:00",
+      "level": "Operational",
+      "probability": 5,
+      "impact": 5,
+      "origin": "New",
+      "name": "[TC02] Operational Risk 2",
+      "created_at": "2026-02-20T19:11:48.267000000+00:00",
+      "description": "[TC02 - Simple Chain] Middle risk - Medium exposure (5\u00d75=25), influenced by Op1",
+      "id": "2821ca91-008b-50db-a0c3-881cc6da7621",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:48.408000000+00:00",
+      "level": "Business",
+      "probability": 5,
+      "impact": 5,
+      "origin": "New",
+      "name": "[TC02] Business Risk 1",
+      "created_at": "2026-02-20T19:11:48.408000000+00:00",
+      "description": "[TC02 - Simple Chain] Target risk - Medium exposure (5\u00d75=25), influenced by Op2",
+      "id": "dc6e2a61-57f9-58fe-9932-8fe7b187ccb7",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:48.529000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC03] Risk No Mitigation",
+      "created_at": "2026-02-20T19:11:48.529000000+00:00",
+      "description": "[TC03 - Mitigation Effect] No mitigation - Factor = 1.0",
+      "id": "f0c82bbe-e107-56cd-839d-e432bd31632e",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:48.651000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC03] Risk Low Mitigation",
+      "created_at": "2026-02-20T19:11:48.651000000+00:00",
+      "description": "[TC03 - Mitigation Effect] 1x Low mitigation - Factor = (1-0.3) = 0.7",
+      "id": "cea650ca-5655-5ec6-977c-0f06c0ccdc72",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:48.769000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC03] Risk Medium Mitigation",
+      "created_at": "2026-02-20T19:11:48.769000000+00:00",
+      "description": "[TC03 - Mitigation Effect] 1x Medium mitigation - Factor = (1-0.5) = 0.5",
+      "id": "ea204cec-2d2e-5350-81fc-b12207ba2575",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:48.928000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC03] Risk High Mitigation",
+      "created_at": "2026-02-20T19:11:48.928000000+00:00",
+      "description": "[TC03 - Mitigation Effect] 1x High mitigation - Factor = (1-0.7) = 0.3",
+      "id": "b300c05d-51aa-5a58-8d24-db67c8344d2f",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:49.031000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC03] Risk Critical Mitigation",
+      "created_at": "2026-02-20T19:11:49.031000000+00:00",
+      "description": "[TC03 - Mitigation Effect] 1x Critical mitigation - Factor = (1-0.9) = 0.1",
+      "id": "78d595ef-8471-5a5e-aca2-a85373e83733",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:49.145000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC03] Risk Double Medium",
+      "created_at": "2026-02-20T19:11:49.145000000+00:00",
+      "description": "[TC03 - Mitigation Effect] 2x Medium - Factor = 0.5 \u00d7 0.5 = 0.25",
+      "id": "529b6266-fd42-5ba0-842a-12c8a21b2d5d",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:49.263000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC03] Risk High Plus Medium",
+      "created_at": "2026-02-20T19:11:49.263000000+00:00",
+      "description": "[TC03 - Mitigation Effect] High + Medium - Factor = 0.3 \u00d7 0.5 = 0.15",
+      "id": "eea6f2c4-44a9-5c52-bdbc-622aac608a46",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:49.402000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC03] Risk Triple Low",
+      "created_at": "2026-02-20T19:11:49.402000000+00:00",
+      "description": "[TC03 - Mitigation Effect] 3x Low - Factor = 0.7\u00b3 = 0.343",
+      "id": "9913bf59-9f10-51ae-952c-546666de4325",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:50.426000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC04] Upstream Unmitigated",
+      "created_at": "2026-02-20T19:11:50.426000000+00:00",
+      "description": "[TC04 - Influence Limitation] HIGH exposure, NO mitigation - will limit downstream",
+      "id": "132e355b-0f93-5f25-9f5d-18d2316df783",
+      "categories": [
+        "Supply Chain"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:50.520000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC04] Upstream Well Mitigated",
+      "created_at": "2026-02-20T19:11:50.520000000+00:00",
+      "description": "[TC04 - Influence Limitation] HIGH exposure but CRITICAL mitigation - low residual",
+      "id": "e11e8386-169a-53c1-aade-eb18c631ac70",
+      "categories": [
+        "Supply Chain"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:50.606000000+00:00",
+      "level": "Business",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC04] Downstream Target A",
+      "created_at": "2026-02-20T19:11:50.606000000+00:00",
+      "description": "[TC04 - Influence Limitation] Critical mitigation, but influenced by UNMITIGATED upstream",
+      "id": "2eafec16-02c7-5052-bb93-93e3c6ea2e2a",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:50.723000000+00:00",
+      "level": "Business",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC04] Downstream Target B",
+      "created_at": "2026-02-20T19:11:50.723000000+00:00",
+      "description": "[TC04 - Influence Limitation] Critical mitigation, influenced by WELL-MITIGATED upstream",
+      "id": "d8b6b169-814c-50be-8395-848a88985d7b",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:50.854000000+00:00",
+      "level": "Business",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC04] Downstream No Influence",
+      "created_at": "2026-02-20T19:11:50.854000000+00:00",
+      "description": "[TC04 - Influence Limitation] Critical mitigation, NO upstream influence",
+      "id": "4d86ae18-0440-515f-84a6-620863f408e4",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:51.357000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC05] Source A - Unmitigated",
+      "created_at": "2026-02-20T19:11:51.357000000+00:00",
+      "description": "[TC05 - Convergence] Unmitigated source - Residual = 1.0",
+      "id": "0d6ccb4d-7026-5553-ba80-9518bb8bbccb",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:51.447000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC05] Source B - Partially Mitigated",
+      "created_at": "2026-02-20T19:11:51.447000000+00:00",
+      "description": "[TC05 - Convergence] Medium mitigation - Residual \u2248 0.5",
+      "id": "e86c8139-0c3e-549d-82ac-c48116fa066c",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:51.536000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC05] Source C - Well Mitigated",
+      "created_at": "2026-02-20T19:11:51.536000000+00:00",
+      "description": "[TC05 - Convergence] Critical mitigation - Residual = 0.1",
+      "id": "ac04d220-f64e-51f3-b7ff-c0e0016f8c1c",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:51.631000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC05] Source D - Well Mitigated",
+      "created_at": "2026-02-20T19:11:51.631000000+00:00",
+      "description": "[TC05 - Convergence] Critical mitigation - Residual = 0.1",
+      "id": "71a799e3-67a2-599b-a85e-229cefe000ff",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:51.719000000+00:00",
+      "level": "Business",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC05] Convergence Point",
+      "created_at": "2026-02-20T19:11:51.719000000+00:00",
+      "description": "[TC05 - Convergence] Receives influence from all 4 sources with Critical mitigation",
+      "id": "04568e76-d323-5040-9717-609e329eedf5",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:52.240000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC06] Chain1 Source",
+      "created_at": "2026-02-20T19:11:52.240000000+00:00",
+      "description": "[TC06 - Full Chain] Source with Critical mitigation",
+      "id": "60483d97-c148-5250-9216-85f4808797f6",
+      "categories": [
+        "Supply Chain"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:52.347000000+00:00",
+      "level": "Operational",
+      "probability": 8,
+      "impact": 8,
+      "origin": "New",
+      "name": "[TC06] Chain1 Middle",
+      "created_at": "2026-02-20T19:11:52.347000000+00:00",
+      "description": "[TC06 - Full Chain] Middle with High mitigation, influenced by well-mitigated source",
+      "id": "c1333b4c-354c-542f-90a0-8d8910ce307c",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:52.479000000+00:00",
+      "level": "Business",
+      "probability": 6,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC06] Chain1 Target",
+      "created_at": "2026-02-20T19:11:52.479000000+00:00",
+      "description": "[TC06 - Full Chain] Business target with Medium mitigation",
+      "id": "04c48648-3240-512c-9311-2737a110a26b",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:52.619000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC06] Chain2 Source",
+      "created_at": "2026-02-20T19:11:52.619000000+00:00",
+      "description": "[TC06 - Full Chain] Source with NO mitigation",
+      "id": "e4a17955-5a1e-51e3-997f-c05614f6b569",
+      "categories": [
+        "Supply Chain"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:52.718000000+00:00",
+      "level": "Operational",
+      "probability": 8,
+      "impact": 8,
+      "origin": "New",
+      "name": "[TC06] Chain2 Middle",
+      "created_at": "2026-02-20T19:11:52.718000000+00:00",
+      "description": "[TC06 - Full Chain] Middle with High mitigation, but influenced by unmitigated source",
+      "id": "9be2a27b-4bcd-5878-807a-cf76dc3a224e",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:52.810000000+00:00",
+      "level": "Business",
+      "probability": 6,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC06] Chain2 Target",
+      "created_at": "2026-02-20T19:11:52.810000000+00:00",
+      "description": "[TC06 - Full Chain] Business target with Medium mitigation",
+      "id": "0145477a-1d33-5723-9c4e-ac997b92bd52",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:52.908000000+00:00",
+      "level": "Business",
+      "probability": 8,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC06] Final Convergence",
+      "created_at": "2026-02-20T19:11:52.908000000+00:00",
+      "description": "[TC06 - Full Chain] Receives influence from both chains",
+      "id": "579d302c-c4e2-517b-bd3b-adbcf9ad3df5",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:53.656000000+00:00",
+      "level": "Operational",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC07] Unmitigated Source",
+      "created_at": "2026-02-20T19:11:53.656000000+00:00",
+      "description": "[TC07 - Influence Strengths] Same source for all targets - NO mitigation",
+      "id": "a636b334-ecf7-56a0-bb9e-a69006c872c2",
+      "categories": [
+        "Industrial"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:53.736000000+00:00",
+      "level": "Business",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC07] Target Weak Influence",
+      "created_at": "2026-02-20T19:11:53.736000000+00:00",
+      "description": "[TC07 - Influence Strengths] Critical mitigation, WEAK influence from source",
+      "id": "a5031626-2cd5-5b6d-b322-828e1ddea443",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:53.814000000+00:00",
+      "level": "Business",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC07] Target Moderate Influence",
+      "created_at": "2026-02-20T19:11:53.814000000+00:00",
+      "description": "[TC07 - Influence Strengths] Critical mitigation, MODERATE influence from source",
+      "id": "8e072c8c-66cd-53e3-8ecb-1d599c981d89",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:53.899000000+00:00",
+      "level": "Business",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC07] Target Strong Influence",
+      "created_at": "2026-02-20T19:11:53.899000000+00:00",
+      "description": "[TC07 - Influence Strengths] Critical mitigation, STRONG influence from source",
+      "id": "5b34400a-87c4-5996-af66-0808b8c96fb6",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:53.994000000+00:00",
+      "level": "Business",
+      "probability": 10,
+      "impact": 10,
+      "origin": "New",
+      "name": "[TC07] Target Critical Influence",
+      "created_at": "2026-02-20T19:11:53.994000000+00:00",
+      "description": "[TC07 - Influence Strengths] Critical mitigation, CRITICAL influence from source",
+      "id": "4e6f18f1-4a4e-556c-89ba-d8b94a5a2055",
+      "categories": [
+        "Programme"
+      ],
+      "status": "Active"
+    }
+  ],
+  "tpos": [
+    {
+      "reference": "TPO-01",
+      "cluster": "Business Efficiency",
+      "updated_at": "2026-02-20T19:11:37.357000000+00:00",
+      "name": "Achieve profitability by 2032",
+      "created_at": "2026-02-20T19:11:37.357000000+00:00",
+      "description": "Positive ROI target and operating margin > 15% by end of 2032",
+      "id": "TPO-01"
+    },
+    {
+      "reference": "TPO-02",
+      "cluster": "Safety",
+      "updated_at": "2026-02-20T19:11:37.541000000+00:00",
+      "name": "NRC safety certification before end of 2029",
+      "description": "Obtain all nuclear safety certifications required by the NRC to authorize commissioning",
+      "created_at": "2026-02-20T19:11:37.541000000+00:00",
+      "id": "TPO-02"
+    },
+    {
+      "reference": "TPO-03",
+      "cluster": "Industrial Efficiency",
+      "updated_at": "2026-02-20T19:11:37.704000000+00:00",
+      "name": "Series production start Q1 2030",
+      "created_at": "2026-02-20T19:11:37.704000000+00:00",
+      "description": "Launch series production of the first SMR with an initial rate of 2 units/year",
+      "id": "TPO-03"
+    },
+    {
+      "reference": "[TC06] TPO-1",
+      "cluster": "Business Efficiency",
+      "updated_at": "2026-02-20T19:11:53.498000000+00:00",
+      "name": "[TC06] Cost Target",
+      "description": "Cost reduction objective",
+      "created_at": "2026-02-20T19:11:53.498000000+00:00",
+      "id": "a6507c61-ac70-565c-9c92-d9963ec98872"
+    },
+    {
+      "reference": "[TC06] TPO-2",
+      "cluster": "Business Efficiency",
+      "updated_at": "2026-02-20T19:11:53.580000000+00:00",
+      "name": "[TC06] Schedule Target",
+      "description": "Schedule objective",
+      "created_at": "2026-02-20T19:11:53.580000000+00:00",
+      "id": "fcec3040-db53-50b2-a562-cb18f607b720"
+    }
+  ],
+  "mitigations": [
+    {
+      "owner": "Critical Procurement Manager",
+      "updated_at": "2026-02-20T19:11:37.856000000+00:00",
+      "name": "Critical components dual-sourcing strategy",
+      "created_at": "2026-02-20T19:11:37.856000000+00:00",
+      "description": "Qualification of a second supplier for all critical control system components with signed framework contracts",
+      "id": "MIT-01",
+      "type": "Dedicated",
+      "status": "In Progress",
+      "source_entity": ""
+    },
+    {
+      "owner": "HR Director",
+      "updated_at": "2026-02-20T19:11:38.002000000+00:00",
+      "name": "R&D talent retention program",
+      "created_at": "2026-02-20T19:11:38.002000000+00:00",
+      "description": "Retention package including long-term incentives, technical career paths and mentoring program for key experts",
+      "id": "MIT-02",
+      "type": "Dedicated",
+      "status": "Implemented",
+      "source_entity": ""
+    },
+    {
+      "owner": "Quality Manager",
+      "updated_at": "2026-02-20T19:11:38.149000000+00:00",
+      "name": "Real-time quality review system",
+      "created_at": "2026-02-20T19:11:38.149000000+00:00",
+      "description": "Deployment of IoT sensors and real-time dashboard for continuous monitoring of process quality parameters",
+      "id": "MIT-03",
+      "type": "Dedicated",
+      "status": "In Progress",
+      "source_entity": ""
+    },
+    {
+      "owner": "CISO",
+      "updated_at": "2026-02-20T19:11:38.300000000+00:00",
+      "name": "PLM Zero Trust architecture",
+      "description": "Redesign of PLM security architecture following Zero Trust model with micro-segmentation and continuous authentication",
+      "created_at": "2026-02-20T19:11:38.300000000+00:00",
+      "id": "MIT-04",
+      "type": "Dedicated",
+      "status": "Proposed",
+      "source_entity": ""
+    },
+    {
+      "owner": "VP Industrialization",
+      "updated_at": "2026-02-20T19:11:38.435000000+00:00",
+      "name": "Production contingency plan",
+      "created_at": "2026-02-20T19:11:38.435000000+00:00",
+      "description": "Detailed alternative ramp-up plan with identification of qualified backup subcontractors",
+      "id": "MIT-05",
+      "type": "Dedicated",
+      "status": "Implemented",
+      "source_entity": ""
+    },
+    {
+      "owner": "Lead Embedded Developer",
+      "updated_at": "2026-02-20T19:11:38.612000000+00:00",
+      "name": "Independent safety code review",
+      "created_at": "2026-02-20T19:11:38.612000000+00:00",
+      "description": "Contract with independent third party for systematic safety-critical code review per DO-178C",
+      "id": "MIT-06",
+      "type": "Dedicated",
+      "status": "In Progress",
+      "source_entity": ""
+    },
+    {
+      "owner": "VP Supply Chain",
+      "updated_at": "2026-02-20T19:11:38.842000000+00:00",
+      "name": "Fuel source diversification",
+      "created_at": "2026-02-20T19:11:38.842000000+00:00",
+      "description": "Negotiation of long-term contracts with fuel suppliers across different geopolitical zones",
+      "id": "MIT-07",
+      "type": "Dedicated",
+      "status": "Proposed",
+      "source_entity": ""
+    },
+    {
+      "owner": "CFO",
+      "updated_at": "2026-02-20T19:11:39.113000000+00:00",
+      "name": "Corporate budget management process",
+      "created_at": "2026-02-20T19:11:39.113000000+00:00",
+      "description": "Application of corporate budget tracking process with monthly reviews and automatic alerts on deviations >5%",
+      "id": "MIT-08",
+      "type": "Inherited",
+      "status": "Implemented",
+      "source_entity": "Corporate Finance Division"
+    },
+    {
+      "owner": "CISO",
+      "updated_at": "2026-02-20T19:11:39.290000000+00:00",
+      "name": "Corporate shared SOC",
+      "created_at": "2026-02-20T19:11:39.290000000+00:00",
+      "description": "24/7 monitoring by corporate Security Operations Center with incident response capability <15min",
+      "id": "MIT-09",
+      "type": "Inherited",
+      "status": "Implemented",
+      "source_entity": "Corporate IT Division"
+    },
+    {
+      "owner": "IT Director",
+      "updated_at": "2026-02-20T19:11:39.416000000+00:00",
+      "name": "Corporate IT continuity plan",
+      "created_at": "2026-02-20T19:11:39.416000000+00:00",
+      "description": "Disaster recovery infrastructure with RTO 4h and RPO 1h for critical systems",
+      "id": "MIT-10",
+      "type": "Inherited",
+      "status": "Implemented",
+      "source_entity": "Corporate IT Division"
+    },
+    {
+      "owner": "CTO",
+      "updated_at": "2026-02-20T19:11:39.522000000+00:00",
+      "name": "Shared Innovation program",
+      "created_at": "2026-02-20T19:11:39.522000000+00:00",
+      "description": "Access to patents and innovations from other group divisions via intellectual property sharing program",
+      "id": "MIT-11",
+      "type": "Inherited",
+      "status": "Implemented",
+      "source_entity": "Corporate R&D Division"
+    },
+    {
+      "owner": "Quality Manager",
+      "updated_at": "2026-02-20T19:11:39.604000000+00:00",
+      "name": "ISO 19443 Nuclear Quality certification",
+      "created_at": "2026-02-20T19:11:39.604000000+00:00",
+      "description": "Quality system certification per ISO 19443 specific to nuclear supply chain",
+      "id": "MIT-12",
+      "type": "Baseline",
+      "status": "In Progress",
+      "source_entity": "ISO 19443:2018"
+    },
+    {
+      "owner": "Lead Embedded Developer",
+      "updated_at": "2026-02-20T19:11:39.693000000+00:00",
+      "name": "IEC 61513 Nuclear I&C compliance",
+      "created_at": "2026-02-20T19:11:39.693000000+00:00",
+      "description": "Systematic application of IEC 61513 standard for nuclear instrumentation and control systems",
+      "id": "MIT-13",
+      "type": "Baseline",
+      "status": "In Progress",
+      "source_entity": "IEC 61513:2011"
+    },
+    {
+      "owner": "CISO",
+      "updated_at": "2026-02-20T19:11:39.992000000+00:00",
+      "name": "NIS2 cybersecurity framework",
+      "description": "Compliance with NIS2 directive for essential service operators in energy sector",
+      "created_at": "2026-02-20T19:11:39.992000000+00:00",
+      "id": "MIT-14",
+      "type": "Baseline",
+      "status": "Implemented",
+      "source_entity": "EU Directive 2022/2555 (NIS2)"
+    },
+    {
+      "owner": "Safety Manager",
+      "updated_at": "2026-02-20T19:11:40.124000000+00:00",
+      "name": "NRC regulatory framework",
+      "created_at": "2026-02-20T19:11:40.124000000+00:00",
+      "description": "Application of NRC framework for nuclear facilities with defined compliance milestones",
+      "id": "MIT-15",
+      "type": "Baseline",
+      "status": "In Progress",
+      "source_entity": "10 CFR Part 50/52"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:49.504000000+00:00",
+      "name": "[TC03] Mitigation Low 1",
+      "description": "Low effectiveness",
+      "created_at": "2026-02-20T19:11:49.504000000+00:00",
+      "id": "e266af0b-12b0-5043-8f83-990879cf1973",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:49.600000000+00:00",
+      "name": "[TC03] Mitigation Medium 1",
+      "description": "Medium effectiveness",
+      "created_at": "2026-02-20T19:11:49.600000000+00:00",
+      "id": "6d9a53cb-47c3-5221-8a5e-7b737c36b550",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:49.727000000+00:00",
+      "name": "[TC03] Mitigation Medium 2",
+      "description": "Medium effectiveness",
+      "created_at": "2026-02-20T19:11:49.727000000+00:00",
+      "id": "90058909-691d-51a5-bccb-6b5e8969fd91",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:49.864000000+00:00",
+      "name": "[TC03] Mitigation High 1",
+      "description": "High effectiveness",
+      "created_at": "2026-02-20T19:11:49.864000000+00:00",
+      "id": "4e42e7d5-57a3-569c-acbd-cb9faa56a6fd",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:50.016000000+00:00",
+      "name": "[TC03] Mitigation Critical 1",
+      "description": "Critical effectiveness",
+      "created_at": "2026-02-20T19:11:50.016000000+00:00",
+      "id": "d1022244-0eda-5cdd-bd46-894cad67e860",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:50.193000000+00:00",
+      "name": "[TC03] Mitigation Low 2",
+      "description": "Low effectiveness",
+      "created_at": "2026-02-20T19:11:50.193000000+00:00",
+      "id": "ffaf41a7-9d02-5ed9-a154-c9dfa69fcbe5",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:50.327000000+00:00",
+      "name": "[TC03] Mitigation Low 3",
+      "description": "Low effectiveness",
+      "created_at": "2026-02-20T19:11:50.327000000+00:00",
+      "id": "eb731ca6-6a99-58de-9466-a3cbed8e909d",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:50.949000000+00:00",
+      "name": "[TC04] Mitigation Upstream",
+      "description": "Critical mitigation for upstream",
+      "created_at": "2026-02-20T19:11:50.949000000+00:00",
+      "id": "8e9a6292-a8c9-53dd-a212-aa03acb3e6fb",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:51.037000000+00:00",
+      "name": "[TC04] Mitigation Target A",
+      "description": "Critical mitigation for target A",
+      "created_at": "2026-02-20T19:11:51.037000000+00:00",
+      "id": "6310ba0d-0ec9-57c8-930c-e186da7b7200",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:51.123000000+00:00",
+      "name": "[TC04] Mitigation Target B",
+      "description": "Critical mitigation for target B",
+      "created_at": "2026-02-20T19:11:51.123000000+00:00",
+      "id": "610914ce-51fe-511e-9a3d-5ff9ed133ce2",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:51.267000000+00:00",
+      "name": "[TC04] Mitigation No Influence",
+      "description": "Critical mitigation for isolated risk",
+      "created_at": "2026-02-20T19:11:51.267000000+00:00",
+      "id": "5679ee81-f5b7-5b09-8136-f063a2386961",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:51.813000000+00:00",
+      "name": "[TC05] Mitigation B",
+      "description": "Medium for Source B",
+      "created_at": "2026-02-20T19:11:51.813000000+00:00",
+      "id": "4d723315-a1d6-50fa-a471-f2ad246c067d",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:51.911000000+00:00",
+      "name": "[TC05] Mitigation C",
+      "description": "Critical for Source C",
+      "created_at": "2026-02-20T19:11:51.911000000+00:00",
+      "id": "cbcc8fa8-fcc7-59b1-8e11-48c4089dab7b",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:52.028000000+00:00",
+      "name": "[TC05] Mitigation D",
+      "description": "Critical for Source D",
+      "created_at": "2026-02-20T19:11:52.028000000+00:00",
+      "id": "a0b6096a-99cb-55ed-b5b6-162309d9ce1d",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:52.139000000+00:00",
+      "name": "[TC05] Mitigation Convergence",
+      "description": "Critical for convergence",
+      "created_at": "2026-02-20T19:11:52.139000000+00:00",
+      "id": "1c96292c-f335-52bb-84fc-38c5fa03cec1",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:52.998000000+00:00",
+      "name": "[TC06] Mit Chain1 Source",
+      "description": "Critical mitigation",
+      "created_at": "2026-02-20T19:11:52.998000000+00:00",
+      "id": "2c347249-3de6-53c8-a18b-697c0ffa3f4f",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:53.072000000+00:00",
+      "name": "[TC06] Mit Chain1 Middle",
+      "description": "High mitigation",
+      "created_at": "2026-02-20T19:11:53.072000000+00:00",
+      "id": "a271f97e-675b-55c9-adfa-5ac55e436ed4",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:53.155000000+00:00",
+      "name": "[TC06] Mit Chain1 Target",
+      "description": "Medium mitigation",
+      "created_at": "2026-02-20T19:11:53.155000000+00:00",
+      "id": "423e273b-d6a8-5cb8-a77b-a0f2e2f3e8ce",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:53.236000000+00:00",
+      "name": "[TC06] Mit Chain2 Middle",
+      "description": "High mitigation",
+      "created_at": "2026-02-20T19:11:53.236000000+00:00",
+      "id": "cb922f4b-485f-5223-933b-0c4942f74f7a",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:53.314000000+00:00",
+      "name": "[TC06] Mit Chain2 Target",
+      "description": "Medium mitigation",
+      "created_at": "2026-02-20T19:11:53.314000000+00:00",
+      "id": "683fc750-26a4-5034-a862-ccb16c136b97",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:53.389000000+00:00",
+      "name": "[TC06] Mit Final",
+      "description": "High mitigation",
+      "created_at": "2026-02-20T19:11:53.389000000+00:00",
+      "id": "20077d07-3bed-5b74-bf7b-4a4c8e7aa04d",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:54.078000000+00:00",
+      "name": "[TC07] Mit Target Weak",
+      "description": "Critical",
+      "created_at": "2026-02-20T19:11:54.078000000+00:00",
+      "id": "89bd5ea8-dbd9-5a4f-ae93-73052aa05fbf",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:54.158000000+00:00",
+      "name": "[TC07] Mit Target Moderate",
+      "description": "Critical",
+      "created_at": "2026-02-20T19:11:54.158000000+00:00",
+      "id": "86c726e8-42fe-5f31-8855-8dc3a1548e88",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:54.254000000+00:00",
+      "name": "[TC07] Mit Target Strong",
+      "description": "Critical",
+      "created_at": "2026-02-20T19:11:54.254000000+00:00",
+      "id": "552c151d-881f-5c7e-bc47-af22f8d3a715",
+      "type": "Dedicated",
+      "status": "Implemented"
+    },
+    {
+      "updated_at": "2026-02-20T19:11:54.334000000+00:00",
+      "name": "[TC07] Mit Target Critical",
+      "description": "Critical",
+      "created_at": "2026-02-20T19:11:54.334000000+00:00",
+      "id": "49da137c-098b-5441-9c11-d2ec77101da3",
+      "type": "Dedicated",
+      "status": "Implemented"
+    }
+  ],
+  "influences": [
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.9,
+        "influence_type": "Level2_Bus_to_Bus",
+        "created_at": "2026-02-20T19:11:41.539000000+00:00",
+        "description": "IP compromise causes loss of competitive technological advantage",
+        "last_validated": "2026-02-20T19:11:41.539000000+00:00",
+        "id": "INF-12"
+      },
+      "source_id": "RS-06",
+      "target_id": "RS-03"
+    },
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.85,
+        "influence_type": "Level2_Bus_to_Bus",
+        "created_at": "2026-02-20T19:11:41.612000000+00:00",
+        "description": "Capacity insufficiency limits potential revenues",
+        "last_validated": "2026-02-20T19:11:41.612000000+00:00",
+        "id": "INF-13"
+      },
+      "source_id": "RS-07",
+      "target_id": "RS-01"
+    },
+    {
+      "props": {
+        "strength": "Moderate",
+        "confidence": 1.0,
+        "influence_type": "Level2_Bus_to_Bus",
+        "created_at": "2026-02-20T19:11:41.676000000+00:00",
+        "description": "Budget overrun directly reduces operating margin",
+        "last_validated": "2026-02-20T19:11:41.676000000+00:00",
+        "id": "INF-14"
+      },
+      "source_id": "RS-08",
+      "target_id": "RS-01"
+    },
+    {
+      "props": {
+        "strength": "Moderate",
+        "confidence": 0.7,
+        "influence_type": "Level3_Op_to_Op",
+        "created_at": "2026-02-20T19:11:41.741000000+00:00",
+        "description": "Supplier failure forces use of less reliable backup components",
+        "last_validated": "2026-02-20T19:11:41.741000000+00:00",
+        "id": "INF-15"
+      },
+      "source_id": "RO-01",
+      "target_id": "RO-03"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 0.9,
+        "influence_type": "Level1_Op_to_Bus",
+        "created_at": "2026-02-20T19:11:40.247000000+00:00",
+        "description": "Critical component supplier failure directly blocks series production",
+        "last_validated": "2026-02-20T19:11:40.247000000+00:00",
+        "id": "INF-01"
+      },
+      "source_id": "RO-01",
+      "target_id": "RS-02"
+    },
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.9,
+        "influence_type": "Level3_Op_to_Op",
+        "created_at": "2026-02-20T19:11:41.808000000+00:00",
+        "description": "Cyberattack causes digital infrastructure unavailability",
+        "last_validated": "2026-02-20T19:11:41.808000000+00:00",
+        "id": "INF-16"
+      },
+      "source_id": "RO-02",
+      "target_id": "RO-07"
+    },
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.85,
+        "influence_type": "Level1_Op_to_Bus",
+        "created_at": "2026-02-20T19:11:40.776000000+00:00",
+        "description": "A cyberattack on PLM directly exposes critical intellectual property",
+        "last_validated": "2026-02-20T19:11:40.776000000+00:00",
+        "id": "INF-02"
+      },
+      "source_id": "RO-02",
+      "target_id": "RS-06"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 0.95,
+        "influence_type": "Level1_Op_to_Bus",
+        "created_at": "2026-02-20T19:11:40.845000000+00:00",
+        "description": "Quality drift compromises compliance with nuclear safety standards",
+        "last_validated": "2026-02-20T19:11:40.845000000+00:00",
+        "id": "INF-03"
+      },
+      "source_id": "RO-03",
+      "target_id": "RS-04"
+    },
+    {
+      "props": {
+        "strength": "Weak",
+        "confidence": 0.6,
+        "influence_type": "Level3_Op_to_Op",
+        "description": "Certification delays generally correlate with other supplier failures",
+        "created_at": "2026-02-20T19:11:41.961000000+00:00",
+        "last_validated": "2026-02-20T19:11:41.961000000+00:00",
+        "id": "INF-18"
+      },
+      "source_id": "RO-04",
+      "target_id": "RO-01"
+    },
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.8,
+        "influence_type": "Level1_Op_to_Bus",
+        "created_at": "2026-02-20T19:11:40.917000000+00:00",
+        "description": "Supplier certification delay slows supply chain qualification",
+        "last_validated": "2026-02-20T19:11:40.917000000+00:00",
+        "id": "INF-04"
+      },
+      "source_id": "RO-04",
+      "target_id": "RS-02"
+    },
+    {
+      "props": {
+        "strength": "Moderate",
+        "confidence": 0.75,
+        "influence_type": "Level3_Op_to_Op",
+        "created_at": "2026-02-20T19:11:41.892000000+00:00",
+        "description": "Loss of competencies increases risk of bug introduction",
+        "last_validated": "2026-02-20T19:11:41.892000000+00:00",
+        "id": "INF-17"
+      },
+      "source_id": "RO-05",
+      "target_id": "RO-06"
+    },
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.85,
+        "influence_type": "Level1_Op_to_Bus",
+        "created_at": "2026-02-20T19:11:40.994000000+00:00",
+        "description": "Loss of key competencies slows development and innovation",
+        "last_validated": "2026-02-20T19:11:40.994000000+00:00",
+        "id": "INF-05"
+      },
+      "source_id": "RO-05",
+      "target_id": "RS-03"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 1.0,
+        "influence_type": "Level1_Op_to_Bus",
+        "created_at": "2026-02-20T19:11:41.073000000+00:00",
+        "description": "A critical bug in embedded software directly compromises safety",
+        "last_validated": "2026-02-20T19:11:41.073000000+00:00",
+        "id": "INF-06"
+      },
+      "source_id": "RO-06",
+      "target_id": "RS-04"
+    },
+    {
+      "props": {
+        "strength": "Moderate",
+        "confidence": 0.7,
+        "influence_type": "Level1_Op_to_Bus",
+        "created_at": "2026-02-20T19:11:41.160000000+00:00",
+        "description": "Digital backbone unavailability slows product development",
+        "last_validated": "2026-02-20T19:11:41.160000000+00:00",
+        "id": "INF-07"
+      },
+      "source_id": "RO-07",
+      "target_id": "RS-02"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 1.0,
+        "influence_type": "Level2_Bus_to_Bus",
+        "created_at": "2026-02-20T19:11:41.232000000+00:00",
+        "description": "Production delay directly impacts revenue and therefore profitability",
+        "last_validated": "2026-02-20T19:11:41.232000000+00:00",
+        "id": "INF-08"
+      },
+      "source_id": "RS-02",
+      "target_id": "RS-01"
+    },
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.85,
+        "influence_type": "Level2_Bus_to_Bus",
+        "created_at": "2026-02-20T19:11:41.303000000+00:00",
+        "description": "Loss of technological advantage reduces margins and market share",
+        "last_validated": "2026-02-20T19:11:41.303000000+00:00",
+        "id": "INF-09"
+      },
+      "source_id": "RS-03",
+      "target_id": "RS-01"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 1.0,
+        "influence_type": "Level2_Bus_to_Bus",
+        "created_at": "2026-02-20T19:11:41.374000000+00:00",
+        "description": "Safety non-compliance blocks production authorization",
+        "last_validated": "2026-02-20T19:11:41.374000000+00:00",
+        "id": "INF-10"
+      },
+      "source_id": "RS-04",
+      "target_id": "RS-02"
+    },
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.8,
+        "influence_type": "Level2_Bus_to_Bus",
+        "created_at": "2026-02-20T19:11:41.456000000+00:00",
+        "description": "Fuel supply tension delays first reactor startup",
+        "last_validated": "2026-02-20T19:11:41.456000000+00:00",
+        "id": "INF-11"
+      },
+      "source_id": "RS-05",
+      "target_id": "RS-02"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 0.8,
+        "created_at": "2026-02-20T19:11:54.470000000+00:00",
+        "description": "Critical influence: Op1 \u2192 Op2",
+        "id": "848ae8b8-96c6-56f0-953b-0aa4cbf1ca32"
+      },
+      "source_id": "cbc7e0a8-c4ed-5455-bff2-e63341428395",
+      "target_id": "2821ca91-008b-50db-a0c3-881cc6da7621"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 0.8,
+        "created_at": "2026-02-20T19:11:54.752000000+00:00",
+        "description": "Critical influence: Op2 \u2192 Bus1",
+        "id": "9138f6ad-8dd6-5081-8f80-0a89edbcaec5"
+      },
+      "source_id": "2821ca91-008b-50db-a0c3-881cc6da7621",
+      "target_id": "dc6e2a61-57f9-58fe-9932-8fe7b187ccb7"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 0.8,
+        "created_at": "2026-02-20T19:11:54.810000000+00:00",
+        "description": "Critical influence from unmitigated source",
+        "id": "d92d1527-2623-56b3-b1c0-a425af0e8030"
+      },
+      "source_id": "132e355b-0f93-5f25-9f5d-18d2316df783",
+      "target_id": "2eafec16-02c7-5052-bb93-93e3c6ea2e2a"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 0.8,
+        "created_at": "2026-02-20T19:11:54.870000000+00:00",
+        "description": "Critical influence from well-mitigated source",
+        "id": "d8f5f557-b2db-55cb-92bc-aebf07c1ae66"
+      },
+      "source_id": "e11e8386-169a-53c1-aade-eb18c631ac70",
+      "target_id": "d8b6b169-814c-50be-8395-848a88985d7b"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 0.8,
+        "description": "Critical from unmitigated",
+        "created_at": "2026-02-20T19:11:54.934000000+00:00",
+        "id": "9004f04e-56f7-5b62-93b3-2957c990c9eb"
+      },
+      "source_id": "0d6ccb4d-7026-5553-ba80-9518bb8bbccb",
+      "target_id": "04568e76-d323-5040-9717-609e329eedf5"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 0.8,
+        "description": "Critical from partial",
+        "created_at": "2026-02-20T19:11:54.992000000+00:00",
+        "id": "35f44ce7-3e43-5a52-8f4b-1efdcfe985fa"
+      },
+      "source_id": "e86c8139-0c3e-549d-82ac-c48116fa066c",
+      "target_id": "04568e76-d323-5040-9717-609e329eedf5"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 0.8,
+        "description": "Critical from well-mitigated",
+        "created_at": "2026-02-20T19:11:55.044000000+00:00",
+        "id": "562c8fef-2ad5-5a1a-8c83-1a60bd15fd5e"
+      },
+      "source_id": "ac04d220-f64e-51f3-b7ff-c0e0016f8c1c",
+      "target_id": "04568e76-d323-5040-9717-609e329eedf5"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 0.8,
+        "description": "Critical from well-mitigated",
+        "created_at": "2026-02-20T19:11:55.091000000+00:00",
+        "id": "afcbba89-bc5b-5b8f-8952-8abd2949cb83"
+      },
+      "source_id": "71a799e3-67a2-599b-a85e-229cefe000ff",
+      "target_id": "04568e76-d323-5040-9717-609e329eedf5"
+    },
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.8,
+        "description": "Strong influence",
+        "created_at": "2026-02-20T19:11:55.140000000+00:00",
+        "id": "3993ceae-f16d-59ca-8650-787f1722d470"
+      },
+      "source_id": "60483d97-c148-5250-9216-85f4808797f6",
+      "target_id": "c1333b4c-354c-542f-90a0-8d8910ce307c"
+    },
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.8,
+        "description": "Strong influence",
+        "created_at": "2026-02-20T19:11:55.192000000+00:00",
+        "id": "204d2b72-808a-5c0e-a9eb-3c3b587b2763"
+      },
+      "source_id": "c1333b4c-354c-542f-90a0-8d8910ce307c",
+      "target_id": "04c48648-3240-512c-9311-2737a110a26b"
+    },
+    {
+      "props": {
+        "strength": "Moderate",
+        "confidence": 0.8,
+        "description": "Moderate influence",
+        "created_at": "2026-02-20T19:11:55.244000000+00:00",
+        "id": "3aac8aed-4a7c-5b85-9964-25617899e7c8"
+      },
+      "source_id": "04c48648-3240-512c-9311-2737a110a26b",
+      "target_id": "579d302c-c4e2-517b-bd3b-adbcf9ad3df5"
+    },
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.8,
+        "description": "Strong influence",
+        "created_at": "2026-02-20T19:11:55.294000000+00:00",
+        "id": "4ed09c20-de39-5462-93c9-c3234d10a15f"
+      },
+      "source_id": "e4a17955-5a1e-51e3-997f-c05614f6b569",
+      "target_id": "9be2a27b-4bcd-5878-807a-cf76dc3a224e"
+    },
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.8,
+        "description": "Strong influence",
+        "created_at": "2026-02-20T19:11:55.346000000+00:00",
+        "id": "5be29b19-77bc-54c2-9f60-49fe89554b43"
+      },
+      "source_id": "9be2a27b-4bcd-5878-807a-cf76dc3a224e",
+      "target_id": "0145477a-1d33-5723-9c4e-ac997b92bd52"
+    },
+    {
+      "props": {
+        "strength": "Moderate",
+        "confidence": 0.8,
+        "description": "Moderate influence",
+        "created_at": "2026-02-20T19:11:55.404000000+00:00",
+        "id": "99242405-78cf-5c93-a300-daea529ab40d"
+      },
+      "source_id": "0145477a-1d33-5723-9c4e-ac997b92bd52",
+      "target_id": "579d302c-c4e2-517b-bd3b-adbcf9ad3df5"
+    },
+    {
+      "props": {
+        "strength": "Critical",
+        "confidence": 0.8,
+        "description": "Critical=1.0",
+        "created_at": "2026-02-20T19:11:55.725000000+00:00",
+        "id": "d6a4dbd3-672c-57b7-8066-5c15f6cd432d"
+      },
+      "source_id": "a636b334-ecf7-56a0-bb9e-a69006c872c2",
+      "target_id": "4e6f18f1-4a4e-556c-89ba-d8b94a5a2055"
+    },
+    {
+      "props": {
+        "strength": "Strong",
+        "confidence": 0.8,
+        "description": "Strong=0.75",
+        "created_at": "2026-02-20T19:11:55.672000000+00:00",
+        "id": "4fbed70b-9877-55dc-afe7-91114c80f271"
+      },
+      "source_id": "a636b334-ecf7-56a0-bb9e-a69006c872c2",
+      "target_id": "5b34400a-87c4-5996-af66-0808b8c96fb6"
+    },
+    {
+      "props": {
+        "strength": "Moderate",
+        "confidence": 0.8,
+        "description": "Moderate=0.5",
+        "created_at": "2026-02-20T19:11:55.614000000+00:00",
+        "id": "5c3c12d1-400e-54ea-98e2-014a60c716f8"
+      },
+      "source_id": "a636b334-ecf7-56a0-bb9e-a69006c872c2",
+      "target_id": "8e072c8c-66cd-53e3-8ecb-1d599c981d89"
+    },
+    {
+      "props": {
+        "strength": "Weak",
+        "confidence": 0.8,
+        "description": "Weak=0.25",
+        "created_at": "2026-02-20T19:11:55.458000000+00:00",
+        "id": "5bfdddbe-58f0-5ed0-bf70-c69b52eee274"
+      },
+      "source_id": "a636b334-ecf7-56a0-bb9e-a69006c872c2",
+      "target_id": "a5031626-2cd5-5b6d-b322-828e1ddea443"
+    }
+  ],
+  "tpo_impacts": [
+    {
+      "props": {
+        "created_at": "2026-02-20T19:11:42.571000000+00:00",
+        "description": "Loss of technological advantage reduces pricing power and margins",
+        "impact_level": "Medium",
+        "id": "IMP-08"
+      },
+      "risk_id": "RS-03",
+      "tpo_id": "TPO-01"
+    },
+    {
+      "props": {
+        "description": "Budget overrun directly degrades margin and ROI",
+        "created_at": "2026-02-20T19:11:42.516000000+00:00",
+        "impact_level": "High",
+        "id": "IMP-07"
+      },
+      "risk_id": "RS-08",
+      "tpo_id": "TPO-01"
+    },
+    {
+      "props": {
+        "description": "Production delay shifts revenue and impacts ROI",
+        "created_at": "2026-02-20T19:11:42.216000000+00:00",
+        "impact_level": "High",
+        "id": "IMP-02"
+      },
+      "risk_id": "RS-02",
+      "tpo_id": "TPO-01"
+    },
+    {
+      "props": {
+        "created_at": "2026-02-20T19:11:42.026000000+00:00",
+        "description": "Direct impact: this risk directly threatens the profitability objective",
+        "impact_level": "Critical",
+        "id": "IMP-01"
+      },
+      "risk_id": "RS-01",
+      "tpo_id": "TPO-01"
+    },
+    {
+      "props": {
+        "created_at": "2026-02-20T19:11:42.338000000+00:00",
+        "description": "Direct impact: non-compliance prevents obtaining NRC certification",
+        "impact_level": "Critical",
+        "id": "IMP-04"
+      },
+      "risk_id": "RS-04",
+      "tpo_id": "TPO-02"
+    },
+    {
+      "props": {
+        "description": "Capacity insufficiency compromises achieving target production rate",
+        "created_at": "2026-02-20T19:11:42.462000000+00:00",
+        "impact_level": "High",
+        "id": "IMP-06"
+      },
+      "risk_id": "RS-07",
+      "tpo_id": "TPO-03"
+    },
+    {
+      "props": {
+        "description": "Without safety certification, production start is blocked",
+        "created_at": "2026-02-20T19:11:42.401000000+00:00",
+        "impact_level": "High",
+        "id": "IMP-05"
+      },
+      "risk_id": "RS-04",
+      "tpo_id": "TPO-03"
+    },
+    {
+      "props": {
+        "created_at": "2026-02-20T19:11:42.277000000+00:00",
+        "description": "Direct impact: this risk threatens the series production start objective",
+        "impact_level": "Critical",
+        "id": "IMP-03"
+      },
+      "risk_id": "RS-02",
+      "tpo_id": "TPO-03"
+    },
+    {
+      "props": {
+        "description": "Major cost impact",
+        "created_at": "2026-02-20T19:11:57.377000000+00:00",
+        "impact_level": "Critical",
+        "id": "f0929a59-248c-5894-9ae2-c5cc0d2e639a"
+      },
+      "risk_id": "0145477a-1d33-5723-9c4e-ac997b92bd52",
+      "tpo_id": "a6507c61-ac70-565c-9c92-d9963ec98872"
+    },
+    {
+      "props": {
+        "description": "Cost impact",
+        "created_at": "2026-02-20T19:11:57.244000000+00:00",
+        "impact_level": "High",
+        "id": "3d9e6eee-95bb-5f5b-a984-ab32c869505d"
+      },
+      "risk_id": "04c48648-3240-512c-9311-2737a110a26b",
+      "tpo_id": "a6507c61-ac70-565c-9c92-d9963ec98872"
+    },
+    {
+      "props": {
+        "description": "Schedule impact",
+        "created_at": "2026-02-20T19:11:57.430000000+00:00",
+        "impact_level": "Critical",
+        "id": "bfdf7d11-2992-58ad-afba-662949abe0f0"
+      },
+      "risk_id": "579d302c-c4e2-517b-bd3b-adbcf9ad3df5",
+      "tpo_id": "fcec3040-db53-50b2-a562-cb18f607b720"
+    }
+  ],
+  "mitigates": [
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:42.753000000+00:00",
+        "description": "Securing supply chain reduces component-related delay risks",
+        "id": "MIG-02"
+      },
+      "mitigation_id": "MIT-01",
+      "risk_id": "RS-02"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "Dual-sourcing allows switching to second supplier in case of primary supplier failure",
+        "created_at": "2026-02-20T19:11:42.623000000+00:00",
+        "id": "MIG-01"
+      },
+      "mitigation_id": "MIT-01",
+      "risk_id": "RO-01"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:42.850000000+00:00",
+        "description": "Talent retention maintains innovation capability",
+        "id": "MIG-04"
+      },
+      "mitigation_id": "MIT-02",
+      "risk_id": "RS-03"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "Retention program significantly reduces key expert turnover",
+        "created_at": "2026-02-20T19:11:42.795000000+00:00",
+        "id": "MIG-03"
+      },
+      "mitigation_id": "MIT-02",
+      "risk_id": "RO-05"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "Real-time monitoring enables detecting and correcting drifts before they worsen",
+        "created_at": "2026-02-20T19:11:42.907000000+00:00",
+        "id": "MIG-05"
+      },
+      "mitigation_id": "MIT-03",
+      "risk_id": "RO-03"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "PLM security protects intellectual property data",
+        "created_at": "2026-02-20T19:11:43.007000000+00:00",
+        "id": "MIG-07"
+      },
+      "mitigation_id": "MIT-04",
+      "risk_id": "RS-06"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:42.957000000+00:00",
+        "description": "Zero Trust architecture drastically reduces attack surface and lateral movement possibilities",
+        "id": "MIG-06"
+      },
+      "mitigation_id": "MIT-04",
+      "risk_id": "RO-02"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:43.096000000+00:00",
+        "description": "Backup subcontractors help maintain schedule in case of problems",
+        "id": "MIG-09"
+      },
+      "mitigation_id": "MIT-05",
+      "risk_id": "RS-02"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:43.050000000+00:00",
+        "description": "Contingency plan allows partially compensating for internal capacity shortfalls",
+        "id": "MIG-08"
+      },
+      "mitigation_id": "MIT-05",
+      "risk_id": "RS-07"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "DO-178C compliance demonstrates rigor of safety development process",
+        "created_at": "2026-02-20T19:11:43.199000000+00:00",
+        "id": "MIG-11"
+      },
+      "mitigation_id": "MIT-06",
+      "risk_id": "RS-04"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:43.148000000+00:00",
+        "description": "Independent review maximizes chances of detecting critical bugs before deployment",
+        "id": "MIG-10"
+      },
+      "mitigation_id": "MIT-06",
+      "risk_id": "RO-06"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "Geographic diversification reduces exposure to tensions in any specific zone",
+        "created_at": "2026-02-20T19:11:43.256000000+00:00",
+        "id": "MIG-12"
+      },
+      "mitigation_id": "MIT-07",
+      "risk_id": "RS-05"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:43.316000000+00:00",
+        "description": "Rigorous tracking enables early deviation detection and corrective action",
+        "id": "MIG-13"
+      },
+      "mitigation_id": "MIT-08",
+      "risk_id": "RS-08"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:43.438000000+00:00",
+        "description": "Proactive monitoring allows anticipating certain failures and incidents",
+        "id": "MIG-15"
+      },
+      "mitigation_id": "MIT-09",
+      "risk_id": "RO-07"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "24/7 SOC enables rapid detection and response to intrusion attempts",
+        "created_at": "2026-02-20T19:11:43.373000000+00:00",
+        "id": "MIG-14"
+      },
+      "mitigation_id": "MIT-09",
+      "risk_id": "RO-02"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:43.501000000+00:00",
+        "description": "Disaster recovery guarantees rapid recovery in case of major failure",
+        "id": "MIG-16"
+      },
+      "mitigation_id": "MIT-10",
+      "risk_id": "RO-07"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:43.555000000+00:00",
+        "description": "Access to group innovations accelerates development",
+        "id": "MIG-17"
+      },
+      "mitigation_id": "MIT-11",
+      "risk_id": "RS-03"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:43.670000000+00:00",
+        "description": "ISO framework structures the supplier qualification process",
+        "id": "MIG-19"
+      },
+      "mitigation_id": "MIT-12",
+      "risk_id": "RO-04"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "ISO 19443 framework mandates rigorous quality controls throughout supply chain",
+        "created_at": "2026-02-20T19:11:43.614000000+00:00",
+        "id": "MIG-18"
+      },
+      "mitigation_id": "MIT-12",
+      "risk_id": "RO-03"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:43.772000000+00:00",
+        "description": "IEC 61513 compliance is a prerequisite for I&C systems safety certification",
+        "id": "MIG-21"
+      },
+      "mitigation_id": "MIT-13",
+      "risk_id": "RS-04"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "IEC 61513 standard defines strict requirements for nuclear I&C systems development",
+        "created_at": "2026-02-20T19:11:43.724000000+00:00",
+        "id": "MIG-20"
+      },
+      "mitigation_id": "MIT-13",
+      "risk_id": "RO-06"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:43.876000000+00:00",
+        "description": "NIS2 requirements strengthen overall security posture",
+        "id": "MIG-23"
+      },
+      "mitigation_id": "MIT-14",
+      "risk_id": "RS-06"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "NIS2 mandates cybersecurity measures and incident notification",
+        "created_at": "2026-02-20T19:11:43.825000000+00:00",
+        "id": "MIG-22"
+      },
+      "mitigation_id": "MIT-14",
+      "risk_id": "RO-02"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "NRC requirements impose high quality standards on processes",
+        "created_at": "2026-02-20T19:11:43.980000000+00:00",
+        "id": "MIG-25"
+      },
+      "mitigation_id": "MIT-15",
+      "risk_id": "RO-03"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:43.932000000+00:00",
+        "description": "Systematic application of NRC framework ensures regulatory compliance",
+        "id": "MIG-24"
+      },
+      "mitigation_id": "MIT-15",
+      "risk_id": "RS-04"
+    },
+    {
+      "props": {
+        "effectiveness": "Low",
+        "description": "",
+        "created_at": "2026-02-20T19:11:56.269000000+00:00",
+        "id": "8450c1bc-e10a-54b8-88b7-235bf349f68e"
+      },
+      "mitigation_id": "e266af0b-12b0-5043-8f83-990879cf1973",
+      "risk_id": "9913bf59-9f10-51ae-952c-546666de4325"
+    },
+    {
+      "props": {
+        "effectiveness": "Low",
+        "description": "",
+        "created_at": "2026-02-20T19:11:55.787000000+00:00",
+        "id": "1e0869a6-681d-5242-99a6-7730ee06f5e6"
+      },
+      "mitigation_id": "e266af0b-12b0-5043-8f83-990879cf1973",
+      "risk_id": "cea650ca-5655-5ec6-977c-0f06c0ccdc72"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:56.222000000+00:00",
+        "description": "",
+        "id": "0d57c460-cade-54ee-815f-c5cd02a2b2b7"
+      },
+      "mitigation_id": "6d9a53cb-47c3-5221-8a5e-7b737c36b550",
+      "risk_id": "eea6f2c4-44a9-5c52-bdbc-622aac608a46"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:56.069000000+00:00",
+        "description": "",
+        "id": "340abce0-062c-583a-be9d-0e0614466e79"
+      },
+      "mitigation_id": "6d9a53cb-47c3-5221-8a5e-7b737c36b550",
+      "risk_id": "529b6266-fd42-5ba0-842a-12c8a21b2d5d"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:55.935000000+00:00",
+        "description": "",
+        "id": "718a21cf-6324-5007-9be0-56af0c87a758"
+      },
+      "mitigation_id": "6d9a53cb-47c3-5221-8a5e-7b737c36b550",
+      "risk_id": "ea204cec-2d2e-5350-81fc-b12207ba2575"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:56.117000000+00:00",
+        "description": "",
+        "id": "a4e2a76a-13b5-59a8-985c-f7d253d97122"
+      },
+      "mitigation_id": "90058909-691d-51a5-bccb-6b5e8969fd91",
+      "risk_id": "529b6266-fd42-5ba0-842a-12c8a21b2d5d"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "",
+        "created_at": "2026-02-20T19:11:56.165000000+00:00",
+        "id": "276e05c2-dc90-5662-8b13-b94a12041e32"
+      },
+      "mitigation_id": "4e42e7d5-57a3-569c-acbd-cb9faa56a6fd",
+      "risk_id": "eea6f2c4-44a9-5c52-bdbc-622aac608a46"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "",
+        "created_at": "2026-02-20T19:11:55.981000000+00:00",
+        "id": "0f111ec5-88bd-5fee-95af-4fcfae09b6c1"
+      },
+      "mitigation_id": "4e42e7d5-57a3-569c-acbd-cb9faa56a6fd",
+      "risk_id": "b300c05d-51aa-5a58-8d24-db67c8344d2f"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:56.025000000+00:00",
+        "description": "",
+        "id": "8d3091f2-52f1-5063-b300-4b9eae450d9c"
+      },
+      "mitigation_id": "d1022244-0eda-5cdd-bd46-894cad67e860",
+      "risk_id": "78d595ef-8471-5a5e-aca2-a85373e83733"
+    },
+    {
+      "props": {
+        "effectiveness": "Low",
+        "description": "",
+        "created_at": "2026-02-20T19:11:56.315000000+00:00",
+        "id": "bb9f85fb-900c-5b47-bb59-9b599e55e7f6"
+      },
+      "mitigation_id": "ffaf41a7-9d02-5ed9-a154-c9dfa69fcbe5",
+      "risk_id": "9913bf59-9f10-51ae-952c-546666de4325"
+    },
+    {
+      "props": {
+        "effectiveness": "Low",
+        "description": "",
+        "created_at": "2026-02-20T19:11:56.361000000+00:00",
+        "id": "3b183721-b7a6-52d1-845b-9ec68a68eb93"
+      },
+      "mitigation_id": "eb731ca6-6a99-58de-9466-a3cbed8e909d",
+      "risk_id": "9913bf59-9f10-51ae-952c-546666de4325"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:56.407000000+00:00",
+        "description": "",
+        "id": "3482154b-e2af-5b77-befd-d6fc0dc7ea51"
+      },
+      "mitigation_id": "8e9a6292-a8c9-53dd-a212-aa03acb3e6fb",
+      "risk_id": "e11e8386-169a-53c1-aade-eb18c631ac70"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:56.447000000+00:00",
+        "description": "",
+        "id": "cca1023b-2d85-5ecd-bc40-a30c5127c5be"
+      },
+      "mitigation_id": "6310ba0d-0ec9-57c8-930c-e186da7b7200",
+      "risk_id": "2eafec16-02c7-5052-bb93-93e3c6ea2e2a"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:56.495000000+00:00",
+        "description": "",
+        "id": "587ee3d2-c51f-5ff6-9af0-82d5d2e578f2"
+      },
+      "mitigation_id": "610914ce-51fe-511e-9a3d-5ff9ed133ce2",
+      "risk_id": "d8b6b169-814c-50be-8395-848a88985d7b"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:56.542000000+00:00",
+        "description": "",
+        "id": "0b3d77d3-e25d-5dbe-9858-2c49b14b7cfe"
+      },
+      "mitigation_id": "5679ee81-f5b7-5b09-8136-f063a2386961",
+      "risk_id": "4d86ae18-0440-515f-84a6-620863f408e4"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:56.580000000+00:00",
+        "description": "",
+        "id": "457b180c-5264-54f9-9770-a7455981c83d"
+      },
+      "mitigation_id": "4d723315-a1d6-50fa-a471-f2ad246c067d",
+      "risk_id": "e86c8139-0c3e-549d-82ac-c48116fa066c"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:56.623000000+00:00",
+        "description": "",
+        "id": "8ee0723f-db93-51f1-b4da-6bf44991755a"
+      },
+      "mitigation_id": "cbcc8fa8-fcc7-59b1-8e11-48c4089dab7b",
+      "risk_id": "ac04d220-f64e-51f3-b7ff-c0e0016f8c1c"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:56.667000000+00:00",
+        "description": "",
+        "id": "8895f84c-6828-579a-9785-7b61a0e4e23a"
+      },
+      "mitigation_id": "a0b6096a-99cb-55ed-b5b6-162309d9ce1d",
+      "risk_id": "71a799e3-67a2-599b-a85e-229cefe000ff"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:56.717000000+00:00",
+        "description": "",
+        "id": "7d43e9e4-9d4a-5634-8891-1e79c7727bbd"
+      },
+      "mitigation_id": "1c96292c-f335-52bb-84fc-38c5fa03cec1",
+      "risk_id": "04568e76-d323-5040-9717-609e329eedf5"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:56.761000000+00:00",
+        "description": "",
+        "id": "930ec325-0c7e-5140-8dbe-e6169c3e6c12"
+      },
+      "mitigation_id": "2c347249-3de6-53c8-a18b-697c0ffa3f4f",
+      "risk_id": "60483d97-c148-5250-9216-85f4808797f6"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "",
+        "created_at": "2026-02-20T19:11:56.804000000+00:00",
+        "id": "35997980-0f51-5eb6-ba5f-2e09625728fe"
+      },
+      "mitigation_id": "a271f97e-675b-55c9-adfa-5ac55e436ed4",
+      "risk_id": "c1333b4c-354c-542f-90a0-8d8910ce307c"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:56.854000000+00:00",
+        "description": "",
+        "id": "41326f8a-b297-51bc-af28-ebc42328e30a"
+      },
+      "mitigation_id": "423e273b-d6a8-5cb8-a77b-a0f2e2f3e8ce",
+      "risk_id": "04c48648-3240-512c-9311-2737a110a26b"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "",
+        "created_at": "2026-02-20T19:11:56.895000000+00:00",
+        "id": "5bb9b00c-b88d-521f-aad3-e2f8ca8cc03c"
+      },
+      "mitigation_id": "cb922f4b-485f-5223-933b-0c4942f74f7a",
+      "risk_id": "9be2a27b-4bcd-5878-807a-cf76dc3a224e"
+    },
+    {
+      "props": {
+        "effectiveness": "Medium",
+        "created_at": "2026-02-20T19:11:56.947000000+00:00",
+        "description": "",
+        "id": "1ebca5c9-f5c1-5a56-9af4-7bf7e6eb882a"
+      },
+      "mitigation_id": "683fc750-26a4-5034-a862-ccb16c136b97",
+      "risk_id": "0145477a-1d33-5723-9c4e-ac997b92bd52"
+    },
+    {
+      "props": {
+        "effectiveness": "High",
+        "description": "",
+        "created_at": "2026-02-20T19:11:57.006000000+00:00",
+        "id": "3951772c-da6a-51ac-ad33-92b723703d03"
+      },
+      "mitigation_id": "20077d07-3bed-5b74-bf7b-4a4c8e7aa04d",
+      "risk_id": "579d302c-c4e2-517b-bd3b-adbcf9ad3df5"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:57.054000000+00:00",
+        "description": "",
+        "id": "593651e8-c6e7-5301-8ebc-d80d73c8bdaa"
+      },
+      "mitigation_id": "89bd5ea8-dbd9-5a4f-ae93-73052aa05fbf",
+      "risk_id": "a5031626-2cd5-5b6d-b322-828e1ddea443"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:57.104000000+00:00",
+        "description": "",
+        "id": "420dd5ba-13fb-5b28-9b74-72db784a0f7f"
+      },
+      "mitigation_id": "86c726e8-42fe-5f31-8855-8dc3a1548e88",
+      "risk_id": "8e072c8c-66cd-53e3-8ecb-1d599c981d89"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:57.152000000+00:00",
+        "description": "",
+        "id": "99b5fdcf-6cc5-5dc9-880e-7f5fb4a1392d"
+      },
+      "mitigation_id": "552c151d-881f-5c7e-bc47-af22f8d3a715",
+      "risk_id": "5b34400a-87c4-5996-af66-0808b8c96fb6"
+    },
+    {
+      "props": {
+        "effectiveness": "Critical",
+        "created_at": "2026-02-20T19:11:57.198000000+00:00",
+        "description": "",
+        "id": "2c60d4b8-1de7-5fce-8e3d-25e417bc8f45"
+      },
+      "mitigation_id": "49da137c-098b-5441-9c11-d2ec77101da3",
+      "risk_id": "4e6f18f1-4a4e-556c-89ba-d8b94a5a2055"
+    }
+  ]
+}

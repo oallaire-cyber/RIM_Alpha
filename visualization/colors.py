@@ -226,6 +226,8 @@ def get_influence_color(influence_type: str) -> str:
     Returns:
         Hex color string
     """
+    if not influence_type:
+        return INFLUENCE_TYPE_COLORS["Level3"]
     for key in INFLUENCE_TYPE_COLORS:
         if key in influence_type:
             return INFLUENCE_TYPE_COLORS[key]

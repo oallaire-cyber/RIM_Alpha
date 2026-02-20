@@ -1424,17 +1424,167 @@ DETACH DELETE r
 # DATA MANAGEMENT TAB
 # =============================================================================
 
+
+def render_demo_reset_section(conn):
+    """Render the demo data reset section."""
+    st.markdown("### 🔄 Reset Demo Data")
+    st.info(
+        "Wipes the **entire database** and reloads both the SNR demo dataset "
+        "and all 7 TC test cases (TC01-TC07) to a clean, reproducible state."
+    )
+
+    app_root = Path(__file__).parent.parent
+    snr_path = app_root / "demo_data_loader_en.cypher"
+    tc_path  = app_root / "demo_tc_dataset.cypher"
+
+    # Show file availability status
+    col_a, col_b = st.columns(2)
+    with col_a:
+        if snr_path.exists():
+            st.success(f"✅ SNR file found: `{snr_path.name}`")
+        else:
+            st.error(f"❌ SNR file missing: `demo_data_loader_en.cypher`")
+    with col_b:
+        if tc_path.exists():
+            st.success(f"✅ TC file found: `{tc_path.name}`")
+        else:
+            st.error(f"❌ TC file missing: `demo_tc_dataset.cypher`")
+
+    files_ok = snr_path.exists() and tc_path.exists()
+
+    confirmed = st.checkbox(
+        "⚠️ I understand this will delete ALL data in the database and reload the demo",
+        key="reset_demo_confirm"
+    )
+
+    if st.button(
+        "🔄 Reset Demo Data",
+        type="primary",
+        disabled=(not confirmed or not files_ok),
+        key="reset_demo_btn"
+    ):
+        _execute_demo_reset(conn, snr_path, tc_path)
+
+
+def _execute_demo_reset(conn, snr_path, tc_path):
+    """Execute the full demo reset: wipe all data, reload SNR + TC datasets."""
+
+    def _parse_statements(cypher_text, skip_purge=False):
+        """
+        Split a Cypher script into individual executable statements.
+
+        Rules:
+        - Split on semicolon (;) -- each statement ends with ;
+        - Strip whitespace from each statement
+        - Discard empty statements
+        - Discard comment-only statements (lines that are all // comments)
+        - If skip_purge=True, discard any statement containing DETACH DELETE
+          (to avoid re-running the SNR file's built-in purge line)
+        """
+        raw_statements = cypher_text.split(";")
+        result = []
+        for raw in raw_statements:
+            stmt = raw.strip()
+            if not stmt:
+                continue
+            # Keep only if at least one line is not a comment/blank
+            non_comment_lines = [
+                line for line in stmt.splitlines()
+                if line.strip() and not line.strip().startswith("//")
+            ]
+            if not non_comment_lines:
+                continue
+            if skip_purge and "DETACH DELETE" in stmt.upper():
+                continue
+            result.append(stmt)
+        return result
+
+    try:
+        with st.spinner("Resetting demo data — this may take a few seconds..."):
+
+            # Step 1: Count existing nodes for before/after feedback
+            before_result = conn.execute_query("MATCH (n) RETURN count(n) AS cnt")
+            before_count = before_result[0]["cnt"] if before_result else 0
+
+            # Step 2: Wipe the entire database
+            st.write("🗑️ Wiping database...")
+            conn.execute_write("MATCH (n) DETACH DELETE n")
+
+            # Step 3: Load SNR dataset
+            # skip_purge=True because demo_data_loader_en.cypher has its own
+            # MATCH (n) DETACH DELETE n; at line 8 -- skip it since we already wiped.
+            snr_text = snr_path.read_text(encoding="utf-8")
+            snr_statements = _parse_statements(snr_text, skip_purge=True)
+
+            st.write(f"📥 Loading SNR dataset ({len(snr_statements)} statements)...")
+            snr_progress = st.progress(0.0, text="Loading SNR data...")
+            for i, stmt in enumerate(snr_statements):
+                conn.execute_write(stmt)
+                snr_progress.progress(
+                    (i + 1) / len(snr_statements),
+                    text=f"SNR: {i + 1}/{len(snr_statements)}"
+                )
+            snr_progress.empty()
+
+            # Step 4: Load TC datasets
+            # skip_purge=False: demo_tc_dataset.cypher uses only MERGE, no purge.
+            tc_text = tc_path.read_text(encoding="utf-8")
+            tc_statements = _parse_statements(tc_text, skip_purge=False)
+
+            st.write(f"📥 Loading TC datasets ({len(tc_statements)} statements)...")
+            tc_progress = st.progress(0.0, text="Loading TC data...")
+            for i, stmt in enumerate(tc_statements):
+                conn.execute_write(stmt)
+                tc_progress.progress(
+                    (i + 1) / len(tc_statements),
+                    text=f"TC: {i + 1}/{len(tc_statements)}"
+                )
+            tc_progress.empty()
+
+            # Step 5: Count after
+            after_result = conn.execute_query("MATCH (n) RETURN count(n) AS cnt")
+            after_count = after_result[0]["cnt"] if after_result else 0
+
+            # Success feedback
+            st.success(
+                f"✅ Reset complete — "
+                f"deleted **{before_count}** nodes, "
+                f"loaded **{after_count}** nodes "
+                f"({len(snr_statements)} SNR + {len(tc_statements)} TC statements executed)."
+            )
+
+            # Invalidate cached stats so the Database tab refreshes
+            st.session_state.db_stats = None
+
+    except Exception as e:
+        import traceback
+        st.error(f"❌ Reset failed: {e}")
+        with st.expander("Full traceback"):
+            st.code(traceback.format_exc())
+
+
 def render_data_management():
     """Render data management tab."""
     schema = st.session_state.active_schema
-    
+
     if not schema:
         st.warning("No schema loaded. Select a schema from the sidebar.")
         return
-    
+
     st.subheader("📊 Data Management")
-    
-    # Test Data Generator - doesn't require DB connection
+
+    # Guard: require DB connection for ALL operations in this tab
+    if not st.session_state.config_connected:
+        st.warning("Connect to Neo4j database for data management features.")
+        return
+
+    conn = st.session_state.config_connection
+
+    # NEW: Demo Reset section (top of tab)
+    render_demo_reset_section(conn)
+    st.markdown("---")
+
+    # Test Data Generator
     st.markdown("### 🧪 Generate Test Data")
     st.info("Generate Cypher script with sample data matching your schema configuration")
     
@@ -1493,14 +1643,7 @@ def render_data_management():
                 st.info("Connect to DB to load directly")
     
     st.markdown("---")
-    
-    # Database operations require connection
-    if not st.session_state.config_connected:
-        st.warning("Connect to Neo4j database for additional data management features.")
-        return
-    
-    conn = st.session_state.config_connection
-    
+
     col1, col2 = st.columns(2)
     
     with col1:
