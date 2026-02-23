@@ -104,9 +104,7 @@ streamlit run app.py
 
 ```
 rim/
-├── app.py                    # Main Streamlit application
-├── app_config.py             # Configuration Manager app
-├── calibration_simulator.py  # Monte Carlo validation tool
+├── app.py                    # Thin entry point (~60 lines)
 ├── config/                   # Application settings
 │   ├── settings.py           # Hardcoded defaults
 │   └── schema_loader.py      # YAML schema system
@@ -121,15 +119,22 @@ rim/
 │   ├── influence_analysis.py
 │   └── mitigation_analysis.py
 ├── ui/                       # Streamlit UI components
+│   ├── home.py               # Home page rendering (dashboard, viz, analysis)
 │   ├── panels/               # Analysis panels
 │   └── tabs/                 # Tab page renderers
 ├── visualization/            # PyVis graph rendering
 │   ├── node_styles.py        # Semantic shape system
 │   ├── edge_styles.py        # Relationship visualization
 │   └── colors.py             # Color palette
+├── pages/                    # Streamlit multi-page navigation
+│   ├── 1_⚙️_Configuration.py # Schema and data management
+│   └── 2_🎲_Simulation.py    # Monte Carlo calibration
 ├── utils/                    # Helper functions
+│   ├── db_manager.py         # Shared singleton connection
+│   └── markdown_loader.py    # Cached docs/*.md file loader
+├── docs/                     # Documentation (loaded at runtime for help section)
 ├── tests/                    # Test suite
-└── docs/                     # Documentation
+└── requirements.txt
 ```
 
 ## 🧪 Testing
@@ -235,4 +240,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.8.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.9.0 | See [CHANGELOG.md](CHANGELOG.md) for history

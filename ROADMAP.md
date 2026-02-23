@@ -11,8 +11,8 @@ Between every phase, there is a mandatory, exhaustive testing gateway (Automated
 
 These foundational changes are required to ensure the application remains stable, readable, and easy to extend as complex simulation features are added.
 
-*   **U1. Externalize Static Content**: Move hardcoded documentation from `app.py` into separate `.md` files in a `docs/` folder, loading them efficiently at runtime (e.g., via `st.markdown`).
-*   **U2. Decouple Entry Point**: Split the monolithic `app.py` into smaller, focused pages (e.g., `pages/0_🏠_Home.py`). Let `app.py` only handle Streamlit configuration and primary routing.
+*   **U1. ~~Externalize Static Content~~** ✅ *(v2.9.0)* Move hardcoded documentation from `app.py` into separate `.md` files in a `docs/` folder, loading them efficiently at runtime (e.g., via `st.markdown`).
+*   **U2. ~~Decouple Entry Point~~** ✅ *(v2.9.0)* Split the monolithic `app.py` into smaller, focused pages (e.g., `pages/0_🏠_Home.py`). Let `app.py` only handle Streamlit configuration and primary routing.
 *   **U3. Centralized State Management**: Introduce a dedicated state manager module (`utils/state_manager.py`) to standardize `st.session_state` initialization and simplify type hinting across the app.
 *   **U4. Strict Data Validation (Pydantic)**: Implement rigid data validation schemas for all incoming graph logic (nodes, edges, budgets, exposure configurations) using `pydantic`. This guarantees that downstream algorithms (like budget optimization) won't fail due to malformed data configurations.
 *   **U5. Mitigation Budget Attributes**: Extend the Mitigation data schema to include specific financial attributes: **CAPEX** (Capital Expenditure) and **OPEX** (Operational Expenditure). This provides the foundation for cost-optimization algorithms.
@@ -48,7 +48,7 @@ To ensure manageable workloads and maintain code quality, development is schedul
 
 ### Phase 1: Foundation & UX Simplification 
 *Goal: Prepare the application architecture, extend core data models, and improve baseline usability.*
-1. **[U1 & U2]** Clean up `app.py` and modularize the page structure.
+1. **[U1 & U2]** ~~Clean up `app.py` and modularize the page structure.~~ ✅ *(v2.9.0)*
 2. **[U3]** Establish Centralized State Management.
 3. **[F1 & F2]** Implement Intelligent Caching and Progressive UI Loading.
 4. **[F3]** Complexity Toggle (Simple vs Advanced UI modes).

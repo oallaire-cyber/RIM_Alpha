@@ -4,6 +4,45 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.9.0] - 2026-02-23
+
+### U1 & U2 — Externalize Static Content + Decouple Entry Point
+
+**Major Refactoring:**
+
+- **U1: Externalized Static Content**
+  - Moved ~380 lines of hardcoded markdown from `app.py` into 7 standalone `.md` files under `docs/`
+  - Help section content: `help_overview.md`, `help_scopes.md`, `help_exposure.md`, `help_influence.md`, `help_mitigations.md`, `help_layouts.md`
+  - Welcome page content: `welcome.md`
+  - Content loaded at runtime via new `utils/markdown_loader.py` helper with `@st.cache_data` caching
+  - Graceful fallback if a documentation file is missing
+
+- **U2: Decoupled Entry Point**
+  - Extracted all 15 rendering functions from `app.py` into new `ui/home.py` module (~700 lines)
+  - Slimmed `app.py` from **1,485 lines → ~60 lines** — now a thin orchestrator
+  - `app.py` handles only: `st.set_page_config()`, style injection, session state init, header, connection sidebar, and delegation to `render_main_content()`
+  - New `render_main_content()` function in `ui/home.py` encapsulates the entire connected-state body
+  - All existing functionality preserved — no user-facing changes
+
+**Files Added:**
+- `docs/help_overview.md` — Help: Overview tab
+- `docs/help_scopes.md` — Help: Scopes tab
+- `docs/help_exposure.md` — Help: Exposure tab
+- `docs/help_influence.md` — Help: Influence tab
+- `docs/help_mitigations.md` — Help: Mitigations tab
+- `docs/help_layouts.md` — Help: Layouts tab
+- `docs/welcome.md` — Welcome page content
+- `utils/markdown_loader.py` — Cached markdown file loader
+- `ui/home.py` — All home page rendering functions
+- `tests/test_markdown_loader.py` — Unit tests for docs loading
+
+**Files Modified:**
+- `app.py` — Slimmed from 1,485 → ~60 lines; all logic moved to `ui/home.py`
+- `ui/__init__.py` — Added exports for `ui.home` module
+
+---
+
+
 ## [v2.8.0] - 2026-02-20
 
 ### Unified Demo Dataset & Reset Button

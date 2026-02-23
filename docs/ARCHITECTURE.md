@@ -12,7 +12,7 @@ RIM follows a **modular architecture** with clear separation of concerns:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                         app.py                               │
-│                   (Home / Dashboard)                         │
+│          (Thin entry point → delegates to ui/home.py)         │
 └─────────────────────┬───────────────────────────────────────┘
                       │
           ┌───────────┴───────────┐
@@ -245,7 +245,10 @@ class InfluenceAnalyzer:
 ```
 ui/
 ├── __init__.py       # Exports components
+├── home.py           # Home page rendering (dashboard, viz, analysis)
 ├── components.py     # Reusable UI components
+├── dynamic_tabs.py   # Schema-driven tab rendering
+├── dynamic_forms.py  # Schema-driven form builder
 ├── filters.py        # FilterManager class
 ├── layouts.py        # Layout generators + LayoutManager
 ├── legend.py         # Graph legend rendering
@@ -264,6 +267,36 @@ ui/
     ├── tpo_impacts_tab.py
     ├── risk_mitigations_tab.py
     └── import_export_tab.py
+```
+
+**Home Page** (`home.py`):
+
+Contains all dashboard/visualization/analysis rendering functions extracted
+from the monolithic `app.py` (v2.9.0). Key functions:
+
+```python
+# Session state
+def init_session_state()              # Home-specific state
+
+# Sidebar
+def render_connection_sidebar()       # Neo4j connection panel
+def render_help_section()             # Loads docs/*.md via markdown_loader
+def render_scope_selector()           # Analysis scope picker
+
+# Dashboard
+def render_welcome_page()             # Loads docs/welcome.md
+def render_statistics_dashboard()     # Scoped statistics
+def render_exposure_dashboard()       # Exposure calculation
+
+# Visualization
+def render_visualization_tab()        # Graph + filters + explorer + layouts
+def render_visualization_filters()    # Filter sidebar
+def render_influence_explorer()       # Node traversal
+def render_graph_options()            # Physics, edge visibility, capture
+def render_layout_management()        # Save/load/preset layouts
+
+# Orchestrator
+def render_main_content(manager)      # Wires everything together
 ```
 
 **FilterManager** (`filters.py`):
@@ -384,7 +417,7 @@ st.success() + st.rerun()
 User clicks Visualization tab
     │
     ▼
-render_visualization() [app.py]
+render_visualization_tab() [ui/home.py]
     │
     ├─── FilterManager.filter_nodes/edges() [ui/filters.py]
     │
@@ -431,7 +464,7 @@ calculate_exposure() [services/exposure_calculator.py]
 ExposureResult dataclass
     │
     ▼
-render_exposure_dashboard() [app.py]
+render_exposure_dashboard() [ui/home.py]
 ```
 
 ### Scope Filtering Flow
@@ -440,7 +473,7 @@ render_exposure_dashboard() [app.py]
 User selects scope(s) in sidebar
     │
     ▼
-_render_scope_selector() [app.py]
+render_scope_selector() [ui/home.py]
     │
     ├─── SchemaLoader.load_schema() → schema.scopes
     ├─── Optional: "Show connected neighbors" toggle
@@ -463,8 +496,8 @@ get_graph_data(filters) [database/queries/analysis.py]
     └─── Filter edges: keep only if both endpoints in expanded set
     │
     ├──► Visualization shows scoped subgraph
-    ├──► _compute_stats_from_graph() → Scoped statistics dashboard
-    ├──► CRUD tabs filtered via _scoped_getter() wrappers
+    ├──► _compute_stats_from_graph() [ui/home.py] → Scoped statistics dashboard
+    ├──► CRUD tabs filtered via _scoped_getter() wrappers [ui/home.py]
     ├──► get_influence_analysis(scope_node_ids) → Scoped influence analysis
     ├──► get_mitigation_analysis(scope_node_ids) → Scoped mitigation analysis
     └──► calculate_exposure(scope_node_ids, include_neighbors) → Scoped exposure
@@ -596,12 +629,12 @@ pytest tests/test_exposure_calculator.py
 ```
 tests/
 ├── __init__.py
+├── conftest.py
+├── test_markdown_loader.py      # Docs file loading tests
 ├── test_exposure_calculator.py
 ├── test_influence_analysis.py
-├── test_filters.py
 ├── test_scopes.py              # Scope feature: 26 tests
-└── fixtures/
-    └── sample_data.py
+└── ...
 ```
 
 ---
@@ -615,7 +648,7 @@ tests/
 3. Add methods to `RiskGraphManager`
 4. Create node style in `visualization/node_styles.py`
 5. Create tab in `ui/tabs/`
-6. Wire into `app.py`
+6. Wire into `ui/home.py` and `app.py`
 
 ### Adding a New Analysis
 
@@ -671,4 +704,4 @@ flake8>=6.0.0
 
 ---
 
-*Last updated: February 2026 | Version 2.6.0*
+*Last updated: February 2026 | Version 2.9.0*
