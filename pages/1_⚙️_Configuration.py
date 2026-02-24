@@ -38,24 +38,13 @@ from utils.db_manager import get_active_manager, init_connection_state
 
 
 def init_session_state():
-    """Initialize Streamlit session state variables."""
-    # Use shared connection state
-    init_connection_state()
+    """Initialize Streamlit session state variables.
 
-    if "config_connection" not in st.session_state:
-        st.session_state.config_connection = None
-    if "config_connected" not in st.session_state:
-        st.session_state.config_connected = False
-    if "active_schema_name" not in st.session_state:
-        st.session_state.active_schema_name = "default"
-    if "active_schema" not in st.session_state:
-        st.session_state.active_schema = None
-    if "schema_modified" not in st.session_state:
-        st.session_state.schema_modified = False
-    if "db_stats" not in st.session_state:
-        st.session_state.db_stats = None
-    if "health_report" not in st.session_state:
-        st.session_state.health_report = None
+    Delegates to the centralized state manager so that all key
+    definitions and default values live in one place.
+    """
+    from utils.state_manager import init_config_page_state
+    init_config_page_state()
 
 
 

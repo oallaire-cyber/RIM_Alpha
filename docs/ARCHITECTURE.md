@@ -63,6 +63,17 @@ config/
 └── schema_loader.py # YAML schema system (SchemaConfig, AnalysisScopeConfig, etc.)
 ```
 
+### `/utils` — Centralised Utilities
+
+```
+utils/
+├── __init__.py        # Re-exports helpers + state manager
+├── state_manager.py   # Centralized st.session_state key registries & init
+├── db_manager.py      # Shared singleton connection (st.cache_resource)
+├── helpers.py         # Formatting helpers
+└── markdown_loader.py # Cached docs/*.md file loader
+```
+
 **Key exports**:
 - `APP_TITLE`, `APP_ICON`, `LAYOUT_MODE`
 - `NEO4J_DEFAULT_URI`, `NEO4J_DEFAULT_USER`
@@ -507,32 +518,41 @@ get_graph_data(filters) [database/queries/analysis.py]
 
 ## Session State Management
 
-Streamlit session state is used for:
+All `st.session_state` keys are defined, defaulted, and initialised from
+a single module: **`utils/state_manager.py`**.
+
+### Key Registries
+
+| Registry | Keys | Used By |
+|----------|------|---------|
+| `CONNECTION_DEFAULTS` | `manager`, `connected` | All pages |
+| `CONNECTION_FORM_DEFAULTS` | `neo4j_uri`, `neo4j_user` | Home sidebar |
+| `HOME_UI_DEFAULTS` | `physics_enabled`, `color_by`, `capture_mode`, `influence_explorer_enabled`, `selected_node_id` | Home page |
+| `CONFIG_PAGE_DEFAULTS` | `config_connection`, `config_connected`, `active_schema_name`, `active_schema`, `schema_modified`, `db_stats`, `health_report` | Configuration page |
+| `ANALYSIS_CACHE_DEFAULTS` | `influence_analysis_cache`, `influence_analysis_timestamp`, `mitigation_analysis_cache`, `mitigation_analysis_timestamp`, `pending_explore_node` | Analysis panels |
+
+In addition, `filter_manager` (`FilterManager`) and `layout_manager`
+(`LayoutManager`) are instantiated lazily inside `init_home_state()`.
+
+### Init Functions
 
 ```python
-# Connection
-st.session_state.neo4j_connected: bool
-st.session_state.manager: RiskGraphManager
-
-# Filters
-st.session_state.filter_levels: List[str]
-st.session_state.filter_categories: List[str]
-st.session_state.filter_origins: List[str]
-st.session_state.show_tpos: bool
-st.session_state.show_mitigations: bool
-
-# Layout
-st.session_state.saved_layouts: Dict[str, dict]
-st.session_state.current_layout: str
-
-# Exposure
-st.session_state.exposure_result: dict
-st.session_state.exposure_calculated: bool
-
-# UI State
-st.session_state.selected_node: str
-st.session_state.graph_refresh_counter: int
+from utils.state_manager import (
+    init_connection_state,      # CONNECTION_DEFAULTS only
+    init_home_state,            # connection + form + ui + FilterManager/LayoutManager
+    init_config_page_state,     # connection + config page keys
+    init_analysis_cache_state,  # influence & mitigation panel caches
+    init_all,                   # everything (useful for tests)
+    get, set,                   # thin wrappers around st.session_state
+)
 ```
+
+Each consumer calls the narrowest init function it needs:
+
+- `app.py` → `init_home_state()` (via `ui.home.init_session_state()`)
+- `pages/1_⚙️_Configuration.py` → `init_config_page_state()`
+- `ui/panels/influence_panel.py` → `init_analysis_cache_state()`
+- `ui/panels/mitigation_panel.py` → `init_analysis_cache_state()`
 
 ---
 
@@ -704,4 +724,4 @@ flake8>=6.0.0
 
 ---
 
-*Last updated: February 2026 | Version 2.9.0*
+*Last updated: February 2026 | Version 2.10.0*

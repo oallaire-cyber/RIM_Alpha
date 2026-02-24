@@ -13,7 +13,7 @@ from core import get_registry
 from config import APP_TITLE, APP_ICON, RISK_LEVEL_CONFIG
 from config import NEO4J_DEFAULT_URI, NEO4J_DEFAULT_USER, NEO4J_DEFAULT_PASSWORD
 from config.schema_loader import SchemaLoader
-from utils.db_manager import init_connection_state
+from utils.state_manager import init_home_state
 from utils.markdown_loader import load_doc
 
 # Database
@@ -105,24 +105,12 @@ def _compute_stats_from_graph(nodes, edges):
 
 
 def init_session_state():
-    """Initialize Streamlit session state variables."""
-    # Use shared init
-    init_connection_state()
-    
-    if "filter_manager" not in st.session_state:
-        st.session_state.filter_manager = FilterManager()
-    if "layout_manager" not in st.session_state:
-        st.session_state.layout_manager = LayoutManager()
-    if "physics_enabled" not in st.session_state:
-        st.session_state.physics_enabled = True
-    if "color_by" not in st.session_state:
-        st.session_state.color_by = "level"
-    if "capture_mode" not in st.session_state:
-        st.session_state.capture_mode = False
-    if "influence_explorer_enabled" not in st.session_state:
-        st.session_state.influence_explorer_enabled = False
-    if "selected_node_id" not in st.session_state:
-        st.session_state.selected_node_id = None
+    """Initialize Streamlit session state variables.
+
+    Delegates to the centralized state manager so that all key
+    definitions and default values live in one place.
+    """
+    init_home_state()
 
 
 def render_help_section():
@@ -143,11 +131,7 @@ def render_connection_sidebar():
     """Render the Neo4j connection sidebar."""
     st.sidebar.markdown("## 🔌 Neo4j Connection")
     
-    # Use session state for connection details to persist across pages
-    if "neo4j_uri" not in st.session_state:
-        st.session_state.neo4j_uri = NEO4J_DEFAULT_URI
-    if "neo4j_user" not in st.session_state:
-        st.session_state.neo4j_user = NEO4J_DEFAULT_USER
+    # Connection form defaults are now handled by state_manager.init_home_state()
     
     with st.sidebar.expander("Connection Settings", expanded=not st.session_state.connected):
         uri = st.text_input("URI", value=st.session_state.neo4j_uri, key="input_neo4j_uri")
@@ -402,32 +386,38 @@ def render_visualization_filters(manager: RiskGraphManager):
                     filter_mgr.apply_preset(preset.key)
                     st.rerun()
     
+
     # ==========================================================
-    # CORE NODES & EDGES
+    # CORE NODES & EDGES  (kernel: risk + mitigation + their relationships)
     # ==========================================================
     st.markdown("#### 🔷 Core Nodes & Edges")
-    
-    # Core entity filters: risk and mitigation
-    for entity_id in ["risk", "mitigation"]:
-        entity_type = registry.entity_types.get(entity_id)
-        if not entity_type:
-            continue
-        with st.expander(f"{entity_type.emoji} {entity_type.label} Filters", expanded=(entity_id == "risk")):
-            # Enable/Disable toggle
+
+    def _render_entity_filter(entity_id, entity_type, expanded=False):
+        """Render filter controls for a single entity type."""
+        with st.expander(f"{entity_type.emoji} {entity_type.label} Filters", expanded=expanded):
             is_enabled = st.checkbox(
                 f"Show {entity_type.label}s",
                 value=filter_mgr.filters["entities"].get(entity_id, {}).get("enabled", True),
                 key=f"enabled_{entity_id}"
             )
             filter_mgr.set_entity_enabled(entity_id, is_enabled)
-            
+
             if is_enabled:
-                # Add filters for categorical groups (levels, categories, statuses, origins, etc.)
                 for group_name, group_items in entity_type.categorical_groups.items():
                     if group_items:
                         choices = [item.get("label", item.get("id", "")) for item in group_items]
                         if choices:
-                            st.markdown(f"**{group_name.replace('_', ' ').title()}**")
+                            col_label, col_all, col_none = st.columns([3, 1, 1])
+                            with col_label:
+                                st.markdown(f"**{group_name.replace('_', ' ').title()}**")
+                            with col_all:
+                                if st.button("All", key=f"all_{entity_id}_{group_name}", use_container_width=True):
+                                    filter_mgr.set_entity_attribute_filter(entity_id, group_name, choices)
+                                    st.rerun()
+                            with col_none:
+                                if st.button("None", key=f"none_{entity_id}_{group_name}", use_container_width=True):
+                                    filter_mgr.set_entity_attribute_filter(entity_id, group_name, [])
+                                    st.rerun()
                             current_selection = filter_mgr.filters["entities"][entity_id]["attributes"].get(group_name, choices)
                             selected = st.multiselect(
                                 group_name.replace('_', ' ').title(),
@@ -437,9 +427,9 @@ def render_visualization_filters(manager: RiskGraphManager):
                                 label_visibility="collapsed"
                             )
                             filter_mgr.set_entity_attribute_filter(entity_id, group_name, selected)
-            
-                # Special case: Exposure threshold for risks
-                if entity_id == "risk":
+
+                # Exposure threshold slider -- only for the risk kernel entity
+                if entity_type.is_risk_type:
                     st.markdown("**Exposure Threshold**")
                     exposure_threshold = st.slider(
                         "Min Exposure",
@@ -451,12 +441,9 @@ def render_visualization_filters(manager: RiskGraphManager):
                         help="Show only risks with exposure >= this value"
                     )
                     st.session_state.exposure_threshold = exposure_threshold
-    
-    # Core relationship filters: influences and mitigates
-    for rel_id in ["influences", "mitigates"]:
-        rel_type = registry.relationship_types.get(rel_id)
-        if not rel_type:
-            continue
+
+    def _render_relationship_filter(rel_id, rel_type):
+        """Render filter controls for a single relationship type."""
         with st.expander(f"🔗 {rel_type.label} Filters", expanded=False):
             is_enabled = st.checkbox(
                 f"Show {rel_type.label}",
@@ -464,13 +451,23 @@ def render_visualization_filters(manager: RiskGraphManager):
                 key=f"enabled_rel_{rel_id}"
             )
             filter_mgr.set_relationship_enabled(rel_id, is_enabled)
-            
+
             if is_enabled:
                 for group_name, group_items in rel_type.categorical_groups.items():
                     if group_items:
                         choices = [item.get("label", item.get("id", "")) for item in group_items]
                         if choices:
-                            st.markdown(f"**{group_name.replace('_', ' ').title()}**")
+                            col_label, col_all, col_none = st.columns([3, 1, 1])
+                            with col_label:
+                                st.markdown(f"**{group_name.replace('_', ' ').title()}**")
+                            with col_all:
+                                if st.button("All", key=f"all_rel_{rel_id}_{group_name}", use_container_width=True):
+                                    filter_mgr.set_relationship_attribute_filter(rel_id, group_name, choices)
+                                    st.rerun()
+                            with col_none:
+                                if st.button("None", key=f"none_rel_{rel_id}_{group_name}", use_container_width=True):
+                                    filter_mgr.set_relationship_attribute_filter(rel_id, group_name, [])
+                                    st.rerun()
                             current_selection = filter_mgr.filters["relationships"][rel_id]["attributes"].get(group_name, choices)
                             selected = st.multiselect(
                                 group_name.replace('_', ' ').title(),
@@ -480,71 +477,45 @@ def render_visualization_filters(manager: RiskGraphManager):
                                 label_visibility="collapsed"
                             )
                             filter_mgr.set_relationship_attribute_filter(rel_id, group_name, selected)
-    
+
+    # Kernel entity types: risk (expanded by default) then mitigation
+    risk_type = registry.get_risk_type()
+    mit_type = registry.get_mitigation_type()
+    if risk_type:
+        _render_entity_filter(risk_type.id, risk_type, expanded=True)
+    if mit_type:
+        _render_entity_filter(mit_type.id, mit_type, expanded=False)
+
+    # Kernel relationship types: influences, mitigates
+    inf_type = registry.get_influence_type()
+    mit_rel_type = registry.get_mitigates_type()
+    if inf_type:
+        _render_relationship_filter(inf_type.id, inf_type)
+    if mit_rel_type:
+        _render_relationship_filter(mit_rel_type.id, mit_rel_type)
+
     st.markdown("---")
-    
+
     # ==========================================================
-    # TPO & RELATED
+    # ADDITIONAL ENTITY TYPES & THEIR RELATIONSHIPS
+    # (dynamically discovered -- includes TPO and any custom entities)
     # ==========================================================
-    st.markdown("#### 🏆 TPO & Related")
-    
-    # TPO entity filter
-    for entity_id in ["tpo"]:
-        entity_type = registry.entity_types.get(entity_id)
-        if not entity_type:
-            continue
-        with st.expander(f"{entity_type.emoji} {entity_type.label} Filters", expanded=False):
-            is_enabled = st.checkbox(
-                f"Show {entity_type.label}s",
-                value=filter_mgr.filters["entities"].get(entity_id, {}).get("enabled", True),
-                key=f"enabled_{entity_id}"
-            )
-            filter_mgr.set_entity_enabled(entity_id, is_enabled)
-            
-            if is_enabled:
-                for group_name, group_items in entity_type.categorical_groups.items():
-                    if group_items:
-                        choices = [item.get("label", item.get("id", "")) for item in group_items]
-                        if choices:
-                            st.markdown(f"**{group_name.replace('_', ' ').title()}**")
-                            current_selection = filter_mgr.filters["entities"][entity_id]["attributes"].get(group_name, choices)
-                            selected = st.multiselect(
-                                group_name.replace('_', ' ').title(),
-                                choices,
-                                default=current_selection if isinstance(current_selection, list) else choices,
-                                key=f"filter_{entity_id}_{group_name}",
-                                label_visibility="collapsed"
-                            )
-                            filter_mgr.set_entity_attribute_filter(entity_id, group_name, selected)
-    
-    # TPO-related relationship filters: impacts_tpo
-    for rel_id in ["impacts_tpo"]:
-        rel_type = registry.relationship_types.get(rel_id)
-        if not rel_type:
-            continue
-        with st.expander(f"🔗 {rel_type.label} Filters", expanded=False):
-            is_enabled = st.checkbox(
-                f"Show {rel_type.label}",
-                value=filter_mgr.filters["relationships"].get(rel_id, {}).get("enabled", True),
-                key=f"enabled_rel_{rel_id}"
-            )
-            filter_mgr.set_relationship_enabled(rel_id, is_enabled)
-            
-            if is_enabled:
-                for group_name, group_items in rel_type.categorical_groups.items():
-                    if group_items:
-                        choices = [item.get("label", item.get("id", "")) for item in group_items]
-                        if choices:
-                            st.markdown(f"**{group_name.replace('_', ' ').title()}**")
-                            current_selection = filter_mgr.filters["relationships"][rel_id]["attributes"].get(group_name, choices)
-                            selected = st.multiselect(
-                                group_name.replace('_', ' ').title(),
-                                choices,
-                                default=current_selection if isinstance(current_selection, list) else choices,
-                                key=f"filter_rel_{rel_id}_{group_name}",
-                                label_visibility="collapsed"
-                            )
-                            filter_mgr.set_relationship_attribute_filter(rel_id, group_name, selected)
+    additional_entities = registry.get_additional_entity_types()
+    additional_rels = registry.get_additional_relationship_types()
+
+    if additional_entities or additional_rels:
+        # Group header -- use first entity's emoji/label if available
+        first_add = next(iter(additional_entities.values()), None)
+        header_emoji = first_add.emoji if first_add else "🏆"
+        st.markdown(f"#### {header_emoji} Additional Entities & Relationships")
+
+        for entity_id, entity_type in additional_entities.items():
+            _render_entity_filter(entity_id, entity_type, expanded=False)
+
+        for rel_id, rel_type in additional_rels.items():
+            _render_relationship_filter(rel_id, rel_type)
+
+        st.markdown("---")
 
     # Color mode
     with st.expander("🎨 Display Options", expanded=False):
@@ -556,7 +527,7 @@ def render_visualization_filters(manager: RiskGraphManager):
             key="color_by_radio"
         )
         st.session_state.color_by = color_by
-    
+
     return filter_mgr
 
 

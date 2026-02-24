@@ -32,10 +32,9 @@ def render_influence_analysis_panel(
     """
     import streamlit as st
     
-    # Initialize cache
-    if "influence_analysis_cache" not in st.session_state:
-        st.session_state.influence_analysis_cache = None
-        st.session_state.influence_analysis_timestamp = None
+    # Initialize cache via centralized state manager
+    from utils.state_manager import init_analysis_cache_state
+    init_analysis_cache_state()
     
     # Handle pending node selection
     if "pending_explore_node" in st.session_state and st.session_state.pending_explore_node:

@@ -4,6 +4,41 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.10.0] - 2026-02-24
+
+### U3 — Centralized State Management
+
+**Refactoring:**
+
+- **New `utils/state_manager.py` module** — single source of truth for all `st.session_state` key definitions, default values, and initialization
+  - Five domain registries: `CONNECTION_DEFAULTS`, `CONNECTION_FORM_DEFAULTS`, `HOME_UI_DEFAULTS`, `CONFIG_PAGE_DEFAULTS`, `ANALYSIS_CACHE_DEFAULTS`
+  - Domain-specific init functions: `init_connection_state()`, `init_home_state()`, `init_config_page_state()`, `init_analysis_cache_state()`, `init_all()`
+  - Generic `init_defaults(dict)` initializer (set-if-absent semantics)
+  - Thin `get()` / `set()` wrappers around `st.session_state` for future extensibility
+
+- **Removed scattered state initialization** — three separate `init_*` functions and ad-hoc `if key not in st.session_state` checks consolidated
+  - `utils/db_manager.py` — removed local `init_connection_state()`, re-exports from `state_manager`
+  - `ui/home.py` — `init_session_state()` now delegates to `state_manager.init_home_state()`; ad-hoc `neo4j_uri`/`neo4j_user` init removed
+  - `pages/1_⚙️_Configuration.py` — `init_session_state()` now delegates to `state_manager.init_config_page_state()`
+  - `ui/panels/influence_panel.py` — ad-hoc cache init replaced with `init_analysis_cache_state()`
+  - `ui/panels/mitigation_panel.py` — ad-hoc cache init replaced with `init_analysis_cache_state()`
+
+- **`utils/__init__.py`** — added `state_manager` exports to public API
+
+**Files Added:**
+- `utils/state_manager.py` — Centralized state key registries and init functions
+- `tests/test_state_manager.py` — 14 unit tests covering all init functions, get/set wrappers, and idempotency
+
+**Files Modified:**
+- `utils/db_manager.py` — Removed local `init_connection_state()`
+- `utils/__init__.py` — Added state manager exports
+- `ui/home.py` — Simplified `init_session_state()` + removed ad-hoc init
+- `pages/1_⚙️_Configuration.py` — Simplified `init_session_state()`
+- `ui/panels/influence_panel.py` — Uses `init_analysis_cache_state()`
+- `ui/panels/mitigation_panel.py` — Uses `init_analysis_cache_state()`
+
+---
+
 ## [v2.9.0] - 2026-02-23
 
 ### U1 & U2 — Externalize Static Content + Decouple Entry Point

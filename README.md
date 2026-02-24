@@ -130,6 +130,7 @@ rim/
 │   ├── 1_⚙️_Configuration.py # Schema and data management
 │   └── 2_🎲_Simulation.py    # Monte Carlo calibration
 ├── utils/                    # Helper functions
+│   ├── state_manager.py      # Centralized session state management
 │   ├── db_manager.py         # Shared singleton connection
 │   └── markdown_loader.py    # Cached docs/*.md file loader
 ├── docs/                     # Documentation (loaded at runtime for help section)
@@ -163,6 +164,7 @@ python -m pytest tests/test_risk.py -v
 | `models/tpo.py` | `test_tpo.py` | ✓ Complete |
 | `models/relationships.py` | `test_relationships.py` | ✓ Complete |
 | `utils/helpers.py` | `test_helpers.py` | ✓ Complete |
+| `utils/state_manager.py` | `test_state_manager.py` | ✓ Complete |
 | `services/exposure_calculator.py` | `test_exposure_calculator.py` | Partial |
 | `services/influence_analysis.py` | `test_influence_analysis.py` | Partial |
 | `services/mitigation_analysis.py` | `test_mitigation_analysis.py` | Partial |
@@ -240,4 +242,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.9.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.10.0 | See [CHANGELOG.md](CHANGELOG.md) for history
