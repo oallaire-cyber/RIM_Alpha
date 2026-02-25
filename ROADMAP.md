@@ -183,7 +183,8 @@ relationship_types:
 - **F4. One-Click Visualization Export**: Export the active styled graph view to PNG or PDF.
 - **F5. Automated Risk Threshold Alerts**: Visual flags when computed exposure exceeds predefined thresholds. Must be scope-aware.
 - **F6. Mitigation Exposure View (Business Focus)**: Dedicated view showing mitigations contributing to exposure reduction for selected Business Risks, filterable by lifecycle status. Must be scope-aware.
-- **F12. Generic ContextNode CRUD UI**: A single schema-driven form rendering create/edit/delete for any `context_node` type defined in the YAML. Field types, labels, enums, units, and required markers driven entirely by property definitions. No type-specific code. Must be scope-aware — new ContextNodes created while a scope is active are offered registration into that scope.
+- **F12. Generic Context Node and Context Edge CRUD UI**: A schema-driven UI to manage custom context nodes and context edges in the main app exactly how risks and influences are managed. Field types, labels, enums, units, and required markers driven entirely by property definitions. No type-specific code. Must be scope-aware — new ContextNodes/Edges created while a scope is active are offered registration into that scope.
+- **F18. Extend Data Management for Context Data**: Extend the existing Excel import/export and JSON backup/restore capabilities in the main app to fully handle ContextNode and ContextEdge data alongside core entities.
 - **F13. Zone-Aware 4-Layer Visual Layout**: Extend the layout engine with a zone-aware hierarchical mode positioning nodes across four visual bands: `[Lower Context Zone] → [Operational Risks] → [Business Risks] → [Upper Context Zone]`. Y-axis position within risk bands is determined by computed level (U7). Togglable alongside existing layout options.
 
 ### Complex Workload
@@ -369,7 +370,8 @@ _Goal: Establish the generic ContextNode architecture, computed level logic, rel
 _Goal: Expose ContextNode infrastructure through working UI. Introduce zone-aware visualization. Solidify the data pipeline with Pydantic._
 
 1. **[U4]** Pydantic Data Validation — schemas for both risk nodes and generic ContextNodes (type enforcement from YAML property definitions).
-2. **[F12]** Generic ContextNode CRUD UI — scope-aware single form component for all context node types.
+2. **[F12]** Generic Context Node and Context Edge CRUD UI — scope-aware single form component to manage custom nodes and edges.
+3. **[F18]** Extend Data Management — update Excel import/export and JSON backup/restore to handle ContextData.
 3. **[F13]** Zone-Aware 4-Layer Visual Layout — zone-anchored hierarchical layout mode.
 4. **[F4]** One-Click Visualization Export.
 5. **[F5]** Automated Risk Threshold Alerts (scope-aware).
@@ -430,10 +432,11 @@ _Goal: Elevate scopes to first-class SubGraphs. Enable external graph import. Ad
 ## 6. Feature Dependency Map
 
 ```
-U6 (ContextNode arch) ──► F12 (Generic CRUD UI)
-                      ──► F13 (Zone layout)
-                      ──► F8  (SPICE Manager — scenario is a ContextNode)
-                      ──► F17 (Import Adapters — imported nodes are ContextNodes)
+                       ──► F12 (Generic CRUD UI for Nodes & Edges)
+                       ──► F18 (Data Management extensions)
+                       ──► F13 (Zone layout)
+                       ──► F8  (SPICE Manager — scenario is a ContextNode)
+                       ──► F17 (Import Adapters — imported nodes are ContextNodes)
 
 U7 (Computed levels)  ──► F13 (Zone layout — Y-axis positioning within risk bands)
 
