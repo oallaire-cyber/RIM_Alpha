@@ -57,6 +57,10 @@ class EntityTypeDefinition:
     # Kernel flags
     is_risk_type: bool = False
     is_mitigation_type: bool = False
+    is_context_node: bool = False
+    
+    # ContextNode zone ("upper" or "lower", empty for kernel entities)
+    zone: str = ""
     
     # Internal validator (set in __post_init__)
     _validator: Optional[AttributeValidator] = field(default=None, repr=False)
@@ -126,6 +130,73 @@ class EntityTypeDefinition:
     def get_engine_required_attributes(self) -> List[AttributeDefinition]:
         """Get attributes required by the analysis engine."""
         return [a for a in self.attributes if a.engine_required]
+    
+    @classmethod
+    def from_context_node_schema(
+        cls, node_type_id: str, data: Dict[str, Any]
+    ) -> "EntityTypeDefinition":
+        """
+        Create from a context_nodes entry in schema YAML.
+        
+        All context nodes share the unified 'ContextNode' Neo4j label.
+        Reserved base properties (source, import_adapter) are prepended.
+        
+        Args:
+            node_type_id: The node type identifier (e.g., 'business_perimeter')
+            data: YAML data for the node type
+            
+        Returns:
+            EntityTypeDefinition configured as a ContextNode
+        """
+        # Reserved base properties for all ContextNodes
+        base_attrs = [
+            AttributeDefinition(
+                name="node_type",
+                type="string",
+                required=True,
+                default=node_type_id,
+                description="Context node type identifier",
+            ),
+            AttributeDefinition(
+                name="source",
+                type="string",
+                required=False,
+                default="manual",
+                description="Data source (manual, import, api)",
+            ),
+            AttributeDefinition(
+                name="import_adapter",
+                type="string",
+                required=False,
+                default="",
+                description="Import adapter identifier",
+            ),
+        ]
+        
+        # Parse user-defined properties
+        user_attrs = []
+        for prop in data.get("properties", []):
+            user_attrs.append(AttributeDefinition(
+                name=prop.get("name", ""),
+                type=prop.get("type", "string"),
+                required=prop.get("required", False),
+                default=prop.get("default"),
+                description=prop.get("description", ""),
+            ))
+        
+        return cls(
+            id=node_type_id,
+            label=data.get("label", node_type_id),
+            neo4j_label="ContextNode",
+            description=data.get("description", ""),
+            color=data.get("color", "#808080"),
+            shape=data.get("shape", "box"),
+            emoji=data.get("emoji", "📦"),
+            size=data.get("size", 30),
+            attributes=base_attrs + user_attrs,
+            is_context_node=True,
+            zone=data.get("zone", "lower"),
+        )
     
     @classmethod
     def from_risk_schema(cls, data: Dict[str, Any]) -> "EntityTypeDefinition":

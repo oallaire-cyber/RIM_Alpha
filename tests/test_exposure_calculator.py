@@ -5,6 +5,7 @@ Tests the ExposureCalculator service and related data classes.
 """
 
 import pytest
+from datetime import datetime
 from services.exposure_calculator import (
     ExposureCalculator,
     RiskExposureResult,
@@ -20,7 +21,7 @@ class TestRiskExposureResult:
         result = RiskExposureResult(
             risk_id="risk-001",
             risk_name="Test Risk",
-            level="Strategic",
+            level="Business",
             likelihood=5.0,
             impact=8.0,
             base_exposure=40.0,
@@ -42,7 +43,7 @@ class TestRiskExposureResult:
         result = RiskExposureResult(
             risk_id="risk-001",
             risk_name="Test Risk",
-            level="Strategic",
+            level="Business",
             likelihood=5.0,
             impact=8.0,
             base_exposure=40.0,
@@ -78,6 +79,8 @@ class TestGlobalExposureResult:
             total_final_exposure=91.0,
             total_risks=5,
             risks_with_data=4,
+            strategic_exposure=120.0,
+            operational_exposure=80.0,
             mitigated_risks_count=3,
             unmitigated_risks_count=2,
             calculated_at="2025-01-15T10:00:00",
@@ -99,9 +102,11 @@ class TestGlobalExposureResult:
             total_final_exposure=91.0,
             total_risks=5,
             risks_with_data=4,
+            strategic_exposure=120.0,
+            operational_exposure=80.0,
             mitigated_risks_count=3,
             unmitigated_risks_count=2,
-            calculated_at="2025-01-15T10:00:00",
+            calculated_at=datetime(2025, 1, 15, 10, 0, 0),
             risk_results=[],
         )
         
@@ -122,6 +127,8 @@ class TestGlobalExposureResult:
             total_final_exposure=10.0,
             total_risks=1,
             risks_with_data=1,
+            strategic_exposure=10.0,
+            operational_exposure=0.0,
             mitigated_risks_count=1,
             unmitigated_risks_count=0,
             calculated_at="",
@@ -143,6 +150,8 @@ class TestGlobalExposureResult:
             total_final_exposure=90.0,
             total_risks=1,
             risks_with_data=1,
+            strategic_exposure=90.0,
+            operational_exposure=0.0,
             mitigated_risks_count=0,
             unmitigated_risks_count=1,
             calculated_at="",

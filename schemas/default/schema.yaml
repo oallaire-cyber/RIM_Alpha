@@ -190,6 +190,132 @@ entities:
       default: null
       description: Source entity for inherited mitigations
     custom_attributes: []
+context_nodes:
+  business_perimeter:
+    label: Business Perimeter
+    shape: box
+    color: '#8E44AD'
+    emoji: "\U0001F3E2"
+    size: 35
+    zone: upper
+    border: double
+    properties:
+    - name: name
+      type: string
+      required: true
+      default: null
+      description: Business unit or perimeter name
+    - name: ebit_absolute
+      type: float
+      required: true
+      default: null
+      description: EBIT absolute value in EUR
+    - name: ebit_margin
+      type: float
+      required: false
+      default: null
+      description: EBIT margin percentage
+    - name: fcf_annual
+      type: float
+      required: false
+      default: null
+      description: Free cash flow annual in EUR
+    - name: p_and_l_owner
+      type: string
+      required: false
+      default: null
+      description: P&L responsible owner
+  scenario:
+    label: Scenario
+    shape: hexagon
+    color: '#F39C12'
+    emoji: "\U0001F3B2"
+    size: 35
+    zone: upper
+    border: solid
+    properties:
+    - name: name
+      type: string
+      required: true
+      default: null
+      description: Scenario name
+    - name: annual_probability
+      type: float
+      required: true
+      default: null
+      description: Annual occurrence probability
+    - name: ebit_impact_expected
+      type: float
+      required: true
+      default: null
+      description: Expected EBIT impact in EUR
+    - name: recovery_days
+      type: int
+      required: false
+      default: null
+      description: Estimated recovery time in days
+  entry_point:
+    label: Entry Point
+    shape: box
+    color: '#E67E22'
+    emoji: "\U0001F6AA"
+    size: 30
+    zone: lower
+    border: solid
+    properties:
+    - name: name
+      type: string
+      required: true
+      default: null
+      description: Entry point name
+    - name: exploitability
+      type: int
+      required: false
+      default: null
+      description: Exploitability score (1-10)
+  attacker:
+    label: Attacker
+    shape: box
+    color: '#922B21'
+    emoji: "\U0001F464"
+    size: 30
+    zone: lower
+    border: solid
+    properties:
+    - name: name
+      type: string
+      required: true
+      default: null
+      description: Attacker profile name
+    - name: capability_level
+      type: int
+      required: false
+      default: null
+      description: Capability level (1-10)
+context_edges:
+  exploits:
+    label: Exploits
+    neo4j_type: EXPLOITS
+    from_node: attacker
+    to_node: entry_point
+    color: '#C0392B'
+    line_style: dashed
+    bidirectional: false
+    properties:
+    - name: success_probability
+      type: float
+      required: false
+      default: null
+      description: Attack success probability
+  exposes:
+    label: Exposes
+    neo4j_type: EXPOSES
+    from_node: entry_point
+    to_node: scenario
+    color: '#E67E22'
+    line_style: solid
+    bidirectional: false
+    properties: []
 relationships:
   influences:
     neo4j_type: INFLUENCES

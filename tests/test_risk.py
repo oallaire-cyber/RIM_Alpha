@@ -14,11 +14,11 @@ class TestRiskCreation:
     
     def test_create_risk_with_required_fields(self):
         """Test creating a risk with only required fields."""
-        risk = Risk(id="test-001", name="Test Risk", level=RiskLevel.STRATEGIC)
+        risk = Risk(id="test-001", name="Test Risk", level=RiskLevel.BUSINESS)
         
         assert risk.id == "test-001"
         assert risk.name == "Test Risk"
-        assert risk.level == RiskLevel.STRATEGIC
+        assert risk.level == RiskLevel.BUSINESS
     
     def test_create_risk_with_all_fields(self, sample_risk_data):
         """Test creating a risk with all fields."""
@@ -26,7 +26,7 @@ class TestRiskCreation:
         
         assert risk.id == sample_risk_data["id"]
         assert risk.name == sample_risk_data["name"]
-        assert risk.level == RiskLevel.STRATEGIC
+        assert risk.level == RiskLevel.BUSINESS
         assert risk.status == RiskStatus.ACTIVE
         assert risk.origin == RiskOrigin.NEW
     
@@ -48,17 +48,17 @@ class TestRiskPostInit:
     
     def test_string_level_conversion(self):
         """Test that string level is converted to enum."""
-        risk = Risk(id="test-001", name="Test Risk", level="Strategic")
-        assert risk.level == RiskLevel.STRATEGIC
+        risk = Risk(id="test-001", name="Test Risk", level="Business")
+        assert risk.level == RiskLevel.BUSINESS
     
     def test_string_status_conversion(self):
         """Test that string status is converted to enum."""
-        risk = Risk(id="test-001", name="Test Risk", level="Strategic", status="Contingent")
+        risk = Risk(id="test-001", name="Test Risk", level="Business", status="Contingent")
         assert risk.status == RiskStatus.CONTINGENT
     
     def test_string_origin_conversion(self):
         """Test that string origin is converted to enum."""
-        risk = Risk(id="test-001", name="Test Risk", level="Strategic", origin="Legacy")
+        risk = Risk(id="test-001", name="Test Risk", level="Business", origin="Legacy")
         assert risk.origin == RiskOrigin.LEGACY
     
     def test_exposure_calculation(self):
@@ -66,7 +66,7 @@ class TestRiskPostInit:
         risk = Risk(
             id="test-001",
             name="Test Risk",
-            level=RiskLevel.STRATEGIC,
+            level=RiskLevel.BUSINESS,
             probability=5.0,
             impact=8.0
         )
@@ -77,7 +77,7 @@ class TestRiskPostInit:
         risk = Risk(
             id="test-001",
             name="Test Risk",
-            level=RiskLevel.STRATEGIC,
+            level=RiskLevel.BUSINESS,
             probability=5.0,
             impact=8.0,
             exposure=50.0  # Different from calculated
@@ -89,17 +89,17 @@ class TestRiskPostInit:
 class TestRiskProperties:
     """Tests for Risk property methods."""
     
-    def test_is_strategic(self):
-        """Test is_strategic property."""
-        strategic = Risk(id="1", name="R", level=RiskLevel.STRATEGIC)
+    def test_is_business(self):
+        """Test is_business property."""
+        business = Risk(id="1", name="R", level=RiskLevel.BUSINESS)
         operational = Risk(id="2", name="R", level=RiskLevel.OPERATIONAL)
         
-        assert strategic.is_strategic is True
-        assert operational.is_strategic is False
+        assert business.is_business is True
+        assert operational.is_business is False
     
     def test_is_operational(self):
         """Test is_operational property."""
-        strategic = Risk(id="1", name="R", level=RiskLevel.STRATEGIC)
+        strategic = Risk(id="1", name="R", level=RiskLevel.BUSINESS)
         operational = Risk(id="2", name="R", level=RiskLevel.OPERATIONAL)
         
         assert strategic.is_operational is False
@@ -107,38 +107,38 @@ class TestRiskProperties:
     
     def test_is_contingent(self):
         """Test is_contingent property."""
-        active = Risk(id="1", name="R", level=RiskLevel.STRATEGIC, status=RiskStatus.ACTIVE)
-        contingent = Risk(id="2", name="R", level=RiskLevel.STRATEGIC, status=RiskStatus.CONTINGENT)
+        active = Risk(id="1", name="R", level=RiskLevel.BUSINESS, status=RiskStatus.ACTIVE)
+        contingent = Risk(id="2", name="R", level=RiskLevel.BUSINESS, status=RiskStatus.CONTINGENT)
         
         assert active.is_contingent is False
         assert contingent.is_contingent is True
     
     def test_is_legacy(self):
         """Test is_legacy property."""
-        new = Risk(id="1", name="R", level=RiskLevel.STRATEGIC, origin=RiskOrigin.NEW)
-        legacy = Risk(id="2", name="R", level=RiskLevel.STRATEGIC, origin=RiskOrigin.LEGACY)
+        new = Risk(id="1", name="R", level=RiskLevel.BUSINESS, origin=RiskOrigin.NEW)
+        legacy = Risk(id="2", name="R", level=RiskLevel.BUSINESS, origin=RiskOrigin.LEGACY)
         
         assert new.is_legacy is False
         assert legacy.is_legacy is True
     
     def test_level_icon(self):
         """Test level_icon property returns emoji."""
-        risk = Risk(id="1", name="R", level=RiskLevel.STRATEGIC)
+        risk = Risk(id="1", name="R", level=RiskLevel.BUSINESS)
         assert risk.level_icon == "🟣"
     
     def test_origin_icon(self):
         """Test origin_icon property returns emoji."""
-        risk = Risk(id="1", name="R", level=RiskLevel.STRATEGIC, origin=RiskOrigin.LEGACY)
+        risk = Risk(id="1", name="R", level=RiskLevel.BUSINESS, origin=RiskOrigin.LEGACY)
         assert isinstance(risk.origin_icon, str)
     
     def test_display_name_new(self):
         """Test display_name for new risks."""
-        risk = Risk(id="1", name="Test Risk", level=RiskLevel.STRATEGIC, origin=RiskOrigin.NEW)
+        risk = Risk(id="1", name="Test Risk", level=RiskLevel.BUSINESS, origin=RiskOrigin.NEW)
         assert risk.display_name == "Test Risk"
     
     def test_display_name_legacy(self):
         """Test display_name for legacy risks has prefix."""
-        risk = Risk(id="1", name="Test Risk", level=RiskLevel.STRATEGIC, origin=RiskOrigin.LEGACY)
+        risk = Risk(id="1", name="Test Risk", level=RiskLevel.BUSINESS, origin=RiskOrigin.LEGACY)
         assert risk.display_name == "[L] Test Risk"
 
 
@@ -150,7 +150,7 @@ class TestRiskMethods:
         risk = Risk(
             id="test-001",
             name="Test Risk",
-            level=RiskLevel.STRATEGIC,
+            level=RiskLevel.BUSINESS,
             probability=6.0,
             impact=7.0
         )
@@ -163,7 +163,7 @@ class TestRiskMethods:
     
     def test_calculate_exposure_no_data(self):
         """Test calculate_exposure with missing data returns None."""
-        risk = Risk(id="1", name="R", level=RiskLevel.STRATEGIC)
+        risk = Risk(id="1", name="R", level=RiskLevel.BUSINESS)
         
         result = risk.calculate_exposure()
         
@@ -177,7 +177,7 @@ class TestRiskMethods:
         
         assert result["id"] == sample_risk_data["id"]
         assert result["name"] == sample_risk_data["name"]
-        assert result["level"] == "Strategic"  # String, not enum
+        assert result["level"] == "Business"  # String, not enum
         assert result["status"] == "Active"
         assert result["categories"] == sample_risk_data["categories"]
     
@@ -187,7 +187,7 @@ class TestRiskMethods:
         
         assert risk.id == sample_risk_data["id"]
         assert risk.name == sample_risk_data["name"]
-        assert risk.level == RiskLevel.STRATEGIC
+        assert risk.level == RiskLevel.BUSINESS
         assert risk.probability == sample_risk_data["probability"]
     
     def test_from_dict_with_defaults(self):
@@ -197,7 +197,7 @@ class TestRiskMethods:
         risk = Risk.from_dict(data)
         
         assert risk.id == "test-001"
-        assert risk.level == RiskLevel.STRATEGIC  # Default
+        assert risk.level == RiskLevel.BUSINESS  # Default
         assert risk.status == RiskStatus.ACTIVE  # Default
     
     def test_from_neo4j_record(self, sample_risk_data):

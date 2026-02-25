@@ -20,8 +20,8 @@ def sample_risk_data():
     """Sample risk data for testing."""
     return {
         "id": "risk-001",
-        "name": "Test Strategic Risk",
-        "level": "Strategic",
+        "name": "Test Business Risk",
+        "level": "Business",
         "origin": "New",
         "categories": ["Programme", "Produit"],
         "status": "Active",
@@ -87,7 +87,7 @@ def sample_influence_data():
         "id": "inf-001",
         "source_id": "risk-002",
         "target_id": "risk-001",
-        "type": "Level1_Op_to_Strat",
+        "type": "Level1_Op_to_Bus",
         "strength": "Strong",
         "confidence": 0.8,
         "description": "Test influence relationship",
@@ -137,8 +137,8 @@ def sample_risk_network():
     risks = [
         {
             "id": "strat-001",
-            "name": "Strategic Risk Alpha",
-            "level": "Strategic",
+            "name": "Business Risk Alpha",
+            "level": "Business",
             "origin": "New",
             "categories": ["Programme"],
             "status": "Active",
@@ -185,7 +185,7 @@ def sample_risk_network():
             "id": "inf-001",
             "source_id": "op-001",
             "target_id": "strat-001",
-            "type": "Level1_Op_to_Strat",
+            "type": "Level1_Op_to_Bus",
             "strength": "Strong",
             "confidence": 0.85,
         },
@@ -193,7 +193,7 @@ def sample_risk_network():
             "id": "inf-002",
             "source_id": "op-002",
             "target_id": "strat-001",
-            "type": "Level1_Op_to_Strat",
+            "type": "Level1_Op_to_Bus",
             "strength": "Moderate",
             "confidence": 0.7,
         },

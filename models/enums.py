@@ -34,12 +34,12 @@ class RiskLevel(str, Enum):
     @property
     def icon(self) -> str:
         """Return emoji icon for the level."""
-        return "🟣" if self == RiskLevel.STRATEGIC else "🔵"
+        return "🟣" if self == RiskLevel.BUSINESS else "🔵"
     
     @property
     def color(self) -> str:
         """Return color code for the level."""
-        return "#9b59b6" if self == RiskLevel.STRATEGIC else "#3498db"
+        return "#9b59b6" if self == RiskLevel.BUSINESS else "#3498db"
 
 
 class RiskStatus(str, Enum):
@@ -253,8 +253,8 @@ class InfluenceType(str, Enum):
     def icon(self) -> str:
         """Return emoji icon for the influence type."""
         icons = {
-            InfluenceType.LEVEL1_OP_TO_STRAT: "🔴",
-            InfluenceType.LEVEL2_STRAT_TO_STRAT: "🟣",
+            InfluenceType.LEVEL1_OP_TO_BUS: "🔴",
+            InfluenceType.LEVEL2_BUS_TO_BUS: "🟣",
             InfluenceType.LEVEL3_OP_TO_OP: "🔵",
             InfluenceType.UNKNOWN: "⚪"
         }
@@ -264,8 +264,8 @@ class InfluenceType(str, Enum):
     def color(self) -> str:
         """Return color code for the influence type."""
         colors = {
-            InfluenceType.LEVEL1_OP_TO_STRAT: "#e74c3c",
-            InfluenceType.LEVEL2_STRAT_TO_STRAT: "#9b59b6",
+            InfluenceType.LEVEL1_OP_TO_BUS: "#e74c3c",
+            InfluenceType.LEVEL2_BUS_TO_BUS: "#9b59b6",
             InfluenceType.LEVEL3_OP_TO_OP: "#3498db",
             InfluenceType.UNKNOWN: "#95a5a6"
         }
@@ -274,10 +274,10 @@ class InfluenceType(str, Enum):
     @classmethod
     def from_levels(cls, source_level: RiskLevel, target_level: RiskLevel) -> "InfluenceType":
         """Determine influence type based on source and target risk levels."""
-        if source_level == RiskLevel.OPERATIONAL and target_level == RiskLevel.STRATEGIC:
-            return cls.LEVEL1_OP_TO_STRAT
-        elif source_level == RiskLevel.STRATEGIC and target_level == RiskLevel.STRATEGIC:
-            return cls.LEVEL2_STRAT_TO_STRAT
+        if source_level == RiskLevel.OPERATIONAL and target_level == RiskLevel.BUSINESS:
+            return cls.LEVEL1_OP_TO_BUS
+        elif source_level == RiskLevel.BUSINESS and target_level == RiskLevel.BUSINESS:
+            return cls.LEVEL2_BUS_TO_BUS
         elif source_level == RiskLevel.OPERATIONAL and target_level == RiskLevel.OPERATIONAL:
             return cls.LEVEL3_OP_TO_OP
         else:

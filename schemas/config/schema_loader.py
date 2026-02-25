@@ -159,44 +159,68 @@ class MitigationEntityConfig:
 
 
 @dataclass
-class CustomEntityConfig:
+class ContextNodeConfig:
     """
-    User-defined entity type.
+    Context node type definition.
     
-    Allows users to add custom node types beyond Risk, TPO, Mitigation.
-    Examples: Asset, Threat Actor, Control Framework, Stakeholder.
+    Replaces legacy CustomEntityConfig. Represents any non-kernel node type
+    such as Business Perimeter, Scenario, Entry Point, Attacker, etc.
+    All context nodes use the unified 'ContextNode' Neo4j label with
+    node_type and zone as stored properties.
     """
     id: str
     label: str
-    neo4j_label: str
+    neo4j_label: str = "ContextNode"  # Always ContextNode
     description: str = ""
     color: str = "#808080"
     shape: str = "box"  # box, dot, diamond, hexagon, star, triangle
     emoji: str = "📦"
     size: int = 30
+    zone: str = "lower"  # "upper" or "lower"
+    border: str = "solid"  # solid, double, dashed
+    properties: List[AttributeConfig] = field(default_factory=list)
+    # Keep attributes alias for backward compatibility
     attributes: List[AttributeConfig] = field(default_factory=list)
-    custom_attributes: List[CustomAttributeConfig] = field(default_factory=list)
 
 
 @dataclass
-class CustomRelationshipConfig:
+class ContextEdgeConfig:
     """
-    User-defined relationship type.
+    Context edge type definition.
     
-    Allows users to add custom relationships beyond INFLUENCES, IMPACTS_TPO, MITIGATES.
-    Examples: OWNS, MANAGES, DEPENDS_ON, PROTECTS.
+    Replaces legacy CustomRelationshipConfig. Represents any non-kernel
+    relationship type such as EXPLOITS, EXPOSES, DEPENDS_ON, etc.
     """
     id: str
     label: str
-    neo4j_type: str
+    neo4j_type: str = ""
     description: str = ""
-    from_entity: str = ""  # Entity ID: "risk", "tpo", "mitigation", or custom entity id
-    to_entity: str = ""    # Entity ID
+    from_node: str = ""   # context node id or "risk"/"tpo"/"mitigation"
+    to_node: str = ""     # context node id or "risk"/"tpo"/"mitigation"
     color: str = "#808080"
     line_style: str = "solid"  # solid, dashed, dotted
     bidirectional: bool = False
+    properties: List[AttributeConfig] = field(default_factory=list)
+    # Keep attributes alias for backward compatibility
     attributes: List[AttributeConfig] = field(default_factory=list)
 
+
+@dataclass
+class AnalysisScopeConfig:
+    """
+    Analysis scope definition.
+    
+    Defines a named subset of nodes for focused analysis.
+    Scopes allow users to filter the graph and calculations
+    to a specific perimeter of interest.
+    """
+    id: str
+    name: str
+    description: str = ""
+    node_ids: List[str] = field(default_factory=list)
+    include_connected_edges: bool = True
+    show_boundary_edges: bool = False
+    color: str = "#808080"
 
 
 # =============================================================================
@@ -298,22 +322,25 @@ class SchemaConfig:
     tpo: TPOEntityConfig = field(default_factory=TPOEntityConfig)
     mitigation: MitigationEntityConfig = field(default_factory=MitigationEntityConfig)
     
-    # Custom Entities (user-defined node types)
-    custom_entities: List[CustomEntityConfig] = field(default_factory=list)
+    # Context Nodes (replaces legacy custom_entities)
+    context_nodes: List[ContextNodeConfig] = field(default_factory=list)
     
     # Core Relationships
     influences: InfluenceRelConfig = field(default_factory=InfluenceRelConfig)
     impacts_tpo: TPOImpactRelConfig = field(default_factory=TPOImpactRelConfig)
     mitigates: MitigatesRelConfig = field(default_factory=MitigatesRelConfig)
     
-    # Custom Relationships (user-defined relationship types)
-    custom_relationships: List[CustomRelationshipConfig] = field(default_factory=list)
+    # Context Edges (replaces legacy custom_relationships)
+    context_edges: List[ContextEdgeConfig] = field(default_factory=list)
     
     # Analysis
     analysis: AnalysisConfig = field(default_factory=AnalysisConfig)
     
     # UI
     ui: UIConfig = field(default_factory=UIConfig)
+    
+    # Analysis Scopes
+    scopes: List[AnalysisScopeConfig] = field(default_factory=list)
 
     # Helper properties for backward compatibility
     @property
@@ -466,9 +493,16 @@ class SchemaLoader:
         schema.tpo = self._parse_tpo_entity(entities.get("tpo", {}))
         schema.mitigation = self._parse_mitigation_entity(entities.get("mitigation", {}))
         
-        # Parse custom entities
-        for entity_data in entities.get("custom_entities", []):
-            schema.custom_entities.append(self._parse_custom_entity(entity_data))
+        # Parse context nodes (top-level map format)
+        context_nodes_data = data.get("context_nodes", {})
+        for node_id, node_data in context_nodes_data.items():
+            node_data_with_id = {**node_data, "id": node_id}
+            schema.context_nodes.append(self._parse_context_node(node_data_with_id))
+        
+        # Backward compat: parse legacy custom_entities list format
+        if not schema.context_nodes:
+            for entity_data in entities.get("custom_entities", []):
+                schema.context_nodes.append(self._parse_context_node(entity_data))
         
         # Parse core relationships
         relationships = data.get("relationships", {})
@@ -476,15 +510,25 @@ class SchemaLoader:
         schema.impacts_tpo = self._parse_impacts_tpo_rel(relationships.get("impacts_tpo", {}))
         schema.mitigates = self._parse_mitigates_rel(relationships.get("mitigates", {}))
         
-        # Parse custom relationships
-        for rel_data in relationships.get("custom_relationships", []):
-            schema.custom_relationships.append(self._parse_custom_relationship(rel_data))
+        # Parse context edges (top-level map format)
+        context_edges_data = data.get("context_edges", {})
+        for edge_id, edge_data in context_edges_data.items():
+            edge_data_with_id = {**edge_data, "id": edge_id}
+            schema.context_edges.append(self._parse_context_edge(edge_data_with_id))
+        
+        # Backward compat: parse legacy custom_relationships list format
+        if not schema.context_edges:
+            for rel_data in relationships.get("custom_relationships", []):
+                schema.context_edges.append(self._parse_context_edge(rel_data))
         
         # Parse analysis config
         schema.analysis = self._parse_analysis(data.get("analysis", {}))
         
         # Parse UI config
         schema.ui = self._parse_ui(data.get("ui", {}))
+        
+        # Parse analysis scopes
+        schema.scopes = self._parse_scopes(data.get("scopes", []))
         
         return schema
     
@@ -635,22 +679,25 @@ class SchemaLoader:
         
         return entity
     
-    def _parse_custom_entity(self, data: Dict[str, Any]) -> CustomEntityConfig:
-        """Parse custom entity configuration."""
-        entity = CustomEntityConfig(
+    def _parse_context_node(self, data: Dict[str, Any]) -> ContextNodeConfig:
+        """Parse context node configuration (replaces _parse_custom_entity)."""
+        node = ContextNodeConfig(
             id=data.get("id", ""),
-            label=data.get("label", ""),
-            neo4j_label=data.get("neo4j_label", data.get("label", "Custom")),
+            label=data.get("label", data.get("id", "")),
+            neo4j_label="ContextNode",
             description=data.get("description", ""),
             color=data.get("color", "#808080"),
             shape=data.get("shape", "box"),
             emoji=data.get("emoji", "📦"),
             size=data.get("size", 30),
+            zone=data.get("zone", "lower"),
+            border=data.get("border", "solid"),
         )
         
-        # Parse attributes
-        for attr_data in data.get("attributes", []):
-            entity.attributes.append(AttributeConfig(
+        # Parse properties (new format) or attributes (legacy format)
+        props_data = data.get("properties", data.get("attributes", []))
+        for attr_data in props_data:
+            node.properties.append(AttributeConfig(
                 name=attr_data.get("name", ""),
                 type=attr_data.get("type", "string"),
                 required=attr_data.get("required", False),
@@ -658,36 +705,26 @@ class SchemaLoader:
                 description=attr_data.get("description", ""),
             ))
         
-        # Parse custom attributes
-        for cattr_data in data.get("custom_attributes", []):
-            entity.custom_attributes.append(CustomAttributeConfig(
-                id=cattr_data.get("id", ""),
-                label=cattr_data.get("label", ""),
-                type=cattr_data.get("type", "string"),
-                required=cattr_data.get("required", False),
-                default=cattr_data.get("default"),
-                description=cattr_data.get("description", ""),
-            ))
-        
-        return entity
+        return node
     
-    def _parse_custom_relationship(self, data: Dict[str, Any]) -> CustomRelationshipConfig:
-        """Parse custom relationship configuration."""
-        rel = CustomRelationshipConfig(
+    def _parse_context_edge(self, data: Dict[str, Any]) -> ContextEdgeConfig:
+        """Parse context edge configuration (replaces _parse_custom_relationship)."""
+        edge = ContextEdgeConfig(
             id=data.get("id", ""),
-            label=data.get("label", ""),
+            label=data.get("label", data.get("id", "")),
             neo4j_type=data.get("neo4j_type", data.get("label", "CUSTOM").upper().replace(" ", "_")),
             description=data.get("description", ""),
-            from_entity=data.get("from_entity", ""),
-            to_entity=data.get("to_entity", ""),
+            from_node=data.get("from_node", data.get("from_entity", "")),
+            to_node=data.get("to_node", data.get("to_entity", "")),
             color=data.get("color", "#808080"),
             line_style=data.get("line_style", "solid"),
             bidirectional=data.get("bidirectional", False),
         )
         
-        # Parse attributes
-        for attr_data in data.get("attributes", []):
-            rel.attributes.append(AttributeConfig(
+        # Parse properties (new format) or attributes (legacy format)
+        props_data = data.get("properties", data.get("attributes", []))
+        for attr_data in props_data:
+            edge.properties.append(AttributeConfig(
                 name=attr_data.get("name", ""),
                 type=attr_data.get("type", "string"),
                 required=attr_data.get("required", False),
@@ -695,7 +732,7 @@ class SchemaLoader:
                 description=attr_data.get("description", ""),
             ))
         
-        return rel
+        return edge
     
     def _parse_influences_rel(self, data: Dict[str, Any]) -> InfluenceRelConfig:
         """Parse influences relationship configuration."""
@@ -846,17 +883,21 @@ class SchemaLoader:
             "ui": self._ui_to_dict(schema.ui),
         }
         
-        # Add custom entities if any
-        if schema.custom_entities:
-            result["entities"]["custom_entities"] = [
-                self._custom_entity_to_dict(ce) for ce in schema.custom_entities
-            ]
+        # Add context nodes if any
+        if schema.context_nodes:
+            result["context_nodes"] = {}
+            for cn in schema.context_nodes:
+                result["context_nodes"][cn.id] = self._context_node_to_dict(cn)
         
-        # Add custom relationships if any
-        if schema.custom_relationships:
-            result["relationships"]["custom_relationships"] = [
-                self._custom_relationship_to_dict(cr) for cr in schema.custom_relationships
-            ]
+        # Add context edges if any
+        if schema.context_edges:
+            result["context_edges"] = {}
+            for ce in schema.context_edges:
+                result["context_edges"][ce.id] = self._context_edge_to_dict(ce)
+        
+        # Add scopes if any
+        if schema.scopes:
+            result["scopes"] = [self._scope_to_dict(s) for s in schema.scopes]
         
         return result
     
@@ -938,46 +979,67 @@ class SchemaLoader:
             ],
         }
     
-    def _custom_entity_to_dict(self, entity: CustomEntityConfig) -> Dict[str, Any]:
-        """Convert CustomEntityConfig to dictionary."""
+    def _context_node_to_dict(self, node: ContextNodeConfig) -> Dict[str, Any]:
+        """Convert ContextNodeConfig to dictionary (replaces _custom_entity_to_dict)."""
         return {
-            "id": entity.id,
-            "label": entity.label,
-            "neo4j_label": entity.neo4j_label,
-            "description": entity.description,
-            "color": entity.color,
-            "shape": entity.shape,
-            "emoji": entity.emoji,
-            "size": entity.size,
-            "attributes": [
+            "label": node.label,
+            "description": node.description,
+            "color": node.color,
+            "shape": node.shape,
+            "emoji": node.emoji,
+            "size": node.size,
+            "zone": node.zone,
+            "border": node.border,
+            "properties": [
                 {"name": a.name, "type": a.type, "required": a.required,
                  "default": a.default, "description": a.description}
-                for a in entity.attributes
-            ],
-            "custom_attributes": [
-                {"id": ca.id, "label": ca.label, "type": ca.type,
-                 "required": ca.required, "default": ca.default, "description": ca.description}
-                for ca in entity.custom_attributes
+                for a in node.properties
             ],
         }
     
-    def _custom_relationship_to_dict(self, rel: CustomRelationshipConfig) -> Dict[str, Any]:
-        """Convert CustomRelationshipConfig to dictionary."""
+    def _context_edge_to_dict(self, edge: ContextEdgeConfig) -> Dict[str, Any]:
+        """Convert ContextEdgeConfig to dictionary (replaces _custom_relationship_to_dict)."""
         return {
-            "id": rel.id,
-            "label": rel.label,
-            "neo4j_type": rel.neo4j_type,
-            "description": rel.description,
-            "from_entity": rel.from_entity,
-            "to_entity": rel.to_entity,
-            "color": rel.color,
-            "line_style": rel.line_style,
-            "bidirectional": rel.bidirectional,
-            "attributes": [
+            "label": edge.label,
+            "neo4j_type": edge.neo4j_type,
+            "description": edge.description,
+            "from_node": edge.from_node,
+            "to_node": edge.to_node,
+            "color": edge.color,
+            "line_style": edge.line_style,
+            "bidirectional": edge.bidirectional,
+            "properties": [
                 {"name": a.name, "type": a.type, "required": a.required,
                  "default": a.default, "description": a.description}
-                for a in rel.attributes
+                for a in edge.properties
             ],
+        }
+    
+    def _parse_scopes(self, data: list) -> List[AnalysisScopeConfig]:
+        """Parse analysis scopes from YAML data."""
+        scopes = []
+        for scope_data in data:
+            scopes.append(AnalysisScopeConfig(
+                id=scope_data.get("id", ""),
+                name=scope_data.get("name", ""),
+                description=scope_data.get("description", ""),
+                node_ids=list(scope_data.get("node_ids", [])),
+                include_connected_edges=scope_data.get("include_connected_edges", True),
+                show_boundary_edges=scope_data.get("show_boundary_edges", False),
+                color=scope_data.get("color", "#808080"),
+            ))
+        return scopes
+    
+    def _scope_to_dict(self, scope: AnalysisScopeConfig) -> Dict[str, Any]:
+        """Convert AnalysisScopeConfig to dictionary."""
+        return {
+            "id": scope.id,
+            "name": scope.name,
+            "description": scope.description,
+            "node_ids": list(scope.node_ids),
+            "include_connected_edges": scope.include_connected_edges,
+            "show_boundary_edges": scope.show_boundary_edges,
+            "color": scope.color,
         }
     
     def _influences_rel_to_dict(self, rel: InfluenceRelConfig) -> Dict[str, Any]:

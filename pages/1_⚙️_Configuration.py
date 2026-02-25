@@ -24,7 +24,7 @@ from config.schema_loader import (
     SchemaLoader, SchemaConfig, get_schema, reload_schema, list_schemas,
     LevelConfig, CategoryConfig, ClusterConfig, TypeConfig, StatusConfig,
     StrengthConfig, EffectivenessConfig, ImpactLevelConfig, CustomAttributeConfig,
-    AttributeConfig, CustomEntityConfig, CustomRelationshipConfig,
+    AttributeConfig, ContextNodeConfig, ContextEdgeConfig,
     validate_schema, save_schema, get_loader
 )
 from database.connection import Neo4jConnection
@@ -317,8 +317,8 @@ def render_schema_management():
         "🏆 TPO Config", 
         "🛡️ Mitigation Config",
         "🔗 Relationships",
-        "📦 Custom Entities",
-        "🔀 Custom Relationships",
+        "🧩 Context Nodes",
+        "🔗 Context Edges",
         "📄 YAML Preview"
     ])
     
@@ -338,10 +338,10 @@ def render_schema_management():
         render_relationship_config(schema)
     
     with subtab6:
-        render_custom_entities_config(schema)
+        render_context_nodes_config(schema)
     
     with subtab7:
-        render_custom_relationships_config(schema)
+        render_context_edges_config(schema)
     
     with subtab8:
         render_yaml_preview(schema)
@@ -964,137 +964,195 @@ def render_relationship_config(schema: SchemaConfig):
         st.rerun()
 
 
-def render_custom_entities_config(schema: SchemaConfig):
-    """Render custom entities configuration section."""
-    st.subheader("📦 Custom Entities")
-    st.info("Define custom node types beyond Risk, TPO, and Mitigation. These can be connected to core entities via custom relationships.")
+def render_context_nodes_config(schema: SchemaConfig):
+    """Render context nodes configuration section."""
+    st.subheader("🧩 Context Nodes")
+    st.info("⚠️ All context nodes use the unified **ContextNode** Neo4j label with `node_type` and `zone` as stored properties. Reserved base properties: `source`, `import_adapter`.")
     
-    custom_entities = schema.custom_entities
+    context_nodes = schema.context_nodes
     
-    if not custom_entities:
-        st.markdown("*No custom entities defined yet.*")
+    if not context_nodes:
+        st.markdown("*No context nodes defined yet.*")
     
-    # Display existing custom entities
-    for i, entity in enumerate(custom_entities):
-        with st.expander(f"{entity.emoji} {entity.label} ({entity.neo4j_label})", expanded=i == 0):
-            render_generic_entity_config(entity, f"ce_{i}")
+    # Display existing context nodes
+    for i, node in enumerate(context_nodes):
+        with st.expander(f"{node.emoji} {node.label} (zone: {node.zone})", expanded=i == 0):
+            col1, col2 = st.columns(2)
             
-            # Delete entity button
+            with col1:
+                new_id = st.text_input("ID", value=node.id, key=f"cn_id_{i}")
+                if new_id != node.id:
+                    node.id = new_id
+                    st.session_state.schema_modified = True
+                
+                new_label = st.text_input("Label", value=node.label, key=f"cn_label_{i}")
+                if new_label != node.label:
+                    node.label = new_label
+                    st.session_state.schema_modified = True
+                
+                # Read-only Neo4j label
+                st.text_input("Neo4j Label", value="ContextNode", key=f"cn_neo4j_{i}", disabled=True)
+                st.caption(f"node_type = `{node.id}`")
+                
+                new_desc = st.text_area("Description", value=node.description, key=f"cn_desc_{i}", height=80)
+                if new_desc != node.description:
+                    node.description = new_desc
+                    st.session_state.schema_modified = True
+            
+            with col2:
+                new_emoji = st.text_input("Emoji", value=node.emoji, key=f"cn_emoji_{i}")
+                if new_emoji != node.emoji:
+                    node.emoji = new_emoji
+                    st.session_state.schema_modified = True
+                
+                new_color = st.color_picker("Color", value=node.color, key=f"cn_color_{i}")
+                if new_color != node.color:
+                    node.color = new_color
+                    st.session_state.schema_modified = True
+                
+                shape_options = ["box", "dot", "diamond", "hexagon", "star", "triangle"]
+                shape_idx = shape_options.index(node.shape) if node.shape in shape_options else 0
+                new_shape = st.selectbox("Shape", shape_options, index=shape_idx, key=f"cn_shape_{i}")
+                if new_shape != node.shape:
+                    node.shape = new_shape
+                    st.session_state.schema_modified = True
+                
+                zone_options = ["upper", "lower"]
+                zone_idx = zone_options.index(node.zone) if node.zone in zone_options else 1
+                new_zone = st.selectbox("Zone", zone_options, index=zone_idx, key=f"cn_zone_{i}")
+                if new_zone != node.zone:
+                    node.zone = new_zone
+                    st.session_state.schema_modified = True
+                
+                border_options = ["solid", "double", "dashed"]
+                border_idx = border_options.index(node.border) if node.border in border_options else 0
+                new_border = st.selectbox("Border", border_options, index=border_idx, key=f"cn_border_{i}")
+                if new_border != node.border:
+                    node.border = new_border
+                    st.session_state.schema_modified = True
+            
+            # Properties
+            st.markdown("##### Node Properties")
+            render_attribute_editor(node.properties, f"cn_{i}")
+            
+            # Delete node button
             st.markdown("---")
-            if st.button(f"🗑️ Delete {entity.label}", key=f"ce_delete_{i}", type="secondary"):
-                schema.custom_entities.pop(i)
+            if st.button(f"🗑️ Delete {node.label}", key=f"cn_delete_{i}", type="secondary"):
+                schema.context_nodes.pop(i)
                 st.session_state.schema_modified = True
                 st.rerun()
     
-    # Add new entity button
+    # Add new context node button
     st.markdown("---")
-    if st.button("➕ Add Custom Entity", type="primary"):
-        schema.custom_entities.append(CustomEntityConfig(
-            id=f"custom_{len(custom_entities) + 1}",
-            label="New Entity",
-            neo4j_label="CustomEntity",
+    if st.button("➕ Add Context Node", type="primary"):
+        schema.context_nodes.append(ContextNodeConfig(
+            id=f"context_{len(context_nodes) + 1}",
+            label="New Context Node",
+            neo4j_label="ContextNode",
             description="",
             color="#808080",
             shape="box",
             emoji="📦",
-            size=30
+            size=30,
+            zone="lower",
+            border="solid"
         ))
         st.session_state.schema_modified = True
         st.rerun()
 
 
-def render_custom_relationships_config(schema: SchemaConfig):
-    """Render custom relationships configuration section."""
-    st.subheader("🔀 Custom Relationships")
-    st.info("Define custom relationships between entities. These can connect core entities (Risk, TPO, Mitigation) with custom entities or with each other.")
+def render_context_edges_config(schema: SchemaConfig):
+    """Render context edges configuration section."""
+    st.subheader("🔗 Context Edges")
+    st.info("Define relationships between context nodes and/or core entities (Risk, TPO, Mitigation).")
     
-    custom_rels = schema.custom_relationships
+    context_edges = schema.context_edges
     
     # Build list of available entities
     entity_options = ["risk", "tpo", "mitigation"]
-    for ce in schema.custom_entities:
-        entity_options.append(ce.id)
+    for cn in schema.context_nodes:
+        entity_options.append(cn.id)
     
-    if not custom_rels:
-        st.markdown("*No custom relationships defined yet.*")
+    if not context_edges:
+        st.markdown("*No context edges defined yet.*")
     
-    # Display existing relationships
-    for i, rel in enumerate(custom_rels):
-        with st.expander(f"🔗 {rel.label}: {rel.from_entity} → {rel.to_entity}", expanded=i == 0):
+    # Display existing edges
+    for i, edge in enumerate(context_edges):
+        with st.expander(f"🔗 {edge.label}: {edge.from_node} → {edge.to_node}", expanded=i == 0):
             col1, col2 = st.columns(2)
             
             with col1:
-                new_id = st.text_input("ID", value=rel.id, key=f"cr_id_{i}")
-                if new_id != rel.id:
-                    rel.id = new_id
+                new_id = st.text_input("ID", value=edge.id, key=f"ce_id_{i}")
+                if new_id != edge.id:
+                    edge.id = new_id
                     st.session_state.schema_modified = True
                 
-                new_label = st.text_input("Label", value=rel.label, key=f"cr_label_{i}")
-                if new_label != rel.label:
-                    rel.label = new_label
+                new_label = st.text_input("Label", value=edge.label, key=f"ce_label_{i}")
+                if new_label != edge.label:
+                    edge.label = new_label
                     st.session_state.schema_modified = True
                 
-                new_neo4j = st.text_input("Neo4j Type", value=rel.neo4j_type, key=f"cr_neo4j_{i}")
-                if new_neo4j != rel.neo4j_type:
-                    rel.neo4j_type = new_neo4j
+                new_neo4j = st.text_input("Neo4j Type", value=edge.neo4j_type, key=f"ce_neo4j_{i}")
+                if new_neo4j != edge.neo4j_type:
+                    edge.neo4j_type = new_neo4j
                     st.session_state.schema_modified = True
                 
-                new_desc = st.text_area("Description", value=rel.description, key=f"cr_desc_{i}", height=80)
-                if new_desc != rel.description:
-                    rel.description = new_desc
+                new_desc = st.text_area("Description", value=edge.description, key=f"ce_desc_{i}", height=80)
+                if new_desc != edge.description:
+                    edge.description = new_desc
                     st.session_state.schema_modified = True
             
             with col2:
-                from_idx = entity_options.index(rel.from_entity) if rel.from_entity in entity_options else 0
-                new_from = st.selectbox("From Entity", entity_options, index=from_idx, key=f"cr_from_{i}")
-                if new_from != rel.from_entity:
-                    rel.from_entity = new_from
+                from_idx = entity_options.index(edge.from_node) if edge.from_node in entity_options else 0
+                new_from = st.selectbox("From Node", entity_options, index=from_idx, key=f"ce_from_{i}")
+                if new_from != edge.from_node:
+                    edge.from_node = new_from
                     st.session_state.schema_modified = True
                 
-                to_idx = entity_options.index(rel.to_entity) if rel.to_entity in entity_options else 0
-                new_to = st.selectbox("To Entity", entity_options, index=to_idx, key=f"cr_to_{i}")
-                if new_to != rel.to_entity:
-                    rel.to_entity = new_to
+                to_idx = entity_options.index(edge.to_node) if edge.to_node in entity_options else 0
+                new_to = st.selectbox("To Node", entity_options, index=to_idx, key=f"ce_to_{i}")
+                if new_to != edge.to_node:
+                    edge.to_node = new_to
                     st.session_state.schema_modified = True
                 
-                new_color = st.color_picker("Color", value=rel.color, key=f"cr_color_{i}")
-                if new_color != rel.color:
-                    rel.color = new_color
+                new_color = st.color_picker("Color", value=edge.color, key=f"ce_color_{i}")
+                if new_color != edge.color:
+                    edge.color = new_color
                     st.session_state.schema_modified = True
                 
                 style_options = ["solid", "dashed", "dotted"]
-                style_idx = style_options.index(rel.line_style) if rel.line_style in style_options else 0
-                new_style = st.selectbox("Line Style", style_options, index=style_idx, key=f"cr_style_{i}")
-                if new_style != rel.line_style:
-                    rel.line_style = new_style
+                style_idx = style_options.index(edge.line_style) if edge.line_style in style_options else 0
+                new_style = st.selectbox("Line Style", style_options, index=style_idx, key=f"ce_style_{i}")
+                if new_style != edge.line_style:
+                    edge.line_style = new_style
                     st.session_state.schema_modified = True
                 
-                new_bidir = st.checkbox("Bidirectional", value=rel.bidirectional, key=f"cr_bidir_{i}")
-                if new_bidir != rel.bidirectional:
-                    rel.bidirectional = new_bidir
+                new_bidir = st.checkbox("Bidirectional", value=edge.bidirectional, key=f"ce_bidir_{i}")
+                if new_bidir != edge.bidirectional:
+                    edge.bidirectional = new_bidir
                     st.session_state.schema_modified = True
             
-            # Relationship attributes
-            st.markdown("##### Relationship Attributes")
-            render_attribute_editor(rel.attributes, f"cr_{i}")
+            # Edge properties
+            st.markdown("##### Edge Properties")
+            render_attribute_editor(edge.properties, f"ce_{i}")
             
-            # Delete relationship button
+            # Delete edge button
             st.markdown("---")
-            if st.button(f"🗑️ Delete {rel.label}", key=f"cr_delete_{i}", type="secondary"):
-                schema.custom_relationships.pop(i)
+            if st.button(f"🗑️ Delete {edge.label}", key=f"ce_delete_{i}", type="secondary"):
+                schema.context_edges.pop(i)
                 st.session_state.schema_modified = True
                 st.rerun()
     
-    # Add new relationship button
+    # Add new edge button
     st.markdown("---")
-    if st.button("➕ Add Custom Relationship", type="primary"):
-        schema.custom_relationships.append(CustomRelationshipConfig(
-            id=f"custom_rel_{len(custom_rels) + 1}",
-            label="New Relationship",
-            neo4j_type="CUSTOM_REL",
+    if st.button("➕ Add Context Edge", type="primary"):
+        schema.context_edges.append(ContextEdgeConfig(
+            id=f"context_edge_{len(context_edges) + 1}",
+            label="New Edge",
+            neo4j_type="CUSTOM_EDGE",
             description="",
-            from_entity="risk",
-            to_entity="tpo",
+            from_node="risk",
+            to_node="tpo",
             color="#808080",
             line_style="solid",
             bidirectional=False
@@ -1903,36 +1961,37 @@ CREATE (r)-[:IMPACTS_TPO {{
     description: 'Test TPO impact'
 }}]->(t)""")
     
-    # ===== CUSTOM ENTITIES =====
-    custom_entity_refs = {}  # entity_id -> list of references
+    # ===== CONTEXT NODES =====
+    context_node_refs = {}  # node_type_id -> list of references
     
-    for custom_entity in schema.custom_entities:
-        entity_id = custom_entity.id
-        neo4j_label = custom_entity.neo4j_label
-        custom_entity_refs[entity_id] = []
+    for context_node in schema.context_nodes:
+        node_type_id = context_node.id
+        context_node_refs[node_type_id] = []
         
         lines.append("")
-        lines.append(f"// ===== CUSTOM: {custom_entity.label.upper()} =====")
+        lines.append(f"// ===== CONTEXT NODE: {context_node.label.upper()} =====")
         
-        # Generate a few instances of each custom entity
+        # Generate a few instances of each context node
         num_instances = min(5, num_tpos)  # Use TPO count as rough guide
         for i in range(num_instances):
-            ref = f"{entity_id.upper()[:3]}{i+1:02d}"
-            custom_entity_refs[entity_id].append(ref)
+            ref = f"{node_type_id.upper()[:3]}{i+1:02d}"
+            context_node_refs[node_type_id].append(ref)
             
-            name = f"Test {custom_entity.label} {i+1}"
-            desc = f"Sample {custom_entity.label.lower()} for testing"
+            name = f"Test {context_node.label} {i+1}"
+            desc = f"Sample {context_node.label.lower()} for testing"
             
-            # Build attributes string
+            # Build attributes string — always include node_type, source
             attrs = [
                 f"reference: '{ref}'",
+                f"node_type: '{node_type_id}'",
+                f"source: 'test_generator'",
                 f"name: '{name}'",
                 f"description: '{desc}'"
             ]
             
-            # Add custom attributes with random values
-            for attr in custom_entity.attributes:
-                if attr.name not in ['reference', 'name', 'description']:
+            # Add custom properties with random values
+            for attr in context_node.properties:
+                if attr.name not in ['reference', 'name', 'description', 'node_type', 'source', 'import_adapter']:
                     if attr.type == 'int':
                         attrs.append(f"{attr.name}: {random.randint(1, 10)}")
                     elif attr.type == 'float':
@@ -1944,48 +2003,47 @@ CREATE (r)-[:IMPACTS_TPO {{
             
             attrs_str = ",\\n    ".join(attrs)
             lines.append(f"""
-CREATE (ce{entity_id}_{i+1}:{neo4j_label} {{
+CREATE (cn{node_type_id}_{i+1}:ContextNode {{
     {attrs_str}
 }})""")
     
-    # ===== CUSTOM RELATIONSHIPS =====
-    for custom_rel in schema.custom_relationships:
+    # ===== CONTEXT EDGES =====
+    for context_edge in schema.context_edges:
         lines.append("")
-        lines.append(f"// ===== CUSTOM REL: {custom_rel.label.upper()} =====")
+        lines.append(f"// ===== CONTEXT EDGE: {context_edge.label.upper()} =====")
         
-        neo4j_type = custom_rel.neo4j_type
-        from_entity = custom_rel.from_entity
-        to_entity = custom_rel.to_entity
+        neo4j_type = context_edge.neo4j_type
+        from_node = context_edge.from_node
+        to_node = context_edge.to_node
         
         # Get source and target references
-        if from_entity == "risk":
+        if from_node == "risk":
             from_refs = [(ref, level) for ref, level in risk_refs[:5]]
             from_label = "Risk"
-        elif from_entity == "tpo":
+        elif from_node == "tpo":
             from_refs = [(ref, None) for ref in tpo_refs[:5]]
             from_label = "TPO"
-        elif from_entity == "mitigation":
+        elif from_node == "mitigation":
             from_refs = [(ref, None) for ref in mit_refs[:5]]
             from_label = "Mitigation"
-        elif from_entity in custom_entity_refs:
-            from_refs = [(ref, None) for ref in custom_entity_refs.get(from_entity, [])[:5]]
-            # Find custom entity neo4j label
-            from_label = next((ce.neo4j_label for ce in schema.custom_entities if ce.id == from_entity), "Custom")
+        elif from_node in context_node_refs:
+            from_refs = [(ref, None) for ref in context_node_refs.get(from_node, [])[:5]]
+            from_label = "ContextNode"
         else:
             continue
         
-        if to_entity == "risk":
+        if to_node == "risk":
             to_refs = [(ref, level) for ref, level in risk_refs[:5]]
             to_label = "Risk"
-        elif to_entity == "tpo":
+        elif to_node == "tpo":
             to_refs = [(ref, None) for ref in tpo_refs[:5]]
             to_label = "TPO"
-        elif to_entity == "mitigation":
+        elif to_node == "mitigation":
             to_refs = [(ref, None) for ref in mit_refs[:5]]
             to_label = "Mitigation"
-        elif to_entity in custom_entity_refs:
-            to_refs = [(ref, None) for ref in custom_entity_refs.get(to_entity, [])[:5]]
-            to_label = next((ce.neo4j_label for ce in schema.custom_entities if ce.id == to_entity), "Custom")
+        elif to_node in context_node_refs:
+            to_refs = [(ref, None) for ref in context_node_refs.get(to_node, [])[:5]]
+            to_label = "ContextNode"
         else:
             continue
         
@@ -1995,9 +2053,9 @@ CREATE (ce{entity_id}_{i+1}:{neo4j_label} {{
                 to_ref, _ = random.choice(to_refs)
                 
                 # Build attributes string
-                rel_attrs = [f"description: 'Test {custom_rel.label} relationship'"]
+                rel_attrs = [f"description: 'Test {context_edge.label} relationship'"]
                 
-                for attr in custom_rel.attributes:
+                for attr in context_edge.properties:
                     if attr.type == 'int':
                         rel_attrs.append(f"{attr.name}: {random.randint(1, 10)}")
                     elif attr.type == 'float':

@@ -25,22 +25,22 @@ class TestRiskLevel:
     
     def test_values(self):
         """Test enum values exist."""
-        assert RiskLevel.STRATEGIC.value == "Strategic"
+        assert RiskLevel.BUSINESS.value == "Business"
         assert RiskLevel.OPERATIONAL.value == "Operational"
     
     def test_str_conversion(self):
         """Test string conversion."""
-        assert str(RiskLevel.STRATEGIC) == "Strategic"
+        assert str(RiskLevel.BUSINESS) == "Business"
         assert str(RiskLevel.OPERATIONAL) == "Operational"
     
     def test_icon_property(self):
         """Test icon property returns emoji."""
-        assert RiskLevel.STRATEGIC.icon == "🟣"
+        assert RiskLevel.BUSINESS.icon == "🟣"
         assert RiskLevel.OPERATIONAL.icon == "🔵"
     
     def test_color_property(self):
         """Test color property returns hex color."""
-        assert RiskLevel.STRATEGIC.color.startswith("#")
+        assert RiskLevel.BUSINESS.color.startswith("#")
         assert RiskLevel.OPERATIONAL.color.startswith("#")
 
 
@@ -242,20 +242,20 @@ class TestInfluenceType:
     
     def test_values(self):
         """Test enum values exist."""
-        assert InfluenceType.LEVEL1_OP_TO_STRAT.value == "Level1_Op_to_Strat"
-        assert InfluenceType.LEVEL2_STRAT_TO_STRAT.value == "Level2_Strat_to_Strat"
+        assert InfluenceType.LEVEL1_OP_TO_BUS.value == "Level1_Op_to_Bus"
+        assert InfluenceType.LEVEL2_BUS_TO_BUS.value == "Level2_Bus_to_Bus"
         assert InfluenceType.LEVEL3_OP_TO_OP.value == "Level3_Op_to_Op"
     
     def test_str_conversion(self):
         """Test string conversion."""
-        assert str(InfluenceType.LEVEL1_OP_TO_STRAT) == "Level1_Op_to_Strat"
+        assert str(InfluenceType.LEVEL1_OP_TO_BUS) == "Level1_Op_to_Bus"
     
     def test_icon_property(self):
         """Test icon property returns emoji."""
-        assert isinstance(InfluenceType.LEVEL1_OP_TO_STRAT.icon, str)
+        assert isinstance(InfluenceType.LEVEL1_OP_TO_BUS.icon, str)
     
     def test_color_property(self):
         """Test color property returns hex color."""
-        assert InfluenceType.LEVEL1_OP_TO_STRAT.color.startswith("#")
-        assert InfluenceType.LEVEL2_STRAT_TO_STRAT.color.startswith("#")
+        assert InfluenceType.LEVEL1_OP_TO_BUS.color.startswith("#")
+        assert InfluenceType.LEVEL2_BUS_TO_BUS.color.startswith("#")
         assert InfluenceType.LEVEL3_OP_TO_OP.color.startswith("#")

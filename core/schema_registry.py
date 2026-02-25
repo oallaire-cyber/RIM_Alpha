@@ -67,6 +67,9 @@ class SchemaRegistry:
         # Load kernel first (mandatory)
         self._load_kernel(data)
         
+        # Load context nodes (U6)
+        self._load_context_nodes(data)
+        
         # Load extensible parts
         self._load_additional_entities(data)
         self._load_additional_relationships(data)
@@ -147,9 +150,36 @@ class SchemaRegistry:
             mitigates_data
         )
     
+    def _load_context_nodes(self, data: Dict[str, Any]) -> None:
+        """
+        Load context node types from the context_nodes section.
+        
+        Also handles backward compat for legacy entities.custom_entities list.
+        
+        Args:
+            data: Full schema data
+        """
+        # New format: top-level context_nodes map
+        context_nodes = data.get("context_nodes", {})
+        for node_id, node_data in context_nodes.items():
+            if node_id not in self._entity_types:
+                self._entity_types[node_id] = EntityTypeDefinition.from_context_node_schema(
+                    node_id, node_data
+                )
+        
+        # Backward compat: legacy entities.custom_entities list
+        if not context_nodes:
+            entities_section = data.get("entities", {})
+            for custom in entities_section.get("custom_entities", []):
+                cid = custom.get("id")
+                if cid and cid not in self._entity_types:
+                    self._entity_types[cid] = EntityTypeDefinition.from_context_node_schema(
+                        cid, custom
+                    )
+    
     def _load_additional_entities(self, data: Dict[str, Any]) -> None:
         """
-        Load extensible entity types.
+        Load extensible entity types (non-kernel, non-context-node).
         
         Args:
             data: Full schema data
@@ -159,30 +189,25 @@ class SchemaRegistry:
         # New format: additional_entities list
         for entity_data in data.get("additional_entities", []):
             entity_id = entity_data.get("id")
-            if entity_id and entity_id not in kernel_ids:
+            if entity_id and entity_id not in kernel_ids and entity_id not in self._entity_types:
                 self._entity_types[entity_id] = EntityTypeDefinition.from_additional_schema(
                     entity_data
                 )
         
-        # Backward compatibility: entities section (tpo, custom_entities, etc.)
+        # Backward compatibility: entities section (tpo, etc.)
         entities_section = data.get("entities", {})
         for entity_id, entity_data in entities_section.items():
-            if entity_id in kernel_ids:
-                continue  # Already loaded as kernel
+            if entity_id in kernel_ids or entity_id in self._entity_types:
+                continue  # Already loaded as kernel or context node
             
             if entity_id == "custom_entities":
-                # Legacy custom_entities list
-                for custom in entity_data:
-                    cid = custom.get("id")
-                    if cid and cid not in self._entity_types:
-                        self._entity_types[cid] = EntityTypeDefinition.from_additional_schema(custom)
-            elif entity_id not in self._entity_types:
-                # Legacy core entities (tpo) treated as additional
-                if isinstance(entity_data, dict):
-                    entity_data_with_id = {**entity_data, "id": entity_id}
-                    self._entity_types[entity_id] = EntityTypeDefinition.from_additional_schema(
-                        entity_data_with_id
-                    )
+                continue  # Handled by _load_context_nodes
+            
+            if isinstance(entity_data, dict):
+                entity_data_with_id = {**entity_data, "id": entity_id}
+                self._entity_types[entity_id] = EntityTypeDefinition.from_additional_schema(
+                    entity_data_with_id
+                )
     
     def _load_additional_relationships(self, data: Dict[str, Any]) -> None:
         """
@@ -323,6 +348,17 @@ class SchemaRegistry:
         """Get all non-kernel entity types (excludes risk and mitigation)."""
         kernel_ids = {"risk", "mitigation"}
         return {k: v for k, v in self._entity_types.items() if k not in kernel_ids}
+    
+    def get_context_node_types(self) -> Dict[str, EntityTypeDefinition]:
+        """Get all context node types."""
+        return {k: v for k, v in self._entity_types.items() if v.is_context_node}
+    
+    def get_context_nodes_by_zone(self, zone: str) -> Dict[str, EntityTypeDefinition]:
+        """Get context node types filtered by zone ('upper' or 'lower')."""
+        return {
+            k: v for k, v in self._entity_types.items()
+            if v.is_context_node and v.zone == zone
+        }
     
     # ─── Relationship Accessors ───────────────────────────────────
     
