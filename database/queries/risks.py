@@ -152,6 +152,10 @@ def get_all_risks(
     query = f"""
     MATCH (r:Risk)
     {where_clause}
+    OPTIONAL MATCH path = shortestPath((r)-[:INFLUENCES*0..10]->(b:Risk))
+    WHERE EXISTS {{ (b)-[:IMPACTS_TPO]->(:TPO) }}
+    WITH r, min(length(path)) as inf_dist
+    WITH r, CASE WHEN inf_dist IS NULL THEN -1 ELSE inf_dist + 1 END as computed_distance
     RETURN r.id as id, r.name as name, r.level as level,
            r.categories as categories, r.description as description,
            r.status as status, r.origin as origin,
@@ -159,7 +163,9 @@ def get_all_risks(
            r.activation_decision_date as activation_decision_date,
            r.owner as owner, r.probability as probability,
            r.impact as impact, r.exposure as exposure,
-           r.current_score_type as current_score_type
+           r.current_score_type as current_score_type,
+           computed_distance,
+           CASE WHEN computed_distance = -1 THEN true ELSE false END as is_orphan
     ORDER BY r.exposure DESC
     """
     
@@ -179,13 +185,19 @@ def get_risk_by_id(conn: Neo4jConnection, risk_id: str) -> Optional[Dict[str, An
     """
     query = """
     MATCH (r:Risk {id: $id})
+    OPTIONAL MATCH path = shortestPath((r)-[:INFLUENCES*0..10]->(b:Risk))
+    WHERE EXISTS { (b)-[:IMPACTS_TPO]->(:TPO) }
+    WITH r, min(length(path)) as inf_dist
+    WITH r, CASE WHEN inf_dist IS NULL THEN -1 ELSE inf_dist + 1 END as computed_distance
     RETURN r.id as id, r.name as name, r.level as level,
            r.categories as categories, r.description as description,
            r.status as status, r.origin as origin,
            r.activation_condition as activation_condition,
            r.activation_decision_date as activation_decision_date,
            r.owner as owner, r.probability as probability,
-           r.impact as impact, r.exposure as exposure
+           r.impact as impact, r.exposure as exposure,
+           computed_distance,
+           CASE WHEN computed_distance = -1 THEN true ELSE false END as is_orphan
     """
     
     result = conn.execute_query(query, {"id": risk_id})
@@ -205,11 +217,17 @@ def get_risk_by_name(conn: Neo4jConnection, name: str) -> Optional[Dict[str, Any
     """
     query = """
     MATCH (r:Risk {name: $name})
+    OPTIONAL MATCH path = shortestPath((r)-[:INFLUENCES*0..10]->(b:Risk))
+    WHERE EXISTS { (b)-[:IMPACTS_TPO]->(:TPO) }
+    WITH r, min(length(path)) as inf_dist
+    WITH r, CASE WHEN inf_dist IS NULL THEN -1 ELSE inf_dist + 1 END as computed_distance
     RETURN r.id as id, r.name as name, r.level as level,
            r.categories as categories, r.description as description,
            r.status as status, r.origin as origin,
            r.owner as owner, r.probability as probability,
-           r.impact as impact, r.exposure as exposure
+           r.impact as impact, r.exposure as exposure,
+           computed_distance,
+           CASE WHEN computed_distance = -1 THEN true ELSE false END as is_orphan
     """
     
     result = conn.execute_query(query, {"name": name})
@@ -278,10 +296,16 @@ def get_risks_with_filters(
     query = f"""
     MATCH (r:Risk)
     {where_clause}
+    OPTIONAL MATCH path = shortestPath((r)-[:INFLUENCES*0..10]->(b:Risk))
+    WHERE EXISTS {{ (b)-[:IMPACTS_TPO]->(:TPO) }}
+    WITH r, min(length(path)) as inf_dist
+    WITH r, CASE WHEN inf_dist IS NULL THEN -1 ELSE inf_dist + 1 END as computed_distance
     RETURN r.id as id, r.name as name, r.level as level,
            r.categories as categories, r.status as status,
            r.origin as origin, r.exposure as exposure, r.owner as owner,
-           'Risk' as node_type
+           'Risk' as node_type,
+           computed_distance,
+           CASE WHEN computed_distance = -1 THEN true ELSE false END as is_orphan
     ORDER BY r.exposure DESC
     """
     

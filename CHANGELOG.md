@@ -4,6 +4,34 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.10.3] - 2026-02-26
+
+### U7 — Computed Risk Level
+
+**Core Features & Algorithmic Updates:**
+
+- **Computed Risk Distance**
+  - Replaced static use of `level` for graph hierarchical positioning with a dynamically computed distance.
+  - Cypher query enhancements to compute shortest path (`INFLUENCES*0..10`) to the nearest TPO.
+  - Distances are now calculated on-the-fly (`computed_distance`) during read operations.
+  - Introduced `is_orphan` flag for risks with no path to any TPO.
+
+**UI/UX Enhancements:**
+
+- **Risk Management Tab Updates** (`ui/tabs/risks_tab.py`)
+  - The Risk expansion headers now display `⚠️ Orphan` badges for disconnected risks.
+  - Shows `[Dist N]` alongside risk names for contextual visibility of depth.
+- **Hierarchical Layout Restructuring** (`ui/layouts.py`)
+  - "Hierarchical (Sugiyama)" algorithm updated to position nodes across vertical layers `1..N` dynamically scaling down by `computed_distance` to TPOs.
+
+**Files Modified:**
+- `database/queries/risks.py` — Updated core read queries to include shortest path calculation.
+- `database/queries/influences.py` — Updated network traversal queries (`get_downstream_risks`, `get_upstream_risks`) for consistent distance output.
+- `ui/tabs/risks_tab.py` — Updated UI list expansion renderer.
+- `ui/layouts.py` — Modified Semantic Layer evaluation within Sugiyama layout logic.
+
+---
+
 ## [v2.10.0] - 2026-02-24
 
 ### U3 — Centralized State Management

@@ -9,15 +9,15 @@ visualization. Each layout emphasizes different relationships.
 
 | Layout | Best for |
 |--------|----------|
-| 🌳 Hierarchical (Sugiyama) | Understanding flow, presentations |
-| 📶 Layered | Seeing the TPO → Business → Operational hierarchy |
+| 🌳 Hierarchical (Sugiyama) | Understanding influence chain depth relative to TPO |
+| 📶 Layered | Seeing the explicit Strategic → Operational hierarchy |
 | 📊 Category Grid | Comparing risk categories (2×2 grid) |
 | 🎯 TPO Cluster | Analyzing TPO impact groupings |
 
 ---
 
 **Sugiyama Algorithm:**
-1. Layer assignment based on RIM hierarchy
+1. Layer assignment based on computed distance to nearest TPO (BFS logic)
 2. Crossing minimization (barycenter heuristic)
 3. Coordinate assignment with connected-node alignment
 

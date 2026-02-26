@@ -334,17 +334,19 @@ def generate_auto_spread_layout(nodes: List[Dict[str, Any]], edges: List[Dict[st
         
         RIM hierarchy (top to bottom):
         - Layer 0: TPOs (goals/objectives at the top)
-        - Layer 1: Strategic risks (consequences)
-        - Layer 2: Operational risks (causes)
-        - Layer 3: Mitigations (positioned alongside their targets)
+        - Layer 1..N: Risks based on computed distance to TPOs
+        - Layer 99: Mitigations (positioned alongside their targets)
         """
         node_type = node.get("node_type", "Risk")
         level = node.get("level", "Operational")
+        dist = node.get("computed_distance", -1)
         
         if node_type == "TPO":
             return 0  # TPOs always at top
         elif node_type == "Mitigation":
-            return 3  # Mitigations in a separate layer
+            return 99  # Mitigations in a separate layer
+        elif dist > 0:
+            return dist
         elif level == "Business":
             return 1  # Strategic risks below TPOs
         else:  # Operational

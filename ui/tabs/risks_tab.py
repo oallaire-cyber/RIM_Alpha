@@ -124,14 +124,21 @@ def _render_risk_list(
         return
     
     for risk in risks:
-        level_icon = "🟣" if risk['level'] == 'Strategic' else "🔵"
+        level_icon = "🟣" if risk['level'] == 'Strategic' or risk['level'] == 'Business' else "🔵"
         origin = risk.get('origin', 'New')
         origin_icon = "📜" if origin == "Legacy" else "🆕"
         
-        with st.expander(f"{level_icon} {origin_icon} {risk['name']}", expanded=False):
+        dist = risk.get('computed_distance', -1)
+        is_orphan = risk.get('is_orphan', False)
+        
+        orphan_badge = " ⚠️ Orphan" if is_orphan else ""
+        dist_badge = f" [Dist {dist}]" if dist > 0 else ""
+        
+        with st.expander(f"{level_icon} {origin_icon} {risk['name']}{dist_badge}{orphan_badge}", expanded=False):
             col_info1, col_info2 = st.columns(2)
             with col_info1:
-                st.markdown(f"**Level:** {risk['level']}")
+                st.markdown(f"**Stored Level:** {risk['level']}")
+                st.markdown(f"**Computed Dist:** {dist if dist > 0 else 'Orphan (-1)'}")
                 st.markdown(f"**Origin:** {origin}")
             with col_info2:
                 st.markdown(f"**Status:** {risk['status']}")

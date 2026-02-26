@@ -73,6 +73,7 @@ streamlit run app.py
 | **Exposure Calculation** | Quantitative scoring with influence limitation model |
 | **TPO Impact Tracking** | Link risks to program objectives |
 | **Analysis Scopes** | Define named node subsets for focused analysis with neighbor expansion, scoped statistics, exposure, influence and mitigation analysis |
+| **Computed Risk Distance** | Dynamic assessment of path length to nearest TPO for hierarchical layout |
 
 ### Visualization
 
@@ -242,4 +243,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.10.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.10.3 | See [CHANGELOG.md](CHANGELOG.md) for history

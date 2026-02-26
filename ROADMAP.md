@@ -44,7 +44,7 @@ This contract must be enforced end-to-end — any function that reads from or wr
 - **U4. Strict Data Validation (Pydantic)**: Implement rigid validation for all incoming graph logic using `pydantic`. Models must cover both risk nodes and generic context nodes, with type enforcement driven by schema YAML property definitions.
 - **U5. Mitigation Budget Attributes**: Extend the Mitigation schema with **CAPEX** and **OPEX** attributes. Foundation for cost-optimization algorithms.
 - **U6. Generic ContextNode Architecture**: Refactor the graph schema and database layer to support a fully generic `ContextNode` type driven entirely by `context_nodes` entries in the schema YAML. The app renders, creates, edits, and deletes any context node type using a single generic form — no type-specific code. Each definition carries: `shape`, `color`, `zone` (`upper`/`lower`), and a typed `properties` list. Reserve `source` and `import_adapter` as base properties on all ContextNodes from the start (for F17). See _Architectural Note: ContextNode Schema_ below.
-- **U7. Computed Risk Level (No Stored Property)**: Remove `level` as a stored property on risk nodes. Compute it on read via **BFS toward the nearest TPO** through `semantic: influence` relationships. Level 0 = TPO; Level 1 = BusinessRisk directly impairing a TPO; Level N = shortest influence-path distance to any TPO. Orphan risks (no path to any TPO) are flagged in the UI. ContextNodes carry `zone` (upper/lower) from their schema definition — not a computed property.
+- **U7. ~~Computed Risk Level~~** ✅ _(v2.10.3)_: Replaced rigid `level` for visualization with dynamic BFS-computed distance to nearest TPO through `semantic: influence` relationships. Level 0 = TPO; Level N = shortest influence-path distance to any TPO. Orphan risks (no path to any TPO) are flagged in the UI. ContextNodes carry `zone` (upper/lower) from their schema definition — not a computed property.
 - **U8. Relationship Semantic Types**: Add a `semantic` field to all relationship type definitions. Three values: `influence` (participates in exposure propagation), `context` (structural/informational, feeds financial model), `cluster` (risk grouping only). The exposure engine routes exclusively on `semantic: influence` relationships.
 - **U9. Scope Completeness Enforcement**: Audit and repair all functions that interact with the graph to ensure end-to-end scope propagation. This is the **highest-priority correctness item** — see _Critical Scope Gaps_ below.
 - **U10. ~~Schema-Driven Filter System (Full Dynamic Rebuild)~~** ✅ _(v2.10.1)_
@@ -344,7 +344,7 @@ Development is scheduled across five sequential phases. **A phase cannot be cons
 _Goal: Establish the generic ContextNode architecture, computed level logic, relationship semantics, and — critically — full scope completeness. Every operation in the app must respect the active scope before any new analytical feature is added._
 
 0. **~~[U10]~~** Schema-Driven Filter System ✅ — fully dynamic `FilterManager`, `render_visualization_filters`, and `render_filter_sidebar`. All filter UI now iterates registry types; no hardcoded entity/relationship IDs. Preset buttons are schema-derived. All/None quick-toggle buttons added to every multiselect group.
-1. **[U6]** Generic ContextNode Architecture — YAML `context_nodes` section, generic Neo4j label strategy (`ContextNode` + `node_type` + `zone` properties), schema loader updates. Reserve `source` and `import_adapter` base properties on all ContextNodes.
+1. **~~[U6]~~** Generic ContextNode Architecture — YAML `context_nodes` section, generic Neo4j label strategy (`ContextNode` + `node_type` + `zone` properties), schema loader updates. Reserve `source` and `import_adapter` base properties on all ContextNodes.
 2. **[U7]** Computed Risk Level — replace stored `level` with BFS-computed level. Update all queries and display logic.
 3. **[U8]** Relationship Semantic Types — add `semantic` to all relationship definitions. Update exposure engine to route exclusively on `semantic: influence`.
 4. **[U9] Scope Completeness Enforcement** — audit and repair all scope gaps:
@@ -372,11 +372,11 @@ _Goal: Expose ContextNode infrastructure through working UI. Introduce zone-awar
 1. **[U4]** Pydantic Data Validation — schemas for both risk nodes and generic ContextNodes (type enforcement from YAML property definitions).
 2. **[F12]** Generic Context Node and Context Edge CRUD UI — scope-aware single form component to manage custom nodes and edges.
 3. **[F18]** Extend Data Management — update Excel import/export and JSON backup/restore to handle ContextData.
-3. **[F13]** Zone-Aware 4-Layer Visual Layout — zone-anchored hierarchical layout mode.
-4. **[F4]** One-Click Visualization Export.
-5. **[F5]** Automated Risk Threshold Alerts (scope-aware).
-6. **[F6]** Mitigation Exposure View (scope-aware).
-7. **[F7]** "What-If" Analysis Sandbox (scope-bounded — must never produce out-of-scope results).
+4. **[F13]** Zone-Aware 4-Layer Visual Layout — zone-anchored hierarchical layout mode.
+5. **[F4]** One-Click Visualization Export.
+6. **[F5]** Automated Risk Threshold Alerts (scope-aware).
+7. **[F6]** Mitigation Exposure View (scope-aware).
+8. **[F7]** "What-If" Analysis Sandbox (scope-bounded — must never produce out-of-scope results).
 
 > 🛑 **GATEWAY 2: Extensive Code Review & Testing Pass**
 >
