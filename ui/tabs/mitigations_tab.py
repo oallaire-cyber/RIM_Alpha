@@ -122,6 +122,10 @@ def _render_mitigation_list(
     if not mitigations:
         st.info("No mitigations created.")
         return
+        
+    from ui.components import render_pagination
+    start_idx, end_idx = render_pagination(len(mitigations), 20, "mitigations_list")
+    paginated_mitigations = mitigations[start_idx:end_idx]
     
     # Icons for types and statuses
     type_icons = {
@@ -136,7 +140,7 @@ def _render_mitigation_list(
         "Deferred": "⏸️"
     }
     
-    for mit in mitigations:
+    for mit in paginated_mitigations:
         type_icon = type_icons.get(mit.get('type', 'Dedicated'), '🛡️')
         status_icon = status_icons.get(mit.get('status', 'Proposed'), '❓')
         

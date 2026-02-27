@@ -294,3 +294,61 @@ def create_download_link(data: bytes, filename: str, link_text: str) -> str:
     import base64
     b64 = base64.b64encode(data).decode()
     return f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">{link_text}</a>'
+
+
+def render_pagination(total_items: int, items_per_page: int, key_prefix: str) -> tuple[int, int]:
+    """
+    Render pagination controls and return the (start_idx, end_idx) for the current page.
+    
+    Args:
+        total_items: Total number of items
+        items_per_page: Number of items per page
+        key_prefix: Unique prefix for Streamlit keys
+        
+    Returns:
+        tuple containing (start_idx, end_idx)
+    """
+    import streamlit as st
+    import math
+    
+    if total_items == 0:
+        return 0, 0
+        
+    total_pages = math.ceil(total_items / items_per_page)
+    
+    if total_pages <= 1:
+        return 0, total_items
+
+    # Initialize current page in session state if not exists
+    page_key = f"{key_prefix}_page"
+    if page_key not in st.session_state:
+        st.session_state[page_key] = 1
+        
+    # Ensure current page is valid (e.g., if items were deleted)
+    if st.session_state[page_key] > total_pages:
+        st.session_state[page_key] = total_pages
+        
+    current_page = st.session_state[page_key]
+    
+    # Render controls
+    st.markdown("---")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col1:
+        if st.button("⬅️ Previous", key=f"{key_prefix}_prev", disabled=current_page <= 1, use_container_width=True):
+            st.session_state[page_key] -= 1
+            st.rerun()
+            
+    with col2:
+        st.markdown(f"<div style='text-align: center; padding-top: 8px;'>Page {current_page} of {total_pages} (Total: {total_items})</div>", unsafe_allow_html=True)
+        
+    with col3:
+        if st.button("Next ➡️", key=f"{key_prefix}_next", disabled=current_page >= total_pages, use_container_width=True):
+            st.session_state[page_key] += 1
+            st.rerun()
+            
+    start_idx = (current_page - 1) * items_per_page
+    end_idx = min(start_idx + items_per_page, total_items)
+    
+    return start_idx, end_idx
+

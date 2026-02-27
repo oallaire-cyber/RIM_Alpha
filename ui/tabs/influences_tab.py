@@ -101,8 +101,12 @@ def _render_influence_list(
     if not influences:
         st.info("No influences created.")
         return
+        
+    from ui.components import render_pagination
+    start_idx, end_idx = render_pagination(len(influences), 20, "influences_list")
+    paginated_influences = influences[start_idx:end_idx]
     
-    for inf in influences:
+    for inf in paginated_influences:
         # Type emoji based on influence level
         inf_type = inf.get('influence_type') or ''
         if "Level1" in inf_type:

@@ -97,10 +97,16 @@ def _render_tpo_list(
     if not tpos:
         st.info("No TPOs created.")
         return
+        
+    tpos = sorted(tpos, key=lambda x: (x.get('cluster', 'Unknown'), x.get('reference', '')))
+    
+    from ui.components import render_pagination
+    start_idx, end_idx = render_pagination(len(tpos), 20, "tpos_list")
+    paginated_tpos = tpos[start_idx:end_idx]
     
     # Group by cluster
     clusters_data = {}
-    for tpo in tpos:
+    for tpo in paginated_tpos:
         cluster = tpo.get('cluster', 'Unknown')
         if cluster not in clusters_data:
             clusters_data[cluster] = []

@@ -6,8 +6,24 @@ maintaining backward compatibility with the existing application.
 """
 
 from typing import List, Dict, Any, Optional
+import streamlit as st
+from functools import wraps
 from database.connection import Neo4jConnection
 from database.queries import risks, tpos, mitigations, influences, analysis
+
+def clears_cache(func):
+    """Decorator to clear Streamlit cache after database mutations."""
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        result = func(self, *args, **kwargs)
+        if result:
+            try:
+                import streamlit as st
+                st.cache_data.clear()
+            except Exception:
+                pass
+        return result
+    return wrapper
 
 
 class RiskGraphManager:
@@ -81,6 +97,7 @@ class RiskGraphManager:
     # RISK OPERATIONS
     # =========================================================================
     
+    @clears_cache
     def create_risk(
         self,
         name: str,
@@ -124,6 +141,7 @@ class RiskGraphManager:
         """Retrieve a risk by its name."""
         return risks.get_risk_by_name(self._connection, name)
     
+    @clears_cache
     def update_risk(
         self,
         risk_id: str,
@@ -146,6 +164,7 @@ class RiskGraphManager:
             activation_decision_date
         )
     
+    @clears_cache
     def delete_risk(self, risk_id: str) -> bool:
         """Delete a risk and all its relationships."""
         return risks.delete_risk(self._connection, risk_id)
@@ -154,6 +173,7 @@ class RiskGraphManager:
     # INFLUENCE OPERATIONS
     # =========================================================================
     
+    @clears_cache
     def create_influence(
         self,
         source_id: str,
@@ -181,6 +201,7 @@ class RiskGraphManager:
         """Get all influences pointing to a specific risk."""
         return influences.get_influences_to_risk(self._connection, risk_id)
     
+    @clears_cache
     def update_influence(
         self,
         influence_id: str,
@@ -193,6 +214,7 @@ class RiskGraphManager:
             self._connection, influence_id, strength, description, confidence
         )
     
+    @clears_cache
     def delete_influence(self, influence_id: str) -> bool:
         """Delete an influence relationship."""
         return influences.delete_influence(self._connection, influence_id)
@@ -201,6 +223,7 @@ class RiskGraphManager:
     # TPO OPERATIONS
     # =========================================================================
     
+    @clears_cache
     def create_tpo(
         self,
         reference: str,
@@ -224,6 +247,7 @@ class RiskGraphManager:
         """Retrieve a TPO by its reference code."""
         return tpos.get_tpo_by_reference(self._connection, reference)
     
+    @clears_cache
     def update_tpo(
         self,
         tpo_id: str,
@@ -237,6 +261,7 @@ class RiskGraphManager:
             self._connection, tpo_id, reference, name, cluster, description
         )
     
+    @clears_cache
     def delete_tpo(self, tpo_id: str) -> bool:
         """Delete a TPO and all its relationships."""
         return tpos.delete_tpo(self._connection, tpo_id)
@@ -245,6 +270,7 @@ class RiskGraphManager:
     # TPO IMPACT OPERATIONS
     # =========================================================================
     
+    @clears_cache
     def create_tpo_impact(
         self,
         risk_id: str,
@@ -259,7 +285,6 @@ class RiskGraphManager:
             )
             return result is not None
         except ValueError as e:
-            import streamlit as st
             st.error(str(e))
             return False
     
@@ -275,6 +300,7 @@ class RiskGraphManager:
         """Get all risks that impact a specific TPO."""
         return tpos.get_risks_impacting_tpo(self._connection, tpo_id)
     
+    @clears_cache
     def update_tpo_impact(
         self,
         impact_id: str,
@@ -286,6 +312,7 @@ class RiskGraphManager:
             self._connection, impact_id, impact_level, description
         )
     
+    @clears_cache
     def delete_tpo_impact(self, impact_id: str) -> bool:
         """Delete a TPO impact relationship."""
         return tpos.delete_tpo_impact(self._connection, impact_id)
@@ -294,6 +321,7 @@ class RiskGraphManager:
     # MITIGATION OPERATIONS
     # =========================================================================
     
+    @clears_cache
     def create_mitigation(
         self,
         name: str,
@@ -328,6 +356,7 @@ class RiskGraphManager:
         """Retrieve a mitigation by its name."""
         return mitigations.get_mitigation_by_name(self._connection, name)
     
+    @clears_cache
     def update_mitigation(
         self,
         mitigation_id: str,
@@ -344,6 +373,7 @@ class RiskGraphManager:
             status, description, owner, source_entity
         )
     
+    @clears_cache
     def delete_mitigation(self, mitigation_id: str) -> bool:
         """Delete a mitigation and all its relationships."""
         return mitigations.delete_mitigation(self._connection, mitigation_id)
@@ -352,6 +382,7 @@ class RiskGraphManager:
     # MITIGATES RELATIONSHIP OPERATIONS
     # =========================================================================
     
+    @clears_cache
     def create_mitigates_link(
         self,
         mitigation_id: str,
@@ -377,6 +408,7 @@ class RiskGraphManager:
         """Get all risks mitigated by a specific mitigation."""
         return mitigations.get_risks_for_mitigation(self._connection, mitigation_id)
     
+    @clears_cache
     def update_mitigates_link(
         self,
         relationship_id: str,
@@ -388,6 +420,7 @@ class RiskGraphManager:
             self._connection, relationship_id, effectiveness, description
         )
     
+    @clears_cache
     def delete_mitigates_link(self, relationship_id: str) -> bool:
         """Delete a MITIGATES relationship."""
         return mitigations.delete_mitigates_relationship(self._connection, relationship_id)
@@ -486,15 +519,22 @@ class RiskGraphManager:
     
     def get_influence_analysis(self, active_scopes: list = None) -> Dict[str, Any]:
         """
+        Comprehensive influence analysis.
+        Delegates to _cached_influence_analysis to support caching keyed by active scopes.
+        """
+        # Create a hashable key for the scope
+        scope_key = tuple(sorted(s.id for s in active_scopes)) if active_scopes else ()
+        return self._cached_influence_analysis(scope_key)
+
+    @st.cache_data(show_spinner="Analyzing influence network...")
+    def _cached_influence_analysis(_self, scope_key) -> Dict[str, Any]:
+        """
         Comprehensive influence analysis including:
         - Top Propagators (risks with highest downstream impact)
         - Convergence Points (most influenced risks/TPOs)
         - Critical Paths (strongest influence chains)
         - Bottlenecks (nodes appearing in many paths)
         - Risk Clusters (tightly interconnected groups)
-        
-        Args:
-            active_scopes: Optional list of active AnalysisScopeConfig objects.
         """
         analysis = {
             "top_propagators": [],

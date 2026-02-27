@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 import json
 import math
+import streamlit as st
 
 from config.settings import TPO_CLUSTERS
 
@@ -109,6 +110,7 @@ class LayoutManager:
         return name in self.layouts
 
 
+@st.cache_data
 def generate_layered_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     """
     Generate a layered layout with TPOs at top, Business in middle, Operational at bottom.
@@ -165,6 +167,7 @@ def generate_layered_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, 
     return positions
 
 
+@st.cache_data
 def generate_category_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     """
     Generate a layout grouped by categories in 2x2 grid, TPOs on top.
@@ -220,6 +223,7 @@ def generate_category_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str,
     return positions
 
 
+@st.cache_data
 def generate_tpo_cluster_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     """
     Generate a layout grouped by TPO clusters with risks below.
@@ -284,6 +288,7 @@ def generate_tpo_cluster_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[s
     return positions
 
 
+@st.cache_data
 def generate_auto_spread_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]] = None) -> Dict[str, Dict[str, float]]:
     """
     Generate a hierarchical layout using the Sugiyama algorithm.

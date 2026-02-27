@@ -177,8 +177,8 @@ relationship_types:
 
 ### Simple / Medium Workload
 
-- **F1. Progressive UI Loading**: Pagination or virtual scrolling for CRUD tables on large scopes.
-- **F2. Intelligent Caching**: Apply `@st.cache_data` to expensive queries and layout algorithms. Cache must be keyed by active scope — a cache hit on a full-graph query must never serve a scoped view.
+- **~~[F1]~~ Progressive UI Loading** ✅ _(v2.10.8)_: Pagination or virtual scrolling for CRUD tables on large scopes.
+- **~~[F2]~~ Intelligent Caching** ✅ _(v2.10.8)_: Apply `@st.cache_data` to expensive queries and layout algorithms. Cache must be keyed by active scope — a cache hit on a full-graph query must never serve a scoped view.
 - **F3. Complexity Toggle (Simple vs. Advanced Mode)**: Streamlined UI hiding advanced tabs for non-technical stakeholders.
 - **F4. One-Click Visualization Export**: Export the active styled graph view to PNG or PDF.
 - **F5. Automated Risk Threshold Alerts**: Visual flags when computed exposure exceeds predefined thresholds. Must be scope-aware.
@@ -354,7 +354,7 @@ _Goal: Establish the generic ContextNode architecture, computed level logic, rel
    - `get_graph_data()` scope expansion → extended ContextNodes
    - `AnalysisScopeConfig` → added non-breaking `scope_type` field (default `"scope"`)
    - Cache key strategy → scope-keyed from the start
-5. **[F1 & F2]** Intelligent Caching (scope-keyed) and Progressive UI Loading.
+5. **~~[F1 & F2]~~** Intelligent Caching (scope-keyed) and Progressive UI Loading ✅ _(v2.10.8)_.
 6. **[F3]** Complexity Toggle.
 7. **[U5]** Mitigation CAPEX / OPEX attributes.
 

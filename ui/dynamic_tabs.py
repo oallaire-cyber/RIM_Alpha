@@ -222,7 +222,11 @@ def _render_entity_tab_content(
         if not entities:
             st.info(f"No {entity_type.label.lower()}s found")
         else:
-            for entity in entities:
+            from ui.components import render_pagination
+            start_idx, end_idx = render_pagination(len(entities), 20, f"entities_{entity_type_id}")
+            paginated_entities = entities[start_idx:end_idx]
+            
+            for entity in paginated_entities:
                 _render_entity_card(entity, entity_type, manager)
     
     except Exception as e:
@@ -297,7 +301,11 @@ def _render_relationship_tab_content(
         if not relationships:
             st.info(f"No {rel_type.label.lower()} relationships found")
         else:
-            for rel in relationships:
+            from ui.components import render_pagination
+            start_idx, end_idx = render_pagination(len(relationships), 20, f"rels_{rel_type_id}")
+            paginated_relationships = relationships[start_idx:end_idx]
+            
+            for rel in paginated_relationships:
                 _render_relationship_card(rel, rel_type, manager)
     
     except Exception as e:

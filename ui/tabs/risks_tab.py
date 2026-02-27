@@ -143,7 +143,11 @@ def _render_risk_list(
         st.info("No risks created.")
         return
     
-    for risk in risks:
+    from ui.components import render_pagination
+    start_idx, end_idx = render_pagination(len(risks), 20, "risks_list")
+    paginated_risks = risks[start_idx:end_idx]
+    
+    for risk in paginated_risks:
         level_icon = "🟣" if risk['level'] == 'Strategic' or risk['level'] == 'Business' else "🔵"
         origin = risk.get('origin', 'New')
         origin_icon = "📜" if origin == "Legacy" else "🆕"

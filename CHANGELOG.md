@@ -4,6 +4,20 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.10.8] - 2026-02-27
+
+### F1 & F2 — Progressive UI Loading & Intelligent Caching
+
+**Performance & UX Enhancements:**
+
+- **F1: Progressive UI Loading**: Deployed pagination components across all core CRUD tables (Risks, Mitigations, TPOs, Influences, Custom Entities, Custom Relationships) in the UI. Large data schemas are now gracefully divided into manageable chunks, dramatically improving frontend rendering speeds and interaction snappiness during full graph investigations.
+- **F2: Intelligent Structural Caching**: Integrated Streamlit's `@st.cache_data` caching engine profoundly into the backbone operations to eliminate redundant re-evaluation. 
+  - **Graph Layouts**: Algorithmically intense network distributions (Sugiyama layered, specific clustering, categorical spread) are now strictly memoized.
+  - **Influence Engine**: The computationally expensive BFS pathways processing (Critical paths, bottlenecks, clusters) are securely keyed to the *exact bound analysis scope context*. Cached evaluations strictly respect graph topology and selected scoped nodes to eliminate cross-contamination data leakage while boosting repeated visits dynamically.
+  - **Mutation Observers**: All 18 unique Database generic & semantic data modifications dynamically call a cache invalidation trigger. Every created, modified, or severed edge ensures the cache operates firmly against truthful graph topologies.
+
+---
+
 ## [v2.10.7] - 2026-02-27
 
 ### Bug Fixes
