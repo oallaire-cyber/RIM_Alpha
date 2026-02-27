@@ -4,6 +4,36 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.10.5] - 2026-02-27
+
+### Exposure Calculation Visibility
+
+**Verification & Trace Mechanics:**
+- Implemented a "Calculation Trace" within the exposure engine that records step-by-step mathematical operations (base values, mitigation reductions, and influence limitations).
+- Appended a list of string traces to `RiskExposureResult`.
+- Updated the "Risk Exposure Analysis" dashboard in `ui/home.py` to display an expandable "View Calculation Trace" for every risk listed in the top exposures table, providing absolute transparency into the arithmetic behind the final scores.
+
+---
+
+## [v2.10.4] - 2026-02-27
+
+### U8 — Relationship Semantic Types
+
+**Core Architecture & Engine Updates:**
+
+- **Semantic Routing Model**
+  - Introduced `semantic` attribute to the `RelationshipTypeDefinition` schema object (`influence`, `context`, `cluster`).
+  - Re-routed the `calculate_exposure()` exposure engine to exclusively process relationships designated as `semantic: influence`.
+  - Defined defaults for kernel relationships: `INFLUENCES` and `MITIGATES` act as `semantic: influence`, while `IMPACTS_TPO` and custom edges default to `semantic: context`.
+  - Updated graph analysis and export functions to dynamically query the registry for `semantic: influence` boundaries instead of hardcoding `INFLUENCES`.
+
+**Files Modified:**
+- `schemas/default/schema.yaml` — Explicitly added `semantic` assignments for built-in edge configurations.
+- `core/relationship.py` — Added runtime support for mapping semantic configurations.
+- `database/manager.py` — Refactored engine fetchers into the new `get_semantic_influences()` proxy to respect semantic limits on metrics, exports, and path logic.
+
+---
+
 ## [v2.10.3] - 2026-02-26
 
 ### U7 — Computed Risk Level

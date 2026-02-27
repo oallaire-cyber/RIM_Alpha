@@ -45,7 +45,7 @@ This contract must be enforced end-to-end — any function that reads from or wr
 - **U5. Mitigation Budget Attributes**: Extend the Mitigation schema with **CAPEX** and **OPEX** attributes. Foundation for cost-optimization algorithms.
 - **U6. Generic ContextNode Architecture**: Refactor the graph schema and database layer to support a fully generic `ContextNode` type driven entirely by `context_nodes` entries in the schema YAML. The app renders, creates, edits, and deletes any context node type using a single generic form — no type-specific code. Each definition carries: `shape`, `color`, `zone` (`upper`/`lower`), and a typed `properties` list. Reserve `source` and `import_adapter` as base properties on all ContextNodes from the start (for F17). See _Architectural Note: ContextNode Schema_ below.
 - **U7. ~~Computed Risk Level~~** ✅ _(v2.10.3)_: Replaced rigid `level` for visualization with dynamic BFS-computed distance to nearest TPO through `semantic: influence` relationships. Level 0 = TPO; Level N = shortest influence-path distance to any TPO. Orphan risks (no path to any TPO) are flagged in the UI. ContextNodes carry `zone` (upper/lower) from their schema definition — not a computed property.
-- **U8. Relationship Semantic Types**: Add a `semantic` field to all relationship type definitions. Three values: `influence` (participates in exposure propagation), `context` (structural/informational, feeds financial model), `cluster` (risk grouping only). The exposure engine routes exclusively on `semantic: influence` relationships.
+- **U8. ~~Relationship Semantic Types~~** ✅ _(v2.10.4)_: Added a `semantic` field to all relationship type definitions. Three values: `influence` (participates in exposure propagation), `context` (structural/informational, feeds financial model), `cluster` (risk grouping only). The exposure engine routes exclusively on `semantic: influence` relationships.
 - **U9. Scope Completeness Enforcement**: Audit and repair all functions that interact with the graph to ensure end-to-end scope propagation. This is the **highest-priority correctness item** — see _Critical Scope Gaps_ below.
 - **U10. ~~Schema-Driven Filter System (Full Dynamic Rebuild)~~** ✅ _(v2.10.1)_
   - **Problem resolved:** Three separate bugs existed in the filter layer:
@@ -345,8 +345,8 @@ _Goal: Establish the generic ContextNode architecture, computed level logic, rel
 
 0. **~~[U10]~~** Schema-Driven Filter System ✅ — fully dynamic `FilterManager`, `render_visualization_filters`, and `render_filter_sidebar`. All filter UI now iterates registry types; no hardcoded entity/relationship IDs. Preset buttons are schema-derived. All/None quick-toggle buttons added to every multiselect group.
 1. **~~[U6]~~** Generic ContextNode Architecture — YAML `context_nodes` section, generic Neo4j label strategy (`ContextNode` + `node_type` + `zone` properties), schema loader updates. Reserve `source` and `import_adapter` base properties on all ContextNodes.
-2. **[U7]** Computed Risk Level — replace stored `level` with BFS-computed level. Update all queries and display logic.
-3. **[U8]** Relationship Semantic Types — add `semantic` to all relationship definitions. Update exposure engine to route exclusively on `semantic: influence`.
+2. **~~[U7]~~** Computed Risk Level — replace stored `level` with BFS-computed level. Update all queries and display logic.
+3. **~~[U8]~~** Relationship Semantic Types ✅ — added `semantic` to all relationship definitions. Exposure engine routes exclusively on `semantic: influence`.
 4. **[U9] Scope Completeness Enforcement** — audit and repair all scope gaps:
    - `get_statistics()` → add `scope_node_ids` parameter
    - `get_all_nodes_for_selection()` → add `scope_node_ids` parameter

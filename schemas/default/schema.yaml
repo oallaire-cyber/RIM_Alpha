@@ -319,6 +319,7 @@ context_edges:
 relationships:
   influences:
     neo4j_type: INFLUENCES
+    semantic: influence
     default_confidence: 0.8
     types:
     - id: level1_op_to_bus
@@ -359,6 +360,7 @@ relationships:
       color: '#e74c3c'
   impacts_tpo:
     neo4j_type: IMPACTS_TPO
+    semantic: context
     impact_levels:
     - id: low
       label: Low
@@ -382,6 +384,7 @@ relationships:
       color: '#e74c3c'
   mitigates:
     neo4j_type: MITIGATES
+    semantic: influence
     effectiveness_levels:
     - id: low
       label: Low

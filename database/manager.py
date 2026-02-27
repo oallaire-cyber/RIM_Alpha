@@ -172,6 +172,43 @@ class RiskGraphManager:
     def get_all_influences(self) -> list:
         """Retrieve all influence relationships."""
         return influences.get_all_influences(self._connection)
+        
+    def get_semantic_influences(self) -> list:
+        """
+        Retrieve all relationships that have semantic type 'influence'.
+        This includes the kernel INFLUENCES, MITIGATES, and any custom
+        relationships configured as semantic: influence in the schema.
+        
+        Returns:
+            List of normalized relationship dictionaries with source_id and target_id.
+        """
+        from core import get_registry
+        registry = get_registry()
+        semantic_rels = []
+        
+        # Kernel: influences
+        inf_type = registry.get_influence_type()
+        if inf_type and inf_type.semantic == "influence":
+            semantic_rels.extend(self.get_all_influences())
+            
+        # Kernel: mitigates
+        mitigates_type = registry.get_mitigates_type()
+        if mitigates_type and mitigates_type.semantic == "influence":
+            mitigates = self.get_all_mitigates_relationships()
+            # Normalize to source_id/target_id format for the exposure engine
+            for m in mitigates:
+                m_normalized = dict(m)
+                m_normalized["source_id"] = m.get("mitigation_id")
+                m_normalized["target_id"] = m.get("risk_id")
+                semantic_rels.append(m_normalized)
+                
+        # Additional relationships configured as 'influence'
+        for rel_id, rel_def in registry.get_additional_relationship_types().items():
+            if rel_def.semantic == "influence":
+                custom_rels = self.get_relationships(rel_id)
+                semantic_rels.extend(custom_rels)
+                
+        return semantic_rels
     
     def get_influences_from_risk(self, risk_id: str) -> list:
         """Get all influences originating from a specific risk."""
@@ -511,7 +548,7 @@ class RiskGraphManager:
         # Get all nodes and edges for analysis
         all_risks = self.get_all_risks()
         all_tpos = self.get_all_tpos()
-        all_influences = self.get_all_influences()
+        all_influences = self.get_semantic_influences()
         all_tpo_impacts = self.get_all_tpo_impacts()
         
         # Pre-filter by scope if provided
@@ -1221,7 +1258,7 @@ class RiskGraphManager:
         return export_to_excel(
             filepath=filepath,
             risks=self.get_all_risks(),
-            influences=self.get_all_influences(),
+            influences=self.get_semantic_influences(),
             tpos=self.get_all_tpos(),
             tpo_impacts=self.get_all_tpo_impacts(),
             mitigations=self.get_all_mitigations(),
@@ -1239,7 +1276,7 @@ class RiskGraphManager:
         
         return export_to_excel_bytes(
             risks=self.get_all_risks(),
-            influences=self.get_all_influences(),
+            influences=self.get_semantic_influences(),
             tpos=self.get_all_tpos(),
             tpo_impacts=self.get_all_tpo_impacts(),
             mitigations=self.get_all_mitigations(),
@@ -1300,7 +1337,7 @@ class RiskGraphManager:
         
         # Gather all required data
         risks = self.get_all_risks()
-        influences = self.get_all_influences()
+        influences = self.get_semantic_influences()
         mitigations = self.get_all_mitigations()
         mitigates_rels = self.get_all_mitigates_relationships()
         

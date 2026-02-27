@@ -115,6 +115,7 @@ class RiskGraphManager:
     # Influence operations
     def create_influence(self, source_ref, target_ref, **kwargs)
     def get_all_influences(self) -> List[dict]
+    def get_semantic_influences(self) -> List[dict]
     
     # Mitigation operations
     def create_mitigation(self, **kwargs) -> str
@@ -724,4 +725,4 @@ flake8>=6.0.0
 
 ---
 
-*Last updated: February 2026 | Version 2.10.0*
+*Last updated: February 2026 | Version 2.10.4*

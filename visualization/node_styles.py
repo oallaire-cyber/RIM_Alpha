@@ -53,7 +53,8 @@ def build_generic_tooltip(node: Dict[str, Any], entity_type, is_highlighted: boo
         ("Level", "level"),
         ("Origin", "origin"),
         ("Category", "category"),
-        ("Exposure", "exposure"),
+        ("Base Exposure", "base_exposure"),
+        ("Final Exposure", "exposure"),
     ]
     for label, key in tooltip_fields:
         val = node.get(key)

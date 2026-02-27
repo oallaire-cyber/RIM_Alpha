@@ -354,6 +354,18 @@ def render_exposure_dashboard(manager):
                             f"Base={base:.0f} → Final={final:.1f} "
                             f"({reduction:.0f}% ↓) {mit_info} {inf_info}"
                         )
+                        
+                        # Add trace expander
+                        traces = r.get("trace", [])
+                        if traces:
+                            with st.expander("🔍 View Calculation Trace", expanded=False):
+                                for message in traces:
+                                    if message.startswith("---"):
+                                        st.markdown(f"**{message}**")
+                                    elif message.startswith("1.") or message.startswith("2.") or message.startswith("3.") or message.startswith("4.") or message.startswith("5."):
+                                        st.markdown(f"*{message}*")
+                                    else:
+                                        st.text(message)
                 else:
                     st.info("No risk exposure data available.")
 
@@ -834,6 +846,14 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
                 positions = st.session_state.layout_manager.load_layout(layout_name)
                 if positions:
                     st.info(f"📍 Active layout: **{layout_name}**")
+        # Overlay calculated final exposure if available
+        exposure_results = st.session_state.get("exposure_results")
+        if exposure_results and "risk_results" in exposure_results:
+            exp_lookup = {r["risk_id"]: r for r in exposure_results["risk_results"]}
+            for n in nodes:
+                if n.get("id") in exp_lookup:
+                    n["base_exposure"] = exp_lookup[n["id"]]["base_exposure"]
+                    n["exposure"] = exp_lookup[n["id"]]["final_exposure"]
         
         # Handle edge filtering
         max_edges = None

@@ -32,6 +32,7 @@ class TestRiskExposureResult:
             effective_mitigation_factor=0.76,
             upstream_risk_count=1,
             final_exposure=30.4,
+            trace=["Test trace"],
         )
         
         assert result.risk_id == "risk-001"
@@ -54,6 +55,7 @@ class TestRiskExposureResult:
             effective_mitigation_factor=0.76,
             upstream_risk_count=1,
             final_exposure=30.4,
+            trace=["Test trace"],
         )
         
         data = result.to_dict()
@@ -236,10 +238,11 @@ class TestExposureCalculatorCalculations:
         )
         
         # op-002 has no mitigations in sample data
-        factor, count = calc._calculate_mitigation_factor("op-002")
+        factor, count, traces = calc._calculate_mitigation_factor("op-002")
         
         assert factor == 1.0
         assert count == 0
+        assert "No mitigations applied" in traces[0]
     
     def test_calculate_mitigation_factor_with_mitigations(self, sample_risk_network):
         """Test mitigation factor with mitigations applied."""
@@ -251,10 +254,11 @@ class TestExposureCalculatorCalculations:
         )
         
         # strat-001 has one High effectiveness mitigation
-        factor, count = calc._calculate_mitigation_factor("strat-001")
+        factor, count, traces = calc._calculate_mitigation_factor("strat-001")
         
         assert factor < 1.0  # Should be reduced
         assert count == 1
+        assert "effectiveness" in traces[0]
     
     def test_calculate_all_returns_results(self, sample_risk_network):
         """Test calculate_all returns global results."""

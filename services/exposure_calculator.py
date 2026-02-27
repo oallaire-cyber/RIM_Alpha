@@ -69,6 +69,9 @@ class RiskExposureResult:
     # Final result
     final_exposure: float
     
+    # Calculation Trace (for verification UI)
+    trace: List[str] = field(default_factory=list)
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for storage/display."""
         return {
@@ -84,7 +87,8 @@ class RiskExposureResult:
             "influence_limitation": round(self.influence_limitation, 3),
             "effective_mitigation_factor": round(self.effective_mitigation_factor, 3),
             "upstream_risk_count": self.upstream_risk_count,
-            "final_exposure": round(self.final_exposure, 2)
+            "final_exposure": round(self.final_exposure, 2),
+            "trace": self.trace
         }
 
 
@@ -263,20 +267,25 @@ class ExposureCalculator:
             risk_id: ID of the risk
         
         Returns:
-            Tuple of (mitigation_factor, mitigation_count)
+            Tuple of (mitigation_factor, mitigation_count, List of trace messages)
             Factor of 1.0 means no mitigation, 0.1 means 90% mitigated
         """
         effectivenesses = self.risk_mitigations.get(risk_id, [])
+        traces = []
         
         if not effectivenesses:
-            return 1.0, 0
+            traces.append("Mitigation Factor: 1.0 (No mitigations applied)")
+            return 1.0, 0, traces
         
         factor = 1.0
         for eff in effectivenesses:
             eff_score = EFFECTIVENESS_SCORES.get(eff, 0.5)
-            factor *= (1.0 - eff_score)
+            reduction = 1.0 - eff_score
+            factor *= reduction
+            traces.append(f"Mitigation applied: {eff} effectiveness ({eff_score * 100}% reduction)")
         
-        return factor, len(effectivenesses)
+        traces.append(f"Combined Mitigation Factor: {factor:.3f}")
+        return factor, len(effectivenesses), traces
     
     def _calculate_influence_limitation(
         self, 
@@ -299,13 +308,15 @@ class ExposureCalculator:
             calculated_risks: Already calculated risk results
         
         Returns:
-            Tuple of (limitation_factor, upstream_count)
+            Tuple of (limitation_factor, upstream_count, List of trace messages)
             Factor of 0.0 means no limitation, 1.0 means full limitation
         """
         upstream = self.upstream_influences.get(risk_id, [])
+        traces = []
         
         if not upstream:
-            return 0.0, 0
+            traces.append("Influence Limitation: 0.0 (No upstream influences)")
+            return 0.0, 0, traces
         
         total_limitation = 0.0
         valid_count = 0
@@ -327,16 +338,24 @@ class ExposureCalculator:
             
             # Apply strength weighting
             strength_score = INFLUENCE_STRENGTH_SCORES.get(strength, 0.5)
-            total_limitation += residual_normalized * strength_score
+            limitation_contribution = residual_normalized * strength_score
+            total_limitation += limitation_contribution
             valid_count += 1
+            
+            traces.append(
+                f"Upstream [{upstream_result.risk_name}]: Residual ({residual_normalized:.2f}) "
+                f"× Strength ({strength}={strength_score}) = {limitation_contribution:.3f}"
+            )
         
         if valid_count == 0:
-            return 0.0, len(upstream)
+            traces.append("Influence Limitation: 0.0 (Upstream risks have no data)")
+            return 0.0, len(upstream), traces
         
         # Average the limitation
         avg_limitation = total_limitation / valid_count
+        traces.append(f"Average Influence Limitation: {total_limitation:.3f} / {valid_count} = {avg_limitation:.3f}")
         
-        return avg_limitation, len(upstream)
+        return avg_limitation, len(upstream), traces
     
     def _get_calculation_order(self) -> List[str]:
         """
@@ -406,17 +425,29 @@ class ExposureCalculator:
         likelihood = float(likelihood)
         impact = float(impact)
         
+        trace = []
+        trace.append(f"--- Calculation Trace for {risk.get('name', risk_id)} ---")
+        
         # Step 1: Base exposure
         base_exposure = self._calculate_base_exposure(risk)
+        trace.append(f"1. Base Exposure: Likelihood ({likelihood}) × Impact ({impact}) = {base_exposure:.2f}")
         
         # Step 2: Mitigation factor
-        mitigation_factor, mit_count = self._calculate_mitigation_factor(risk_id)
+        mitigation_factor, mit_count, mit_traces = self._calculate_mitigation_factor(risk_id)
+        trace.append("2. Mitigation Factor Calculation:")
+        trace.extend([f"   - {t}" for t in mit_traces])
         mitigated_exposure = base_exposure * mitigation_factor
+        trace.append(f"   => Temporarily Mitigated Exposure: {base_exposure:.2f} × {mitigation_factor:.3f} = {mitigated_exposure:.2f}")
         
         # Step 3: Influence limitation
-        influence_limitation, upstream_count = self._calculate_influence_limitation(
+        influence_limitation, upstream_count, inf_traces = self._calculate_influence_limitation(
             risk_id, calculated_risks
         )
+        if upstream_count > 0:
+            trace.append(f"3. Influence Limitation Calculation ({upstream_count} Upstream Risks):")
+            trace.extend([f"   - {t}" for t in inf_traces])
+        else:
+            trace.append("3. Influence Limitation Calculation: No upstream influences.")
         
         # Step 4: Effective mitigation factor
         # Limitation reduces how much the mitigation can help
@@ -424,9 +455,17 @@ class ExposureCalculator:
         effective_mitigation_factor = (
             mitigation_factor + (1.0 - mitigation_factor) * influence_limitation
         )
+        if mitigation_factor < 1.0:
+            trace.append(
+                f"4. Effective Mitigation Factor: {mitigation_factor:.3f} + "
+                f"(1 - {mitigation_factor:.3f}) × {influence_limitation:.3f} = {effective_mitigation_factor:.3f}"
+            )
+        else:
+            trace.append("4. Effective Mitigation Factor: 1.0 (No mitigations to limit)")
         
         # Step 5: Final exposure
         final_exposure = base_exposure * effective_mitigation_factor
+        trace.append(f"5. Final Exposure: Base ({base_exposure:.2f}) × Effective Factor ({effective_mitigation_factor:.3f}) = {final_exposure:.2f}")
         
         return RiskExposureResult(
             risk_id=risk_id,
@@ -441,7 +480,8 @@ class ExposureCalculator:
             influence_limitation=influence_limitation,
             effective_mitigation_factor=effective_mitigation_factor,
             upstream_risk_count=upstream_count,
-            final_exposure=final_exposure
+            final_exposure=final_exposure,
+            trace=trace
         )
     
     def calculate_all(self) -> GlobalExposureResult:

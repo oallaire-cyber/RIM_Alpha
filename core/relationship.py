@@ -72,6 +72,7 @@ class RelationshipTypeDefinition:
         influence_type_constraints: Level constraints for influence types
         engine_hint: Which engine plugin uses this relationship
         bidirectional: Whether the relationship is bidirectional
+        semantic: "influence", "context", or "cluster" for exposure routing
     """
     id: str
     label: str
@@ -101,6 +102,9 @@ class RelationshipTypeDefinition:
     engine_hint: Optional[str] = None
     
     bidirectional: bool = False
+    
+    # Semantic type for exposure routing
+    semantic: str = "context"
     
     # Internal validator
     _validator: Optional[AttributeValidator] = field(default=None, repr=False)
@@ -238,6 +242,7 @@ class RelationshipTypeDefinition:
             is_mitigates_type=False,
             influence_type_constraints=influence_type_constraints,
             bidirectional=False,
+            semantic=data.get("semantic", "influence"),
         )
     
     @classmethod
@@ -277,6 +282,7 @@ class RelationshipTypeDefinition:
             is_mitigates_type=True,
             influence_type_constraints=[],
             bidirectional=False,
+            semantic=data.get("semantic", "influence"),
         )
     
     @classmethod
@@ -329,4 +335,5 @@ class RelationshipTypeDefinition:
             is_mitigates_type=False,
             engine_hint=data.get("engine_hint"),
             bidirectional=data.get("bidirectional", False),
+            semantic=data.get("semantic", "context"),
         )
