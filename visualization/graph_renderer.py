@@ -18,6 +18,24 @@ from visualization.graph_options import (
 from ui.layouts import generate_auto_spread_layout
 
 
+def hex_to_rgba(hex_str: str, alpha: float) -> str:
+    """Convert hex color to rgba string with given alpha."""
+    if not isinstance(hex_str, str) or not hex_str.startswith('#'):
+        return hex_str
+    hex_str = hex_str.lstrip('#')
+    if len(hex_str) not in (3, 6):
+        return hex_str
+    if len(hex_str) == 3:
+        r = int(hex_str[0]*2, 16)
+        g = int(hex_str[1]*2, 16)
+        b = int(hex_str[2]*2, 16)
+    else:
+        r = int(hex_str[0:2], 16)
+        g = int(hex_str[2:4], 16)
+        b = int(hex_str[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
 def render_graph(
     nodes: List[Dict[str, Any]],
     edges: List[Dict[str, Any]],
@@ -28,7 +46,8 @@ def render_graph(
     highlighted_node_id: Optional[str] = None,
     max_edges: Optional[int] = None,
     edge_scores: Optional[Dict[Tuple[str, str], float]] = None,
-    height: int = 720
+    height: int = 720,
+    complexity_mode: str = "Advanced"
 ) -> Optional[str]:
     """
     Render the RIM graph using PyVis.
@@ -44,6 +63,7 @@ def render_graph(
         max_edges: Maximum number of edges to display
         edge_scores: Dict mapping (source, target) to score
         height: Graph container height in pixels
+        complexity_mode: "Simple" or "Advanced" for rendering complexity
     
     Returns:
         HTML content string, or None if using Streamlit
@@ -58,6 +78,31 @@ def render_graph(
     # Pass edges to enable Sugiyama crossing minimization
     if not physics_enabled and not positions:
         positions = generate_auto_spread_layout(nodes, filtered_edges)
+        
+    # Set up simple mode node transparency
+    transparent_node_ids = set()
+    opacity = 0.1
+    if complexity_mode == "Simple":
+        try:
+            from config.settings import SIMPLE_MODE_CONFIG
+            top_k = SIMPLE_MODE_CONFIG.get("top_risks_count", 10)
+            opacity = SIMPLE_MODE_CONFIG.get("transparent_opacity", 0.1)
+        except ImportError:
+            top_k = 10
+            
+        # Get all risk nodes sorted by exposure
+        risks = [n for n in nodes if n.get("node_type", "Risk").lower() in ("risk", "undefined", "")]
+        risks.sort(key=lambda x: max(x.get("exposure") or 0, x.get("base_exposure") or 0), reverse=True)
+        top_risk_ids = {n["id"] for n in risks[:top_k]}
+        
+        for n in nodes:
+            node_type = n.get("node_type", "Risk").lower()
+            if node_type == "tpo" or n.get("id") == highlighted_node_id:
+                continue # Objectives and highlighted node always opaque
+            if node_type in ("risk", "undefined", "") and n["id"] in top_risk_ids:
+                continue # Top risks always opaque
+            # All other nodes are transparent
+            transparent_node_ids.add(n["id"])
     
     # Create network
     try:
@@ -85,12 +130,35 @@ def render_graph(
             pos = positions[node["id"]]
             node_config["x"] = pos["x"]
             node_config["y"] = pos["y"]
+            
+        # Apply transparency if needed
+        if node["id"] in transparent_node_ids:
+            if isinstance(node_config.get("color"), dict):
+                bg = node_config["color"].get("background", "")
+                bd = node_config["color"].get("border", "")
+                node_config["color"]["background"] = hex_to_rgba(bg, opacity)
+                node_config["color"]["border"] = hex_to_rgba(bd, opacity)
+            elif isinstance(node_config.get("color"), str):
+                node_config["color"] = hex_to_rgba(node_config["color"], opacity)
+            if "font" in node_config:
+                node_config["font"]["color"] = f"rgba(0,0,0,{opacity})"
         
         net.add_node(node["id"], **node_config)
     
     # Add edges
     for edge in filtered_edges:
         edge_config = create_edge_config(edge)
+        
+        # Apply transparency if connected to a transparent node
+        if edge["source"] in transparent_node_ids or edge["target"] in transparent_node_ids:
+            if isinstance(edge_config.get("color"), dict):
+                ec = edge_config["color"].get("color", "")
+                edge_config["color"]["color"] = hex_to_rgba(ec, opacity)
+                edge_config["color"]["highlight"] = hex_to_rgba(ec, opacity)
+                edge_config["color"]["hover"] = hex_to_rgba(ec, opacity)
+            elif isinstance(edge_config.get("color"), str):
+                edge_config["color"] = hex_to_rgba(edge_config["color"], opacity)
+        
         net.add_edge(
             edge["source"],
             edge["target"],
@@ -133,7 +201,8 @@ def render_graph_streamlit(
     highlighted_node_id: Optional[str] = None,
     max_edges: Optional[int] = None,
     edge_scores: Optional[Dict[Tuple[str, str], float]] = None,
-    height: int = 720
+    height: int = 720,
+    complexity_mode: str = "Advanced"
 ):
     """
     Render the RIM graph directly in Streamlit.
@@ -157,7 +226,8 @@ def render_graph_streamlit(
         highlighted_node_id=highlighted_node_id,
         max_edges=max_edges,
         edge_scores=edge_scores,
-        height=height
+        height=height,
+        complexity_mode=complexity_mode
     )
     
     if html_content:

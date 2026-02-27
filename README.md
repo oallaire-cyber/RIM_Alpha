@@ -74,6 +74,7 @@ streamlit run app.py
 | **TPO Impact Tracking** | Link risks to program objectives |
 | **Analysis Scopes** | Define named node subsets for focused analysis with neighbor expansion, scoped statistics, exposure, influence and mitigation analysis |
 | **Computed Risk Distance** | Dynamic assessment of path length to nearest TPO for hierarchical layout |
+| **Complexity Toggle** | Switch between Simple and Advanced UI modes for different stakeholder technical levels |
 
 ### Visualization
 
@@ -243,4 +244,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.10.8 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.10.9 | See [CHANGELOG.md](CHANGELOG.md) for history

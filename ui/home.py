@@ -792,10 +792,24 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
     col_filters, col_display = st.columns([1, 3])
     
     with col_filters:
-        filter_mgr = render_visualization_filters(manager)
-        render_influence_explorer(manager)
-        render_graph_options()
-        render_layout_management(manager)
+        mode = st.session_state.get("complexity_mode", "Simple")
+        show_filters = True if mode == "Advanced" else st.session_state.get("show_filters_in_simple_mode", False)
+        
+        if show_filters:
+            filter_mgr = render_visualization_filters(manager)
+            render_influence_explorer(manager)
+            render_graph_options()
+            render_layout_management(manager)
+            if mode == "Simple":
+                if st.button("🙈 Hide Advanced Filters", use_container_width=True):
+                    st.session_state.show_filters_in_simple_mode = False
+                    st.rerun()
+        else:
+            filter_mgr = st.session_state.filter_manager
+            st.info("💡 Filters & layout options are hidden in Simple mode.")
+            if st.button("⚙️ Show Advanced Filters", use_container_width=True):
+                st.session_state.show_filters_in_simple_mode = True
+                st.rerun()
     
     with col_display:
         # Define node selection callback for influence explorer
@@ -875,7 +889,8 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
             capture_positions=st.session_state.capture_mode,
             highlighted_node_id=highlighted_node_id,
             max_edges=max_edges,
-            edge_scores=edge_scores
+            edge_scores=edge_scores,
+            complexity_mode=st.session_state.get("complexity_mode", "Simple")
         )
 
 
@@ -942,6 +957,23 @@ def render_scope_selector():
             )
 
 
+def render_complexity_toggle():
+    """Render the Simple/Advanced complexity mode toggle in the sidebar."""
+    mode = st.session_state.get("complexity_mode", "Simple")
+    st.sidebar.markdown("### 🎛️ UI Complexity")
+    new_mode = st.sidebar.radio(
+        "Mode",
+        options=["Simple", "Advanced"],
+        index=0 if mode == "Simple" else 1,
+        horizontal=True,
+        key="complexity_mode_radio",
+        label_visibility="collapsed"
+    )
+    if new_mode != mode:
+        st.session_state.complexity_mode = new_mode
+        st.rerun()
+
+
 def render_main_content(manager: RiskGraphManager):
     """
     Render the main connected-state content: scope selector, statistics,
@@ -950,6 +982,9 @@ def render_main_content(manager: RiskGraphManager):
     This encapsulates the body of the old main() function after the
     connection check.
     """
+    # ── Complexity Toggle in sidebar ─────────────────────────────────────────
+    render_complexity_toggle()
+    
     # ── Scope selector in sidebar ────────────────────────────────────────
     render_scope_selector()
     

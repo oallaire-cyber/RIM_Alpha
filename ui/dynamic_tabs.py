@@ -9,6 +9,8 @@ import streamlit as st
 from core import get_registry, SchemaRegistry
 
 
+from config.settings import SIMPLE_MODE_CONFIG
+
 def get_tab_config(registry: Optional[SchemaRegistry] = None) -> List[Dict[str, Any]]:
     """
     Get tab configuration from schema.
@@ -30,6 +32,17 @@ def get_tab_config(registry: Optional[SchemaRegistry] = None) -> List[Dict[str, 
             {"id": "risks", "label": "Risks", "entity_type": "risk", "icon": "🎯"},
             {"id": "mitigations", "label": "Mitigations", "entity_type": "mitigation", "icon": "🛡️"},
             {"id": "influences", "label": "Influences", "relationship_type": "influences", "icon": "🔗"},
+        ]
+        
+    # Filter tabs based on Complexity mode
+    mode = st.session_state.get("complexity_mode", "Simple")
+    if mode == "Simple":
+        allowed = SIMPLE_MODE_CONFIG.get("allowed_tabs", ["visualization", "risks"])
+        tabs_config = [
+            t for t in tabs_config 
+            if t.get("id") in allowed 
+            or t.get("entity_type") in allowed 
+            or t.get("relationship_type") in allowed
         ]
     
     return tabs_config

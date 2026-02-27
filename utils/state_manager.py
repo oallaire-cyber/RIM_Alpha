@@ -49,6 +49,8 @@ HOME_UI_DEFAULTS: Dict[str, Any] = {
     "capture_mode": False,
     "influence_explorer_enabled": False,
     "selected_node_id": None,
+    "complexity_mode": "Simple",
+    "show_filters_in_simple_mode": False,
 }
 
 CONFIG_PAGE_DEFAULTS: Dict[str, Any] = {

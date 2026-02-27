@@ -179,14 +179,16 @@ relationship_types:
 
 - **~~[F1]~~ Progressive UI Loading** ✅ _(v2.10.8)_: Pagination or virtual scrolling for CRUD tables on large scopes.
 - **~~[F2]~~ Intelligent Caching** ✅ _(v2.10.8)_: Apply `@st.cache_data` to expensive queries and layout algorithms. Cache must be keyed by active scope — a cache hit on a full-graph query must never serve a scoped view.
-- **F3. Complexity Toggle (Simple vs. Advanced Mode)**: Streamlined UI hiding advanced tabs for non-technical stakeholders.
+- **~~[F3]~~ Complexity Toggle (Simple vs. Advanced Mode)** ✅ _(v2.10.9)_: Streamlined UI hiding advanced tabs and filters for non-technical stakeholders, with focal ghosting of graph nodes/edges outside the top 10 most exposed risks.
 - **F4. One-Click Visualization Export**: Export the active styled graph view to PNG or PDF.
 - **F5. Automated Risk Threshold Alerts**: Visual flags when computed exposure exceeds predefined thresholds. Must be scope-aware.
 - **F6. Mitigation Exposure View (Business Focus)**: Dedicated view showing mitigations contributing to exposure reduction for selected Business Risks, filterable by lifecycle status. Must be scope-aware.
 - **F12. Generic Context Node and Context Edge CRUD UI**: A schema-driven UI to manage custom context nodes and context edges in the main app exactly how risks and influences are managed. Field types, labels, enums, units, and required markers driven entirely by property definitions. No type-specific code. Must be scope-aware — new ContextNodes/Edges created while a scope is active are offered registration into that scope.
 - **F18. Extend Data Management for Context Data**: Extend the existing Excel import/export and JSON backup/restore capabilities in the main app to fully handle ContextNode and ContextEdge data alongside core entities.
 - **F13. Zone-Aware 4-Layer Visual Layout**: Extend the layout engine with a zone-aware hierarchical mode positioning nodes across four visual bands: `[Lower Context Zone] → [Operational Risks] → [Business Risks] → [Upper Context Zone]`. Y-axis position within risk bands is determined by computed level (U7). Togglable alongside existing layout options.
-
+- **F19. Interactive Focus Mode (Neighborhood Highlight)**: When clicking a specific risk, mitigation, or TPO, automatically fade all nodes that are not connected to it to instantly highlight its root causes and consequences.
+- **F20. Exposure-Driven Opacity**: Combine the exposure color gradient with opacity. Low-exposure or acceptable risks naturally fade into the background, while high-exposure critical risks remain 100% opaque.
+- **F21. Lifecycle & Status Ghosting**: Use transparency as a metaphor for things that are "not fully realized yet" (e.g., Contingent Risks, or "Proposed" / "Deferred" mitigations appear at 50% opacity, while "Implemented" mitigations are fully solid).
 ### Complex Workload
 
 - **F7. "What-If" Analysis Sandbox**: Toggle mitigations ON/OFF to live-preview downstream exposure changes without committing to the DB. Must operate fully within the active scope — the sandbox must never produce results including out-of-scope nodes.

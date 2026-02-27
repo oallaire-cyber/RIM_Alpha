@@ -4,6 +4,19 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.10.9] - 2026-02-27
+
+### F3 — Complexity Toggle (Simple vs. Advanced Mode)
+
+**UX Simplification & Graph Filtering:**
+
+- **UI Complexity Toggle:** Introduced a "Simple / Advanced" segmented toggle in the main sidebar. Tailored for non-technical stakeholders, the Simple mode drastically reduces UI clutter by hiding advanced tabs (Mitigations, Influences, Import/Export, Config, etc.) and defaulting to just Visualization and Risks.
+- **Advanced Filters Ghosting:** In Simple mode, the extensive graph filters and layout presets are hidden behind a single "Show Advanced Filters" button. When exposed, all scoping and filtering functionality remains fully operational.
+- **Graph Node & Edge Ghosting:** The visualization algorithm now natively supports a focal transparency mode. In Simple mode, only the Top 10 most exposed risk nodes (configurable) and all Top Program Objectives (TPOs) are rendered fully opaque. All other context nodes, minor risks, and their connecting edges are rendered with 10% opacity, providing orienting context without visual noise.
+- **Configurable Simple Mode:** Added `SIMPLE_MODE_CONFIG` to `config/settings.py` allowing administrators to easily tweak which tabs are allowed, the number of top risks to display, and the exact ghosting opacity for the Simple Mode.
+
+---
+
 ## [v2.10.8] - 2026-02-27
 
 ### F1 & F2 — Progressive UI Loading & Intelligent Caching
