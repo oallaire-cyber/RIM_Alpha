@@ -1054,7 +1054,7 @@ class RiskGraphManager:
         
         # Get influence analysis to cross-reference
         try:
-            influence_analysis = self.get_influence_analysis(scope_node_ids=scope_node_ids)
+            influence_analysis = self.get_influence_analysis(active_scopes=active_scopes)
             
             top_propagator_ids = set(p["id"] for p in influence_analysis.get("top_propagators", []))
             convergence_ids = set(c["id"] for c in influence_analysis.get("convergence_points", []) if c.get("node_type") == "Risk")

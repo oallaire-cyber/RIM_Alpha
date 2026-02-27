@@ -998,11 +998,11 @@ def render_main_content(manager: RiskGraphManager):
                     _expanded_scope.add(_s)
             _scope_ids = list(_expanded_scope)
         render_influence_analysis_panel(
-            get_analysis_fn=lambda: manager_inst.get_influence_analysis(scope_node_ids=_scope_ids),
+            get_analysis_fn=lambda: manager_inst.get_influence_analysis(active_scopes=filter_mgr.active_scopes if filter_mgr else None),
             on_node_select=lambda node_id, direction: None
         )
         render_mitigation_analysis_panel(
-            get_analysis_fn=lambda: manager_inst.get_mitigation_analysis(scope_node_ids=_scope_ids),
+            get_analysis_fn=lambda: manager_inst.get_mitigation_analysis(active_scopes=filter_mgr.active_scopes if filter_mgr else None),
             get_coverage_gaps_fn=manager_inst.get_coverage_gap_analysis,
             get_all_risks_fn=_scoped_getter(manager_inst.get_all_risks, _scope_ids if _scope_ids is None else _expanded_crud_ids),
             get_all_mitigations_fn=_scoped_getter(manager_inst.get_all_mitigations, _scope_ids if _scope_ids is None else _expanded_crud_ids),

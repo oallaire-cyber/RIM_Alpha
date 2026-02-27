@@ -484,7 +484,7 @@ class RiskGraphManager:
     # ADVANCED ANALYSIS (TO BE MOVED TO SERVICES MODULE IN PHASE 3)
     # =========================================================================
     
-    def get_influence_analysis(self) -> Dict[str, Any]:
+    def get_influence_analysis(self, active_scopes: list = None) -> Dict[str, Any]:
         """
         Comprehensive influence analysis including:
         - Top Propagators (risks with highest downstream impact)
@@ -492,6 +492,9 @@ class RiskGraphManager:
         - Critical Paths (strongest influence chains)
         - Bottlenecks (nodes appearing in many paths)
         - Risk Clusters (tightly interconnected groups)
+        
+        Args:
+            active_scopes: Optional list of active AnalysisScopeConfig objects.
         """
         analysis = {
             "top_propagators": [],
@@ -814,13 +817,16 @@ class RiskGraphManager:
         
         return analysis
     
-    def get_mitigation_analysis(self) -> Dict[str, Any]:
+    def get_mitigation_analysis(self, active_scopes: list = None) -> Dict[str, Any]:
         """
         Comprehensive mitigation analysis including:
         - Coverage overview (risks with/without mitigations)
         - Mitigation effectiveness distribution
         - Unmitigated high-priority risks
         - Cross-reference with influence analysis
+        
+        Args:
+            active_scopes: Optional list of active AnalysisScopeConfig objects.
         """
         analysis = {
             "coverage_stats": {},

@@ -4,6 +4,12 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.10.7] - 2026-02-27
+
+### Bug Fixes
+- **Analysis Scopes**: Fixed an internal `TypeError` where the old `scope_node_ids` parameter was being passed to the `get_influence_analysis` and `get_mitigation_analysis` functions, causing the Analysis visual tab to crash. These methods have now been correctly updated to expect and use the `active_scopes` list of config objects for dynamic subgraph rendering.
+
+---
 ## [v2.10.6] - 2026-02-27
 
 ### U9 — Scope Completeness Enforcement
