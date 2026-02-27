@@ -46,7 +46,7 @@ This contract must be enforced end-to-end — any function that reads from or wr
 - **U6. Generic ContextNode Architecture**: Refactor the graph schema and database layer to support a fully generic `ContextNode` type driven entirely by `context_nodes` entries in the schema YAML. The app renders, creates, edits, and deletes any context node type using a single generic form — no type-specific code. Each definition carries: `shape`, `color`, `zone` (`upper`/`lower`), and a typed `properties` list. Reserve `source` and `import_adapter` as base properties on all ContextNodes from the start (for F17). See _Architectural Note: ContextNode Schema_ below.
 - **U7. ~~Computed Risk Level~~** ✅ _(v2.10.3)_: Replaced rigid `level` for visualization with dynamic BFS-computed distance to nearest TPO through `semantic: influence` relationships. Level 0 = TPO; Level N = shortest influence-path distance to any TPO. Orphan risks (no path to any TPO) are flagged in the UI. ContextNodes carry `zone` (upper/lower) from their schema definition — not a computed property.
 - **U8. ~~Relationship Semantic Types~~** ✅ _(v2.10.4)_: Added a `semantic` field to all relationship type definitions. Three values: `influence` (participates in exposure propagation), `context` (structural/informational, feeds financial model), `cluster` (risk grouping only). The exposure engine routes exclusively on `semantic: influence` relationships.
-- **U9. Scope Completeness Enforcement**: Audit and repair all functions that interact with the graph to ensure end-to-end scope propagation. This is the **highest-priority correctness item** — see _Critical Scope Gaps_ below.
+- **U9. ~~Scope Completeness Enforcement~~** ✅ _(v2.10.6)_: Audited and repaired all functions that interact with the graph to ensure end-to-end scope propagation. Data fetching, UI CRUD dropdowns and lists, metrics, and network expansions respect strict active scope boundaries.
 - **U10. ~~Schema-Driven Filter System (Full Dynamic Rebuild)~~** ✅ _(v2.10.1)_
   - **Problem resolved:** Three separate bugs existed in the filter layer:
     1. `ui/sidebar.py` (`render_filter_sidebar`) used the pre-schema-registry API (`filters["risks"]`, `select_all_levels()`, etc.) — methods that no longer exist in `FilterManager`. The function was still exported from `ui/__init__.py` but calling it would raise `AttributeError` immediately.
@@ -347,12 +347,12 @@ _Goal: Establish the generic ContextNode architecture, computed level logic, rel
 1. **~~[U6]~~** Generic ContextNode Architecture — YAML `context_nodes` section, generic Neo4j label strategy (`ContextNode` + `node_type` + `zone` properties), schema loader updates. Reserve `source` and `import_adapter` base properties on all ContextNodes.
 2. **~~[U7]~~** Computed Risk Level — replace stored `level` with BFS-computed level. Update all queries and display logic.
 3. **~~[U8]~~** Relationship Semantic Types ✅ — added `semantic` to all relationship definitions. Exposure engine routes exclusively on `semantic: influence`.
-4. **[U9] Scope Completeness Enforcement** — audit and repair all scope gaps:
-   - `get_statistics()` → add `scope_node_ids` parameter
-   - `get_all_nodes_for_selection()` → add `scope_node_ids` parameter
-   - All CRUD forms → scope-aware create/delete behavior
-   - `get_graph_data()` scope expansion → extend to include ContextNodes
-   - `AnalysisScopeConfig` → add non-breaking `scope_type` field (default `"scope"`)
+4. **~~[U9]~~ Scope Completeness Enforcement** ✅ — audited and repaired all scope gaps:
+   - `get_statistics()` → added `scope_node_ids` parameter
+   - `get_all_nodes_for_selection()` → added `scope_node_ids` parameter
+   - All CRUD forms → scope-aware create/delete behavior with 'Add to scope' and 'Remove from scope' logic
+   - `get_graph_data()` scope expansion → extended ContextNodes
+   - `AnalysisScopeConfig` → added non-breaking `scope_type` field (default `"scope"`)
    - Cache key strategy → scope-keyed from the start
 5. **[F1 & F2]** Intelligent Caching (scope-keyed) and Progressive UI Loading.
 6. **[F3]** Complexity Toggle.

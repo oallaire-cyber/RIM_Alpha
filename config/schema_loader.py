@@ -217,6 +217,7 @@ class AnalysisScopeConfig:
     id: str
     name: str
     description: str = ""
+    scope_type: str = "scope"
     node_ids: List[str] = field(default_factory=list)
     include_connected_edges: bool = True
     show_boundary_edges: bool = False

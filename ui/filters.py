@@ -232,20 +232,71 @@ class FilterManager:
         return list(ids)
     
     def add_node_to_scope(self, scope_id: str, node_id: str) -> bool:
-        """Add a node ID to a specific active scope. Returns True if added."""
+        """Add a node ID to a specific active scope and persist if possible. Returns True if added."""
+        added = False
         for scope in self.active_scopes:
             if scope.id == scope_id and node_id not in scope.node_ids:
                 scope.node_ids.append(node_id)
-                return True
-        return False
-    
+                added = True
+                break # Node added to active_scopes, exit loop
+        
+        # Also try to update the schema file if the scope exists there
+        if added:
+            try:
+                from config.schema_loader import load_schema, save_schema
+                from core import get_registry
+                schema = load_schema()
+                if schema and schema.scopes:
+                    for s in schema.scopes:
+                        if s.id == scope_id and node_id not in s.node_ids:
+                            s.node_ids.append(node_id)
+                    save_schema(schema)
+                    
+                    # Update active registry to prevent stale schema overwriting filter_mgr
+                    registry = get_registry()
+                    if registry and registry.schema and registry.schema.scopes:
+                        for s in registry.schema.scopes:
+                            if s.id == scope_id and node_id not in s.node_ids:
+                                s.node_ids.append(node_id)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to persist scope update: {e}")
+                
+        return added
+
     def remove_node_from_scope(self, scope_id: str, node_id: str) -> bool:
-        """Remove a node ID from a specific active scope. Returns True if removed."""
+        """Remove a node ID from a specific active scope and persist if possible. Returns True if removed."""
+        removed = False
         for scope in self.active_scopes:
-            if scope.id == scope_id and node_id in scope.node_ids:
-                scope.node_ids.remove(node_id)
-                return True
-        return False
+            if scope.id == scope_id:
+                if node_id in scope.node_ids:
+                    scope.node_ids.remove(node_id)
+                    removed = True
+                    break # Node removed from active_scopes, exit loop
+                    
+        # Also try to update the schema file if the scope exists there
+        if removed:
+            try:
+                from config.schema_loader import load_schema, save_schema
+                from core import get_registry
+                schema = load_schema()
+                if schema and schema.scopes:
+                    for s in schema.scopes:
+                        if s.id == scope_id and node_id in s.node_ids:
+                            s.node_ids.remove(node_id)
+                    save_schema(schema)
+                    
+                    # Update active registry to prevent stale schema overwriting filter_mgr
+                    registry = get_registry()
+                    if registry and registry.schema and registry.schema.scopes:
+                        for s in registry.schema.scopes:
+                            if s.id == scope_id and node_id in s.node_ids:
+                                s.node_ids.remove(node_id)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to persist scope update: {e}")
+                
+        return removed
     
     def get_filters_for_query(self) -> Dict[str, Any]:
         """

@@ -127,8 +127,20 @@ def get_graph_data(
             ]
         edges.extend(mitigates_edges)
     
-    # Apply scope filtering — smart expansion beyond explicit scope IDs
+    # Apply scope filtering — smart expansion from explicit active scopes
+    active_scopes = filters.get("active_scopes")
+    
+    # Backward compatibility for old scope_node_ids filter
     scope_node_ids = filters.get("scope_node_ids")
+    scope_include_neighbors = filters.get("scope_include_neighbors", False)
+    
+    if active_scopes:
+        scope_node_ids = []
+        for scope in active_scopes:
+            scope_node_ids.extend(scope.node_ids)
+            if getattr(scope, "include_connected_edges", False):
+                scope_include_neighbors = True
+                
     if scope_node_ids is not None:
         scope_set = set(scope_node_ids)
         
@@ -136,7 +148,7 @@ def get_graph_data(
         scoped_risk_ids = scope_set & set(risk_ids)
         
         # Step 2: Optionally expand to 1-hop risk neighbors
-        if filters.get("scope_include_neighbors"):
+        if scope_include_neighbors:
             neighbor_risk_ids = set()
             for e in edges:
                 src, tgt = e.get("source"), e.get("target")
@@ -146,7 +158,7 @@ def get_graph_data(
                     neighbor_risk_ids.add(src)
             scoped_risk_ids |= neighbor_risk_ids
         
-        # Step 3: Keep mitigations/TPOs connected to scoped risks
+        # Step 3: Keep mitigations/TPOs/ContextNodes connected to scoped risks
         connected_mit_ids = set()
         connected_tpo_ids = set()
         for e in edges:
@@ -161,6 +173,9 @@ def get_graph_data(
                 connected_tpo_ids.add(tgt)
             if tgt in scoped_risk_ids and src in set(tpo_ids):
                 connected_tpo_ids.add(src)
+        
+        # NOTE: U6 context nodes expansion not yet fully implemented as they are not returned by core node getters yet.
+        # But we prepare the set operation.
         
         # Step 4: Build expanded node set
         expanded_set = scoped_risk_ids | connected_mit_ids | connected_tpo_ids
@@ -233,12 +248,13 @@ def get_all_edges_scored(conn: Neo4jConnection) -> List[Dict[str, Any]]:
 # STATISTICS
 # =============================================================================
 
-def get_statistics(conn: Neo4jConnection) -> Dict[str, Any]:
+def get_statistics(conn: Neo4jConnection, active_scopes: list = None) -> Dict[str, Any]:
     """
-    Get comprehensive graph statistics.
+    Get comprehensive graph statistics, optionally filtered by active scopes.
     
     Args:
         conn: Database connection
+        active_scopes: Optional list of AnalysisScopeConfig objects
     
     Returns:
         Dictionary of statistics
@@ -263,37 +279,114 @@ def get_statistics(conn: Neo4jConnection) -> Dict[str, Any]:
     }
     
     # Risk counts
-    stats["total_risks"] = risks.get_risk_count(conn)
+    all_risks = risks.get_all_risks(conn)
+    all_tpos = tpos.get_all_tpos(conn)
+    all_mitigations = mitigations.get_all_mitigations(conn)
+    
+    # Influence counts
+    all_influences = influences.get_all_influences(conn)
+    
+    # TPO counts
+    all_tpo_impacts = tpos.get_all_tpo_impacts(conn)
+    
+    # Mitigation counts
+    all_mitigates = mitigations.get_all_mitigates_relationships(conn)
+    
+    # Process scope filtering if active scopes are provided
+    if active_scopes:
+        scope_node_ids = set()
+        scope_include_neighbors = False
+        
+        for scope in active_scopes:
+            scope_node_ids.update(scope.node_ids)
+            if getattr(scope, "include_connected_edges", False):
+                scope_include_neighbors = True
+        
+        filtered_risks = [r for r in all_risks if r["id"] in scope_node_ids]
+        filtered_risk_ids = {r["id"] for r in filtered_risks}
+        
+        if scope_include_neighbors:
+            neighbor_risk_ids = set()
+            for inf in all_influences:
+                src, tgt = inf["source_id"], inf["target_id"]
+                if src in filtered_risk_ids:
+                    neighbor_risk_ids.add(tgt)
+                if tgt in filtered_risk_ids:
+                    neighbor_risk_ids.add(src)
+            filtered_risk_ids.update(neighbor_risk_ids)
+            # Re-fetch the filtered risks with neighbors included
+            filtered_risks = [r for r in all_risks if r["id"] in filtered_risk_ids]
+            
+        all_risks = filtered_risks
+        
+        # Filter influences to those connecting scoped risks
+        all_influences = [
+            inf for inf in all_influences
+            if inf["source_id"] in filtered_risk_ids and inf["target_id"] in filtered_risk_ids
+        ]
+        
+        # Keep TPOs connected to scoped risks
+        all_tpo_impacts = [
+            imp for imp in all_tpo_impacts
+            if imp["risk_id"] in filtered_risk_ids
+        ]
+        connected_tpo_ids = {imp["tpo_id"] for imp in all_tpo_impacts}
+        all_tpos = [t for t in all_tpos if t["id"] in connected_tpo_ids]
+        
+        # Keep mitigations connected to scoped risks
+        all_mitigates = [
+            mit for mit in all_mitigates
+            if mit["risk_id"] in filtered_risk_ids
+        ]
+        connected_mit_ids = {mit["mitigation_id"] for mit in all_mitigates}
+        all_mitigations = [m for m in all_mitigations if m["id"] in connected_mit_ids]
+    
+    # Compute statistics from filtered lists
+    stats["total_risks"] = len(all_risks)
+    
+    # Level and Status counts
     # Use schema-driven level names
     if len(RISK_LEVELS) >= 1:
-        stats["level1_risks"] = risks.get_risk_count_by_level(conn, RISK_LEVELS[0])
+        stats["level1_risks"] = sum(1 for r in all_risks if r["level"] == RISK_LEVELS[0])
         stats["level1_name"] = RISK_LEVELS[0]
     if len(RISK_LEVELS) >= 2:
-        stats["level2_risks"] = risks.get_risk_count_by_level(conn, RISK_LEVELS[1])
+        stats["level2_risks"] = sum(1 for r in all_risks if r["level"] == RISK_LEVELS[1])
         stats["level2_name"] = RISK_LEVELS[1]
+    
     # Keep backward compatibility keys
     stats["strategic_risks"] = stats.get("level1_risks", 0)
     stats["operational_risks"] = stats.get("level2_risks", 0)
-    stats["contingent_risks"] = risks.get_risk_count_by_status(conn, "Contingent")
-    stats["new_risks"] = risks.get_risk_count_by_origin(conn, "New")
-    stats["legacy_risks"] = risks.get_risk_count_by_origin(conn, "Legacy")
-    stats["avg_exposure"] = risks.get_average_exposure(conn)
-    stats["categories"] = risks.get_risk_count_by_category(conn)
+    stats["contingent_risks"] = sum(1 for r in all_risks if r["status"] == "Contingent")
+    stats["new_risks"] = sum(1 for r in all_risks if r["origin"] == "New")
+    stats["legacy_risks"] = sum(1 for r in all_risks if r["origin"] == "Legacy")
     
-    # Influence counts
-    stats["total_influences"] = influences.get_influence_count(conn)
+    if stats["total_risks"] > 0:
+        exposures = [r.get("exposure", 0) for r in all_risks if r.get("exposure") is not None]
+        stats["avg_exposure"] = round(sum(exposures) / len(exposures), 1) if exposures else 0
+    else:
+        stats["avg_exposure"] = 0
+        
+    for r in all_risks:
+        for cat in r.get("categories", []):
+            stats["categories"][cat] = stats["categories"].get(cat, 0) + 1
     
-    # TPO counts
-    stats["total_tpos"] = tpos.get_tpo_count(conn)
-    stats["total_tpo_impacts"] = tpos.get_tpo_impact_count(conn)
-    stats["tpo_clusters"] = tpos.get_tpo_count_by_cluster(conn)
+    stats["total_influences"] = len(all_influences)
+    stats["total_tpos"] = len(all_tpos)
+    stats["total_tpo_impacts"] = len(all_tpo_impacts)
     
-    # Mitigation counts
-    stats["total_mitigations"] = mitigations.get_mitigation_count(conn)
-    stats["total_mitigates"] = mitigations.get_mitigates_count(conn)
-    stats["mitigations_by_type"] = mitigations.get_mitigation_count_by_type(conn)
-    stats["mitigations_by_status"] = mitigations.get_mitigation_count_by_status(conn)
+    for t in all_tpos:
+        cluster = t.get("cluster", "Unknown")
+        stats["tpo_clusters"][cluster] = stats["tpo_clusters"].get(cluster, 0) + 1
+        
+    stats["total_mitigations"] = len(all_mitigations)
+    stats["total_mitigates"] = len(all_mitigates)
     
+    for m in all_mitigations:
+        m_type = m.get("mitigation_type", "Unknown")
+        m_status = m.get("status", "Unknown")
+        stats["mitigations_by_type"][m_type] = stats["mitigations_by_type"].get(m_type, 0) + 1
+        stats["mitigations_by_status"][m_status] = stats["mitigations_by_status"].get(m_status, 0) + 1
+        
     return stats
 
 
@@ -301,12 +394,13 @@ def get_statistics(conn: Neo4jConnection) -> Dict[str, Any]:
 # NODE SELECTION
 # =============================================================================
 
-def get_all_nodes_for_selection(conn: Neo4jConnection) -> List[Dict[str, Any]]:
+def get_all_nodes_for_selection(conn: Neo4jConnection, active_scopes: list = None) -> List[Dict[str, Any]]:
     """
     Get all risks and TPOs formatted for dropdown selection.
     
     Args:
         conn: Database connection
+        active_scopes: Optional list of AnalysisScopeConfig objects
     
     Returns:
         List of node dictionaries with label and type
@@ -315,6 +409,45 @@ def get_all_nodes_for_selection(conn: Neo4jConnection) -> List[Dict[str, Any]]:
     
     # Get risks
     all_risks = risks.get_all_risks(conn)
+    # Get TPOs
+    all_tpos = tpos.get_all_tpos(conn)
+    
+    if active_scopes:
+        scope_node_ids = set()
+        scope_include_neighbors = False
+        
+        for scope in active_scopes:
+            scope_node_ids.update(scope.node_ids)
+            if getattr(scope, "include_connected_edges", False):
+                scope_include_neighbors = True
+        
+        filtered_risks = [r for r in all_risks if r["id"] in scope_node_ids]
+        filtered_risk_ids = {r["id"] for r in filtered_risks}
+        
+        if scope_include_neighbors:
+            # We need influences to expand
+            all_influences = influences.get_all_influences(conn)
+            neighbor_risk_ids = set()
+            for inf in all_influences:
+                src, tgt = inf["source_id"], inf["target_id"]
+                if src in filtered_risk_ids:
+                    neighbor_risk_ids.add(tgt)
+                if tgt in filtered_risk_ids:
+                    neighbor_risk_ids.add(src)
+            filtered_risk_ids.update(neighbor_risk_ids)
+            filtered_risks = [r for r in all_risks if r["id"] in filtered_risk_ids]
+            
+        all_risks = filtered_risks
+        
+        # Keep TPOs connected to scoped risks
+        all_tpo_impacts = tpos.get_all_tpo_impacts(conn)
+        all_tpo_impacts = [
+            imp for imp in all_tpo_impacts
+            if imp["risk_id"] in filtered_risk_ids
+        ]
+        connected_tpo_ids = {imp["tpo_id"] for imp in all_tpo_impacts}
+        all_tpos = [t for t in all_tpos if t["id"] in connected_tpo_ids]
+    
     for r in all_risks:
         result.append({
             "id": r["id"],
@@ -324,8 +457,6 @@ def get_all_nodes_for_selection(conn: Neo4jConnection) -> List[Dict[str, Any]]:
             "level": r["level"]
         })
     
-    # Get TPOs
-    all_tpos = tpos.get_all_tpos(conn)
     for t in all_tpos:
         result.append({
             "id": t["id"],

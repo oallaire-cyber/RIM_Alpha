@@ -190,136 +190,9 @@ entities:
       default: null
       description: Source entity for inherited mitigations
     custom_attributes: []
-context_nodes:
-  business_perimeter:
-    label: Business Perimeter
-    shape: box
-    color: '#8E44AD'
-    emoji: "\U0001F3E2"
-    size: 35
-    zone: upper
-    border: double
-    properties:
-    - name: name
-      type: string
-      required: true
-      default: null
-      description: Business unit or perimeter name
-    - name: ebit_absolute
-      type: float
-      required: true
-      default: null
-      description: EBIT absolute value in EUR
-    - name: ebit_margin
-      type: float
-      required: false
-      default: null
-      description: EBIT margin percentage
-    - name: fcf_annual
-      type: float
-      required: false
-      default: null
-      description: Free cash flow annual in EUR
-    - name: p_and_l_owner
-      type: string
-      required: false
-      default: null
-      description: P&L responsible owner
-  scenario:
-    label: Scenario
-    shape: hexagon
-    color: '#F39C12'
-    emoji: "\U0001F3B2"
-    size: 35
-    zone: upper
-    border: solid
-    properties:
-    - name: name
-      type: string
-      required: true
-      default: null
-      description: Scenario name
-    - name: annual_probability
-      type: float
-      required: true
-      default: null
-      description: Annual occurrence probability
-    - name: ebit_impact_expected
-      type: float
-      required: true
-      default: null
-      description: Expected EBIT impact in EUR
-    - name: recovery_days
-      type: int
-      required: false
-      default: null
-      description: Estimated recovery time in days
-  entry_point:
-    label: Entry Point
-    shape: box
-    color: '#E67E22'
-    emoji: "\U0001F6AA"
-    size: 30
-    zone: lower
-    border: solid
-    properties:
-    - name: name
-      type: string
-      required: true
-      default: null
-      description: Entry point name
-    - name: exploitability
-      type: int
-      required: false
-      default: null
-      description: Exploitability score (1-10)
-  attacker:
-    label: Attacker
-    shape: box
-    color: '#922B21'
-    emoji: "\U0001F464"
-    size: 30
-    zone: lower
-    border: solid
-    properties:
-    - name: name
-      type: string
-      required: true
-      default: null
-      description: Attacker profile name
-    - name: capability_level
-      type: int
-      required: false
-      default: null
-      description: Capability level (1-10)
-context_edges:
-  exploits:
-    label: Exploits
-    neo4j_type: EXPLOITS
-    from_node: attacker
-    to_node: entry_point
-    color: '#C0392B'
-    line_style: dashed
-    bidirectional: false
-    properties:
-    - name: success_probability
-      type: float
-      required: false
-      default: null
-      description: Attack success probability
-  exposes:
-    label: Exposes
-    neo4j_type: EXPOSES
-    from_node: entry_point
-    to_node: scenario
-    color: '#E67E22'
-    line_style: solid
-    bidirectional: false
-    properties: []
 relationships:
   influences:
     neo4j_type: INFLUENCES
-    semantic: influence
     default_confidence: 0.8
     types:
     - id: level1_op_to_bus
@@ -360,7 +233,6 @@ relationships:
       color: '#e74c3c'
   impacts_tpo:
     neo4j_type: IMPACTS_TPO
-    semantic: context
     impact_levels:
     - id: low
       label: Low
@@ -384,7 +256,6 @@ relationships:
       color: '#e74c3c'
   mitigates:
     neo4j_type: MITIGATES
-    semantic: influence
     effectiveness_levels:
     - id: low
       label: Low
@@ -525,112 +396,245 @@ ui:
         enabled: false
       mitigations:
         enabled: true
+context_nodes:
+  business_perimeter:
+    label: Business Perimeter
+    description: ''
+    color: '#8E44AD'
+    shape: box
+    emoji: 🏢
+    size: 35
+    zone: upper
+    border: double
+    properties:
+    - name: name
+      type: string
+      required: true
+      default: null
+      description: Business unit or perimeter name
+    - name: ebit_absolute
+      type: float
+      required: true
+      default: null
+      description: EBIT absolute value in EUR
+    - name: ebit_margin
+      type: float
+      required: false
+      default: null
+      description: EBIT margin percentage
+    - name: fcf_annual
+      type: float
+      required: false
+      default: null
+      description: Free cash flow annual in EUR
+    - name: p_and_l_owner
+      type: string
+      required: false
+      default: null
+      description: P&L responsible owner
+  scenario:
+    label: Scenario
+    description: ''
+    color: '#F39C12'
+    shape: hexagon
+    emoji: 🎲
+    size: 35
+    zone: upper
+    border: solid
+    properties:
+    - name: name
+      type: string
+      required: true
+      default: null
+      description: Scenario name
+    - name: annual_probability
+      type: float
+      required: true
+      default: null
+      description: Annual occurrence probability
+    - name: ebit_impact_expected
+      type: float
+      required: true
+      default: null
+      description: Expected EBIT impact in EUR
+    - name: recovery_days
+      type: int
+      required: false
+      default: null
+      description: Estimated recovery time in days
+  entry_point:
+    label: Entry Point
+    description: ''
+    color: '#E67E22'
+    shape: box
+    emoji: 🚪
+    size: 30
+    zone: lower
+    border: solid
+    properties:
+    - name: name
+      type: string
+      required: true
+      default: null
+      description: Entry point name
+    - name: exploitability
+      type: int
+      required: false
+      default: null
+      description: Exploitability score (1-10)
+  attacker:
+    label: Attacker
+    description: ''
+    color: '#922B21'
+    shape: box
+    emoji: 👤
+    size: 30
+    zone: lower
+    border: solid
+    properties:
+    - name: name
+      type: string
+      required: true
+      default: null
+      description: Attacker profile name
+    - name: capability_level
+      type: int
+      required: false
+      default: null
+      description: Capability level (1-10)
+context_edges:
+  exploits:
+    label: Exploits
+    neo4j_type: EXPLOITS
+    description: ''
+    from_node: attacker
+    to_node: entry_point
+    color: '#C0392B'
+    line_style: dashed
+    bidirectional: false
+    properties:
+    - name: success_probability
+      type: float
+      required: false
+      default: null
+      description: Attack success probability
+  exposes:
+    label: Exposes
+    neo4j_type: EXPOSES
+    description: ''
+    from_node: entry_point
+    to_node: scenario
+    color: '#E67E22'
+    line_style: solid
+    bidirectional: false
+    properties: []
 scopes:
 - id: snr_demo
-  name: "🏭 SNR Demo - Full Example"
-  description: "Complete SMR nuclear program example: 8 business risks, 7 operational risks, 15 mitigations, 3 TPOs"
+  name: 🏭 SNR Demo - Full Example
+  description: 'Complete SMR nuclear program example: 8 business risks, 7 operational
+    risks, 15 mitigations, 3 TPOs'
   node_ids:
-    - RS-01
-    - RS-02
-    - RS-03
-    - RS-04
-    - RS-05
-    - RS-06
-    - RS-07
-    - RS-08
-    - RO-01
-    - RO-02
-    - RO-03
-    - RO-04
-    - RO-05
-    - RO-06
-    - RO-07
+  - RS-01
+  - RS-02
+  - RS-03
+  - RS-04
+  - RS-05
+  - RS-06
+  - RS-07
+  - RS-08
+  - RO-01
+  - RO-02
+  - RO-03
+  - RO-04
+  - RO-05
+  - RO-06
+  - RO-07
   include_connected_edges: true
   show_boundary_edges: false
   color: '#2ECC71'
 - id: tc01_baseline
-  name: "TC01 - Baseline"
-  description: "All risks at L=1, I=1 with no mitigations — Final Exposure = 1"
+  name: TC01 - Baseline
+  description: All risks at L=1, I=1 with no mitigations — Final Exposure = 1
   node_ids:
-    - 545446b4-26eb-5572-bd14-8699594e7a40
-    - c1002844-5da5-5fcc-8fef-26c72e11efc3
-    - a3fca39e-52d0-577d-be2d-065c0a3ffe3b
-    - 3cd50776-6b8e-516c-b584-045a230744a7
+  - 545446b4-26eb-5572-bd14-8699594e7a40
+  - c1002844-5da5-5fcc-8fef-26c72e11efc3
+  - a3fca39e-52d0-577d-be2d-065c0a3ffe3b
+  - 3cd50776-6b8e-516c-b584-045a230744a7
   include_connected_edges: true
   show_boundary_edges: false
   color: '#AED6F1'
 - id: tc02_simple_chain
-  name: "TC02 - Simple Chain"
-  description: "Linear influence chain Op1→Op2→Bus1, all unmitigated"
+  name: TC02 - Simple Chain
+  description: Linear influence chain Op1→Op2→Bus1, all unmitigated
   node_ids:
-    - cbc7e0a8-c4ed-5455-bff2-e63341428395
-    - 2821ca91-008b-50db-a0c3-881cc6da7621
-    - dc6e2a61-57f9-58fe-9932-8fe7b187ccb7
+  - cbc7e0a8-c4ed-5455-bff2-e63341428395
+  - 2821ca91-008b-50db-a0c3-881cc6da7621
+  - dc6e2a61-57f9-58fe-9932-8fe7b187ccb7
   include_connected_edges: true
   show_boundary_edges: false
   color: '#A9DFBF'
 - id: tc03_mitigation_effect
-  name: "TC03 - Mitigation Effect"
-  description: "8 risks demonstrating multiplicative mitigation model"
+  name: TC03 - Mitigation Effect
+  description: 8 risks demonstrating multiplicative mitigation model
   node_ids:
-    - f0c82bbe-e107-56cd-839d-e432bd31632e
-    - cea650ca-5655-5ec6-977c-0f06c0ccdc72
-    - ea204cec-2d2e-5350-81fc-b12207ba2575
-    - b300c05d-51aa-5a58-8d24-db67c8344d2f
-    - 78d595ef-8471-5a5e-aca2-a85373e83733
-    - 529b6266-fd42-5ba0-842a-12c8a21b2d5d
-    - eea6f2c4-44a9-5c52-bdbc-622aac608a46
-    - 9913bf59-9f10-51ae-952c-546666de4325
+  - f0c82bbe-e107-56cd-839d-e432bd31632e
+  - cea650ca-5655-5ec6-977c-0f06c0ccdc72
+  - ea204cec-2d2e-5350-81fc-b12207ba2575
+  - b300c05d-51aa-5a58-8d24-db67c8344d2f
+  - 78d595ef-8471-5a5e-aca2-a85373e83733
+  - 529b6266-fd42-5ba0-842a-12c8a21b2d5d
+  - eea6f2c4-44a9-5c52-bdbc-622aac608a46
+  - 9913bf59-9f10-51ae-952c-546666de4325
   include_connected_edges: true
   show_boundary_edges: false
   color: '#F9E79F'
 - id: tc04_influence_limitation
-  name: "TC04 - Influence Limitation"
-  description: "Upstream residual limits downstream mitigation effectiveness"
+  name: TC04 - Influence Limitation
+  description: Upstream residual limits downstream mitigation effectiveness
   node_ids:
-    - 132e355b-0f93-5f25-9f5d-18d2316df783
-    - e11e8386-169a-53c1-aade-eb18c631ac70
-    - 2eafec16-02c7-5052-bb93-93e3c6ea2e2a
-    - d8b6b169-814c-50be-8395-848a88985d7b
-    - 4d86ae18-0440-515f-84a6-620863f408e4
+  - 132e355b-0f93-5f25-9f5d-18d2316df783
+  - e11e8386-169a-53c1-aade-eb18c631ac70
+  - 2eafec16-02c7-5052-bb93-93e3c6ea2e2a
+  - d8b6b169-814c-50be-8395-848a88985d7b
+  - 4d86ae18-0440-515f-84a6-620863f408e4
   include_connected_edges: true
   show_boundary_edges: false
   color: '#F1948A'
 - id: tc05_convergence
-  name: "TC05 - Convergence"
-  description: "4 upstream sources averaging into one convergence point"
+  name: TC05 - Convergence
+  description: 4 upstream sources averaging into one convergence point
   node_ids:
-    - 0d6ccb4d-7026-5553-ba80-9518bb8bbccb
-    - e86c8139-0c3e-549d-82ac-c48116fa066c
-    - ac04d220-f64e-51f3-b7ff-c0e0016f8c1c
-    - 71a799e3-67a2-599b-a85e-229cefe000ff
-    - 04568e76-d323-5040-9717-609e329eedf5
+  - 0d6ccb4d-7026-5553-ba80-9518bb8bbccb
+  - e86c8139-0c3e-549d-82ac-c48116fa066c
+  - ac04d220-f64e-51f3-b7ff-c0e0016f8c1c
+  - 71a799e3-67a2-599b-a85e-229cefe000ff
+  - 04568e76-d323-5040-9717-609e329eedf5
   include_connected_edges: true
   show_boundary_edges: false
   color: '#C39BD3'
 - id: tc06_full_chain
-  name: "TC06 - Full Chain"
-  description: "Two parallel chains (one well-mitigated, one with gap) converging"
+  name: TC06 - Full Chain
+  description: Two parallel chains (one well-mitigated, one with gap) converging
   node_ids:
-    - 60483d97-c148-5250-9216-85f4808797f6
-    - c1333b4c-354c-542f-90a0-8d8910ce307c
-    - 04c48648-3240-512c-9311-2737a110a26b
-    - e4a17955-5a1e-51e3-997f-c05614f6b569
-    - 9be2a27b-4bcd-5878-807a-cf76dc3a224e
-    - 0145477a-1d33-5723-9c4e-ac997b92bd52
-    - 579d302c-c4e2-517b-bd3b-adbcf9ad3df5
+  - 60483d97-c148-5250-9216-85f4808797f6
+  - c1333b4c-354c-542f-90a0-8d8910ce307c
+  - 04c48648-3240-512c-9311-2737a110a26b
+  - e4a17955-5a1e-51e3-997f-c05614f6b569
+  - 9be2a27b-4bcd-5878-807a-cf76dc3a224e
+  - 0145477a-1d33-5723-9c4e-ac997b92bd52
+  - 579d302c-c4e2-517b-bd3b-adbcf9ad3df5
   include_connected_edges: true
   show_boundary_edges: false
   color: '#76D7C4'
 - id: tc07_influence_strengths
-  name: "TC07 - Influence Strengths"
-  description: "Same unmitigated source influencing 4 targets at 4 strength levels"
+  name: TC07 - Influence Strengths
+  description: Same unmitigated source influencing 4 targets at 4 strength levels
   node_ids:
-    - a636b334-ecf7-56a0-bb9e-a69006c872c2
-    - a5031626-2cd5-5b6d-b322-828e1ddea443
-    - 8e072c8c-66cd-53e3-8ecb-1d599c981d89
-    - 5b34400a-87c4-5996-af66-0808b8c96fb6
-    - 4e6f18f1-4a4e-556c-89ba-d8b94a5a2055
+  - a636b334-ecf7-56a0-bb9e-a69006c872c2
+  - a5031626-2cd5-5b6d-b322-828e1ddea443
+  - 8e072c8c-66cd-53e3-8ecb-1d599c981d89
+  - 5b34400a-87c4-5996-af66-0808b8c96fb6
+  - 4e6f18f1-4a4e-556c-89ba-d8b94a5a2055
   include_connected_edges: true
   show_boundary_edges: false
   color: '#F0A500'

@@ -4,6 +4,23 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.10.6] - 2026-02-27
+
+### U9 — Scope Completeness Enforcement
+
+**Core Architecture & Engine Updates:**
+
+- **Configuration:** Added `scope_type` to `AnalysisScopeConfig`, defaulted to `"scope"`, setting up for future SubGraph features.
+- **Database queries:** Updated `get_statistics()` and `get_all_nodes_for_selection()` to accept and use `active_scopes`.
+- **Advanced Graph Queries:** Overhauled `get_influence_analysis()` and `get_mitigation_analysis()` to compute sub-analysis boundaries entirely within the context of active scopes.
+
+**UI/UX Enhancements:**
+
+- **CRUD Forms:** Node creation now offers an internal "Add this new X to active scope(s)" option when boundaries apply. Deletion requests similarly split between "Remove from Scopes" vs global deletion.
+- **Scope Filters:** All UI components relying on entity selectors (Explorer node pickers, relationship bindings) are bound dynamically to the current active scope.
+
+---
+
 ## [v2.10.5] - 2026-02-27
 
 ### Exposure Calculation Visibility

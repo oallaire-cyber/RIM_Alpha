@@ -49,17 +49,34 @@ def _render_tpo_form(create_tpo_fn: Callable[..., bool]):
         
         description = st.text_area("Description", placeholder="Detailed TPO description...")
         
+        # Scope addition
+        filter_mgr = st.session_state.get("filter_manager")
+        active_scopes = filter_mgr.active_scopes if filter_mgr else []
+        add_to_scope = False
+        if active_scopes:
+            scope_names = [s.name for s in active_scopes]
+            st.markdown("---")
+            add_to_scope = st.checkbox(
+                f"Add this new TPO to active scope(s): {', '.join(scope_names)}",
+                value=True,
+                help="If checked, the new TPO will be automatically added to the currently active scopes."
+            )
+        
         submitted = st.form_submit_button("Create TPO", type="primary", use_container_width=True)
         
         if submitted:
             if reference and name and cluster:
-                success = create_tpo_fn(
+                result_id = create_tpo_fn(
                     reference=reference,
                     name=name,
                     cluster=cluster,
                     description=description
                 )
-                if success:
+                if result_id:
+                    if add_to_scope and filter_mgr:
+                        for scope in filter_mgr.active_scopes:
+                            filter_mgr.add_node_to_scope(scope.id, result_id)
+                    
                     st.success(f"TPO '{reference}' created successfully!")
                     st.rerun()
             else:
@@ -105,7 +122,27 @@ def _render_tpo_list(
                     col_edit, col_del = st.columns(2)
                     
                     with col_del:
-                        if st.button("🗑️ Delete", key=f"del_tpo_{tpo['id']}", use_container_width=True):
-                            if delete_tpo_fn(tpo['id']):
-                                st.success("TPO deleted")
-                                st.rerun()
+                        filter_mgr = st.session_state.get("filter_manager")
+                        active_scopes = filter_mgr.active_scopes if filter_mgr else []
+                        
+                        if active_scopes:
+                            if st.button("➖ Remove from Scopes", key=f"rm_scope_tpo_{tpo['id']}", use_container_width=True):
+                                removed = False
+                                for scope in filter_mgr.active_scopes:
+                                    if filter_mgr.remove_node_from_scope(scope.id, tpo['id']):
+                                        removed = True
+                                if removed:
+                                    st.success("TPO removed from active scopes")
+                                    st.rerun()
+                            
+                            st.markdown("<div style='text-align: center; font-size: 0.8em; color: gray;'>or</div>", unsafe_allow_html=True)
+                            
+                            if st.button("🗑️ Delete Globally", key=f"del_global_tpo_{tpo['id']}", use_container_width=True, type="secondary"):
+                                if delete_tpo_fn(tpo['id']):
+                                    st.success("TPO deleted from database")
+                                    st.rerun()
+                        else:
+                            if st.button("🗑️ Delete", key=f"del_tpo_{tpo['id']}", use_container_width=True):
+                                if delete_tpo_fn(tpo['id']):
+                                    st.success("TPO deleted")
+                                    st.rerun()

@@ -555,14 +555,9 @@ def render_influence_explorer(manager: RiskGraphManager):
         
         if explorer_enabled:
             # Node selection — scope-limited when active
-            all_nodes = manager.get_all_nodes_for_selection()
-            
-            # Filter to scope nodes if a scope is active
             _filter_mgr = st.session_state.get("filter_manager")
-            _scope_ids = _filter_mgr.get_scope_node_ids() if _filter_mgr else None
-            if _scope_ids is not None:
-                _scope_set = set(_scope_ids)
-                all_nodes = [n for n in all_nodes if n["id"] in _scope_set]
+            _active_scopes = _filter_mgr.active_scopes if _filter_mgr else None
+            all_nodes = manager.get_all_nodes_for_selection(active_scopes=_active_scopes)
             
             if all_nodes:
                 node_options = {n["id"]: n["label"] for n in all_nodes}
@@ -901,6 +896,14 @@ def render_scope_selector():
     with st.sidebar.expander("📐 Analysis Scopes", expanded=False):
         filter_mgr = st.session_state.filter_manager
         
+        if st.button("🌐 Full Graph", use_container_width=True, key="clear_scopes_btn"):
+            filter_mgr.clear_scopes()
+            if "scope_include_neighbors" in st.session_state:
+                del st.session_state["scope_include_neighbors"]
+            if "scope_selector" in st.session_state:
+                del st.session_state["scope_selector"]
+            st.rerun()
+            
         # Build options: list of scope names
         scope_map = {s.name: s for s in available_scopes}
         scope_names = list(scope_map.keys())
@@ -937,11 +940,6 @@ def render_scope_selector():
                 key="scope_include_neighbors",
                 help="Also display risks directly connected to the scoped nodes.",
             )
-        
-        if st.button("🌐 Full Graph", use_container_width=True, key="clear_scopes"):
-            filter_mgr.clear_scopes()
-            st.session_state.scope_include_neighbors = False
-            st.rerun()
 
 
 def render_main_content(manager: RiskGraphManager):
@@ -959,13 +957,17 @@ def render_main_content(manager: RiskGraphManager):
     filter_mgr = st.session_state.filter_manager
     scope_ids = filter_mgr.get_scope_node_ids()
     
+    # Check if any active scope natively forces connected edges inclusion
+    _forces_neighbors = any(getattr(s, "include_connected_edges", False) for s in filter_mgr.active_scopes)
+    _global_include_neighbors = _forces_neighbors or st.session_state.get("scope_include_neighbors", False)
+    
     if scope_ids is not None:
         scope_names = [s.name for s in filter_mgr.active_scopes]
         st.info(f"📐 Active scope{'s' if len(scope_names) > 1 else ''}: **{', '.join(scope_names)}** — showing {len(scope_ids)} scoped risk nodes")
         
         # Build scoped filters and compute stats from filtered graph data
         scoped_filters = filter_mgr.get_filters_for_query()
-        scoped_filters["scope_include_neighbors"] = st.session_state.get("scope_include_neighbors", False)
+        scoped_filters["scope_include_neighbors"] = _global_include_neighbors
         scoped_nodes, scoped_edges = manager.get_graph_data(scoped_filters)
         scoped_stats = _compute_stats_from_graph(scoped_nodes, scoped_edges)
         render_statistics_dashboard(scoped_stats)
@@ -983,7 +985,7 @@ def render_main_content(manager: RiskGraphManager):
         """Render the analysis tab content."""
         # Pass scope filter to influence analysis, with optional neighbor expansion
         _scope_ids = filter_mgr.get_scope_node_ids()
-        _include_nbrs = st.session_state.get("scope_include_neighbors", False)
+        _include_nbrs = _global_include_neighbors
         # If neighbors enabled, expand scope IDs for analysis
         if _scope_ids is not None and _include_nbrs:
             _expanded_scope = set(_scope_ids)
@@ -1037,7 +1039,7 @@ def render_main_content(manager: RiskGraphManager):
     if _crud_scope_ids is not None:
         _expanded = set(_crud_scope_ids)
         # Optionally expand 1-hop risk neighbors
-        if st.session_state.get("scope_include_neighbors", False):
+        if _global_include_neighbors:
             _all_influences = manager.get_all_influences()
             for inf in _all_influences:
                 src, tgt = inf.get("source_id"), inf.get("target_id")
