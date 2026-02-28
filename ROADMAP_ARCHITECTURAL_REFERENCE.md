@@ -505,3 +505,12 @@ If a Scenario ContextNode is linked to a BusinessRisk in SubGraph A, should it b
 
 **Q5 — System of Systems Composite Exposure Score**
 At the System of Systems level, each SubGraph appears as a composite node. What is that node's exposure score? Candidate options: max exposure of any child node, impact²-weighted average (consistent with existing Weighted Risk Score formula), or FAIR ALE sum of children. The answer determines what executives see at portfolio level.
+
+**Q6 — Multi-Agent Work Stream Coordination**
+With the transition to parallel work streams (A, B, C) in v2, how are cross-stream dependencies explicitly managed? For instance, if an agent in Stream A requires a new data field developed by Stream B, what is the protocol for pausing or handing over tasks without creating merge conflicts?
+
+**Q7 — Agent Testing Environments and Sandboxes**
+Are there dedicated, isolated database sandboxes for agents to run Gateway tests autonomously? Running full test suites on a shared development graph may cause state corruption or false test failures between agents working in parallel.
+
+**Q8 — Context Window Management for Large Schemas**
+As the ContextNode architecture expands the YAML schema significantly across domains, how are AI agents expected to efficiently read and hold the entire schema in context without exceeding token limits or missing critical constraints?

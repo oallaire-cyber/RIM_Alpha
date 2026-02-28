@@ -69,6 +69,20 @@ The following streams have hard dependencies on the streams above and should be 
 ### 🌊 Work Stream G: Advanced Graphical Interaction (BIG Features)
 *   **[F24] Interactive Canvas Editing**: Graphically interact with the graph directly within the visualization. Includes drawing new nodes and edges, modifying existing elements right on the canvas, and advanced graphical analysis tooling.
 
+## Open Questions — Multi-Agent Coordination
+
+**Q1 — Cross-Stream Dependency Management**
+When an agent in Stream A requires backend modifications (e.g., a new field added by Stream B) to complete a UI task, what is the protocol for pausing and handing over the task without causing a merge conflict or logic fragmentation?
+
+**Q2 — Agent Testing Sandboxes**
+Are there dedicated, isolated database instances or namespaces for agents to run the mandatory Testing Gateways without overwriting each other's test data during parallel execution?
+
+**Q3 — Schema Context Limits**
+As the YAML schema grows to accommodate multiple domains, how will AI agents maintain the full schema in their context window efficiently to ensure strict validation rules are followed without hitting LLM token limits?
+
+**Q4 — Dynamic Tracking of Computational Node Types**
+Currently, `BusinessRisk`, `OperationalRisk`, and `Mitigation` are hardcoded as the only node types carrying mathematical weight in exposure calculations. If future domain schemas require new computational node types, should the YAML schema be extended to include a `computational: true` flag to dynamically register them, rather than relying on hardcoded lists in the application code?
+
 ---
 
 ## Feature Dependency Map (Simplified for Agents)
