@@ -314,10 +314,13 @@ def get_downstream_risks(
     """
     query = """
     MATCH path = (start:Risk {id: $risk_id})-[:INFLUENCES*1..%d]->(downstream:Risk)
-    WITH downstream, min(length(path)) as depth
+    OPTIONAL MATCH dp = shortestPath((downstream)-[:INFLUENCES*0..10]->(b:Risk))
+    WHERE EXISTS { (b)-[:IMPACTS_TPO]->(:TPO) }
+    WITH downstream, min(length(path)) as depth, min(length(dp)) as inf_dist
+    WITH downstream, depth, CASE WHEN inf_dist IS NULL THEN -1 ELSE inf_dist + 1 END as computed_distance
     RETURN downstream.id as id, downstream.name as name,
            downstream.level as level, downstream.exposure as exposure,
-           depth
+           depth, computed_distance, CASE WHEN computed_distance = -1 THEN true ELSE false END as is_orphan
     ORDER BY depth, downstream.exposure DESC
     """ % max_depth
     
@@ -342,10 +345,13 @@ def get_upstream_risks(
     """
     query = """
     MATCH path = (upstream:Risk)-[:INFLUENCES*1..%d]->(target:Risk {id: $risk_id})
-    WITH upstream, min(length(path)) as depth
+    OPTIONAL MATCH dp = shortestPath((upstream)-[:INFLUENCES*0..10]->(b:Risk))
+    WHERE EXISTS { (b)-[:IMPACTS_TPO]->(:TPO) }
+    WITH upstream, min(length(path)) as depth, min(length(dp)) as inf_dist
+    WITH upstream, depth, CASE WHEN inf_dist IS NULL THEN -1 ELSE inf_dist + 1 END as computed_distance
     RETURN upstream.id as id, upstream.name as name,
            upstream.level as level, upstream.exposure as exposure,
-           depth
+           depth, computed_distance, CASE WHEN computed_distance = -1 THEN true ELSE false END as is_orphan
     ORDER BY depth, upstream.exposure DESC
     """ % max_depth
     

@@ -4,6 +4,188 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.10.9] - 2026-02-27
+
+### F3 — Complexity Toggle (Simple vs. Advanced Mode)
+
+**UX Simplification & Graph Filtering:**
+
+- **UI Complexity Toggle:** Introduced a "Simple / Advanced" segmented toggle in the main sidebar. Tailored for non-technical stakeholders, the Simple mode drastically reduces UI clutter by hiding advanced tabs (Mitigations, Influences, Import/Export, Config, etc.) and defaulting to just Visualization and Risks.
+- **Advanced Filters Ghosting:** In Simple mode, the extensive graph filters and layout presets are hidden behind a single "Show Advanced Filters" button. When exposed, all scoping and filtering functionality remains fully operational.
+- **Graph Node & Edge Ghosting:** The visualization algorithm now natively supports a focal transparency mode. In Simple mode, only the Top 10 most exposed risk nodes (configurable) and all Top Program Objectives (TPOs) are rendered fully opaque. All other context nodes, minor risks, and their connecting edges are rendered with 10% opacity, providing orienting context without visual noise.
+- **Configurable Simple Mode:** Added `SIMPLE_MODE_CONFIG` to `config/settings.py` allowing administrators to easily tweak which tabs are allowed, the number of top risks to display, and the exact ghosting opacity for the Simple Mode.
+
+---
+
+## [v2.10.8] - 2026-02-27
+
+### F1 & F2 — Progressive UI Loading & Intelligent Caching
+
+**Performance & UX Enhancements:**
+
+- **F1: Progressive UI Loading**: Deployed pagination components across all core CRUD tables (Risks, Mitigations, TPOs, Influences, Custom Entities, Custom Relationships) in the UI. Large data schemas are now gracefully divided into manageable chunks, dramatically improving frontend rendering speeds and interaction snappiness during full graph investigations.
+- **F2: Intelligent Structural Caching**: Integrated Streamlit's `@st.cache_data` caching engine profoundly into the backbone operations to eliminate redundant re-evaluation. 
+  - **Graph Layouts**: Algorithmically intense network distributions (Sugiyama layered, specific clustering, categorical spread) are now strictly memoized.
+  - **Influence Engine**: The computationally expensive BFS pathways processing (Critical paths, bottlenecks, clusters) are securely keyed to the *exact bound analysis scope context*. Cached evaluations strictly respect graph topology and selected scoped nodes to eliminate cross-contamination data leakage while boosting repeated visits dynamically.
+  - **Mutation Observers**: All 18 unique Database generic & semantic data modifications dynamically call a cache invalidation trigger. Every created, modified, or severed edge ensures the cache operates firmly against truthful graph topologies.
+
+---
+
+## [v2.10.7] - 2026-02-27
+
+### Bug Fixes
+- **Analysis Scopes**: Fixed an internal `TypeError` where the old `scope_node_ids` parameter was being passed to the `get_influence_analysis` and `get_mitigation_analysis` functions, causing the Analysis visual tab to crash. These methods have now been correctly updated to expect and use the `active_scopes` list of config objects for dynamic subgraph rendering.
+
+---
+## [v2.10.6] - 2026-02-27
+
+### U9 — Scope Completeness Enforcement
+
+**Core Architecture & Engine Updates:**
+
+- **Configuration:** Added `scope_type` to `AnalysisScopeConfig`, defaulted to `"scope"`, setting up for future SubGraph features.
+- **Database queries:** Updated `get_statistics()` and `get_all_nodes_for_selection()` to accept and use `active_scopes`.
+- **Advanced Graph Queries:** Overhauled `get_influence_analysis()` and `get_mitigation_analysis()` to compute sub-analysis boundaries entirely within the context of active scopes.
+
+**UI/UX Enhancements:**
+
+- **CRUD Forms:** Node creation now offers an internal "Add this new X to active scope(s)" option when boundaries apply. Deletion requests similarly split between "Remove from Scopes" vs global deletion.
+- **Scope Filters:** All UI components relying on entity selectors (Explorer node pickers, relationship bindings) are bound dynamically to the current active scope.
+
+---
+
+## [v2.10.5] - 2026-02-27
+
+### Exposure Calculation Visibility
+
+**Verification & Trace Mechanics:**
+- Implemented a "Calculation Trace" within the exposure engine that records step-by-step mathematical operations (base values, mitigation reductions, and influence limitations).
+- Appended a list of string traces to `RiskExposureResult`.
+- Updated the "Risk Exposure Analysis" dashboard in `ui/home.py` to display an expandable "View Calculation Trace" for every risk listed in the top exposures table, providing absolute transparency into the arithmetic behind the final scores.
+
+---
+
+## [v2.10.4] - 2026-02-27
+
+### U8 — Relationship Semantic Types
+
+**Core Architecture & Engine Updates:**
+
+- **Semantic Routing Model**
+  - Introduced `semantic` attribute to the `RelationshipTypeDefinition` schema object (`influence`, `context`, `cluster`).
+  - Re-routed the `calculate_exposure()` exposure engine to exclusively process relationships designated as `semantic: influence`.
+  - Defined defaults for kernel relationships: `INFLUENCES` and `MITIGATES` act as `semantic: influence`, while `IMPACTS_TPO` and custom edges default to `semantic: context`.
+  - Updated graph analysis and export functions to dynamically query the registry for `semantic: influence` boundaries instead of hardcoding `INFLUENCES`.
+
+**Files Modified:**
+- `schemas/default/schema.yaml` — Explicitly added `semantic` assignments for built-in edge configurations.
+- `core/relationship.py` — Added runtime support for mapping semantic configurations.
+- `database/manager.py` — Refactored engine fetchers into the new `get_semantic_influences()` proxy to respect semantic limits on metrics, exports, and path logic.
+
+---
+
+## [v2.10.3] - 2026-02-26
+
+### U7 — Computed Risk Level
+
+**Core Features & Algorithmic Updates:**
+
+- **Computed Risk Distance**
+  - Replaced static use of `level` for graph hierarchical positioning with a dynamically computed distance.
+  - Cypher query enhancements to compute shortest path (`INFLUENCES*0..10`) to the nearest TPO.
+  - Distances are now calculated on-the-fly (`computed_distance`) during read operations.
+  - Introduced `is_orphan` flag for risks with no path to any TPO.
+
+**UI/UX Enhancements:**
+
+- **Risk Management Tab Updates** (`ui/tabs/risks_tab.py`)
+  - The Risk expansion headers now display `⚠️ Orphan` badges for disconnected risks.
+  - Shows `[Dist N]` alongside risk names for contextual visibility of depth.
+- **Hierarchical Layout Restructuring** (`ui/layouts.py`)
+  - "Hierarchical (Sugiyama)" algorithm updated to position nodes across vertical layers `1..N` dynamically scaling down by `computed_distance` to TPOs.
+
+**Files Modified:**
+- `database/queries/risks.py` — Updated core read queries to include shortest path calculation.
+- `database/queries/influences.py` — Updated network traversal queries (`get_downstream_risks`, `get_upstream_risks`) for consistent distance output.
+- `ui/tabs/risks_tab.py` — Updated UI list expansion renderer.
+- `ui/layouts.py` — Modified Semantic Layer evaluation within Sugiyama layout logic.
+
+---
+
+## [v2.10.0] - 2026-02-24
+
+### U3 — Centralized State Management
+
+**Refactoring:**
+
+- **New `utils/state_manager.py` module** — single source of truth for all `st.session_state` key definitions, default values, and initialization
+  - Five domain registries: `CONNECTION_DEFAULTS`, `CONNECTION_FORM_DEFAULTS`, `HOME_UI_DEFAULTS`, `CONFIG_PAGE_DEFAULTS`, `ANALYSIS_CACHE_DEFAULTS`
+  - Domain-specific init functions: `init_connection_state()`, `init_home_state()`, `init_config_page_state()`, `init_analysis_cache_state()`, `init_all()`
+  - Generic `init_defaults(dict)` initializer (set-if-absent semantics)
+  - Thin `get()` / `set()` wrappers around `st.session_state` for future extensibility
+
+- **Removed scattered state initialization** — three separate `init_*` functions and ad-hoc `if key not in st.session_state` checks consolidated
+  - `utils/db_manager.py` — removed local `init_connection_state()`, re-exports from `state_manager`
+  - `ui/home.py` — `init_session_state()` now delegates to `state_manager.init_home_state()`; ad-hoc `neo4j_uri`/`neo4j_user` init removed
+  - `pages/1_⚙️_Configuration.py` — `init_session_state()` now delegates to `state_manager.init_config_page_state()`
+  - `ui/panels/influence_panel.py` — ad-hoc cache init replaced with `init_analysis_cache_state()`
+  - `ui/panels/mitigation_panel.py` — ad-hoc cache init replaced with `init_analysis_cache_state()`
+
+- **`utils/__init__.py`** — added `state_manager` exports to public API
+
+**Files Added:**
+- `utils/state_manager.py` — Centralized state key registries and init functions
+- `tests/test_state_manager.py` — 14 unit tests covering all init functions, get/set wrappers, and idempotency
+
+**Files Modified:**
+- `utils/db_manager.py` — Removed local `init_connection_state()`
+- `utils/__init__.py` — Added state manager exports
+- `ui/home.py` — Simplified `init_session_state()` + removed ad-hoc init
+- `pages/1_⚙️_Configuration.py` — Simplified `init_session_state()`
+- `ui/panels/influence_panel.py` — Uses `init_analysis_cache_state()`
+- `ui/panels/mitigation_panel.py` — Uses `init_analysis_cache_state()`
+
+---
+
+## [v2.9.0] - 2026-02-23
+
+### U1 & U2 — Externalize Static Content + Decouple Entry Point
+
+**Major Refactoring:**
+
+- **U1: Externalized Static Content**
+  - Moved ~380 lines of hardcoded markdown from `app.py` into 7 standalone `.md` files under `docs/`
+  - Help section content: `help_overview.md`, `help_scopes.md`, `help_exposure.md`, `help_influence.md`, `help_mitigations.md`, `help_layouts.md`
+  - Welcome page content: `welcome.md`
+  - Content loaded at runtime via new `utils/markdown_loader.py` helper with `@st.cache_data` caching
+  - Graceful fallback if a documentation file is missing
+
+- **U2: Decoupled Entry Point**
+  - Extracted all 15 rendering functions from `app.py` into new `ui/home.py` module (~700 lines)
+  - Slimmed `app.py` from **1,485 lines → ~60 lines** — now a thin orchestrator
+  - `app.py` handles only: `st.set_page_config()`, style injection, session state init, header, connection sidebar, and delegation to `render_main_content()`
+  - New `render_main_content()` function in `ui/home.py` encapsulates the entire connected-state body
+  - All existing functionality preserved — no user-facing changes
+
+**Files Added:**
+- `docs/help_overview.md` — Help: Overview tab
+- `docs/help_scopes.md` — Help: Scopes tab
+- `docs/help_exposure.md` — Help: Exposure tab
+- `docs/help_influence.md` — Help: Influence tab
+- `docs/help_mitigations.md` — Help: Mitigations tab
+- `docs/help_layouts.md` — Help: Layouts tab
+- `docs/welcome.md` — Welcome page content
+- `utils/markdown_loader.py` — Cached markdown file loader
+- `ui/home.py` — All home page rendering functions
+- `tests/test_markdown_loader.py` — Unit tests for docs loading
+
+**Files Modified:**
+- `app.py` — Slimmed from 1,485 → ~60 lines; all logic moved to `ui/home.py`
+- `ui/__init__.py` — Added exports for `ui.home` module
+
+---
+
+
 ## [v2.8.0] - 2026-02-20
 
 ### Unified Demo Dataset & Reset Button

@@ -84,11 +84,27 @@ def _render_risk_form(create_risk_fn: Callable[..., bool]):
         if probability > 0 and impact > 0:
             st.info(f"**Calculated exposure:** {probability * impact:.1f}")
         
+        # Scope addition
+        filter_mgr = st.session_state.get("filter_manager")
+        active_scopes = filter_mgr.active_scopes if filter_mgr else []
+        add_to_scope = False
+        if active_scopes:
+            scope_names = [s.name for s in active_scopes]
+            st.markdown("---")
+            add_to_scope = st.checkbox(
+                f"Add this new risk to active scope(s): {', '.join(scope_names)}",
+                value=True,
+                help="If checked, the new risk will be automatically added to the currently active scopes."
+            )
+        
         submitted = st.form_submit_button("Create risk", type="primary", use_container_width=True)
         
         if submitted:
             if name and categories:
-                success = create_risk_fn(
+                # We need the created ID to add to scope. Let's assume create_risk_fn returns the created node ID or True.
+                # Currently it returns boolean. We'll need to fetch the ID or modify the manager function to return ID.
+                # For now, we rely on a hook or re-fetching. Actually, manager.create_risk returns the ID currently? Let's check manager.py
+                result_id = create_risk_fn(
                     name=name,
                     level=level,
                     categories=categories,
@@ -101,7 +117,11 @@ def _render_risk_form(create_risk_fn: Callable[..., bool]):
                     impact=impact if impact > 0 else None,
                     origin=origin
                 )
-                if success:
+                if result_id:
+                    if add_to_scope and filter_mgr:
+                        for scope in filter_mgr.active_scopes:
+                            filter_mgr.add_node_to_scope(scope.id, result_id)
+                    
                     st.success(f"Risk '{name}' created successfully!")
                     st.rerun()
             else:
@@ -123,15 +143,26 @@ def _render_risk_list(
         st.info("No risks created.")
         return
     
-    for risk in risks:
-        level_icon = "🟣" if risk['level'] == 'Strategic' else "🔵"
+    from ui.components import render_pagination
+    start_idx, end_idx = render_pagination(len(risks), 20, "risks_list")
+    paginated_risks = risks[start_idx:end_idx]
+    
+    for risk in paginated_risks:
+        level_icon = "🟣" if risk['level'] == 'Strategic' or risk['level'] == 'Business' else "🔵"
         origin = risk.get('origin', 'New')
         origin_icon = "📜" if origin == "Legacy" else "🆕"
         
-        with st.expander(f"{level_icon} {origin_icon} {risk['name']}", expanded=False):
+        dist = risk.get('computed_distance', -1)
+        is_orphan = risk.get('is_orphan', False)
+        
+        orphan_badge = " ⚠️ Orphan" if is_orphan else ""
+        dist_badge = f" [Dist {dist}]" if dist > 0 else ""
+        
+        with st.expander(f"{level_icon} {origin_icon} {risk['name']}{dist_badge}{orphan_badge}", expanded=False):
             col_info1, col_info2 = st.columns(2)
             with col_info1:
-                st.markdown(f"**Level:** {risk['level']}")
+                st.markdown(f"**Stored Level:** {risk['level']}")
+                st.markdown(f"**Computed Dist:** {dist if dist > 0 else 'Orphan (-1)'}")
                 st.markdown(f"**Origin:** {origin}")
             with col_info2:
                 st.markdown(f"**Status:** {risk['status']}")
@@ -152,7 +183,28 @@ def _render_risk_list(
             col_edit, col_del = st.columns(2)
             
             with col_del:
-                if st.button("🗑️ Delete", key=f"del_{risk['id']}", use_container_width=True):
-                    if delete_risk_fn(risk['id']):
-                        st.success("Risk deleted")
-                        st.rerun()
+                filter_mgr = st.session_state.get("filter_manager")
+                active_scopes = filter_mgr.active_scopes if filter_mgr else []
+                
+                # If we are in a scoped view, default to "Remove from scope(s)" rather than global delete
+                if active_scopes:
+                    if st.button("➖ Remove from Scopes", key=f"rm_scope_{risk['id']}", use_container_width=True):
+                        removed = False
+                        for scope in filter_mgr.active_scopes:
+                            if filter_mgr.remove_node_from_scope(scope.id, risk['id']):
+                                removed = True
+                        if removed:
+                            st.success("Risk removed from active scopes")
+                            st.rerun()
+                    
+                    st.markdown("<div style='text-align: center; font-size: 0.8em; color: gray;'>or</div>", unsafe_allow_html=True)
+                    
+                    if st.button("🗑️ Delete Globally", key=f"del_global_{risk['id']}", use_container_width=True, type="secondary"):
+                        if delete_risk_fn(risk['id']):
+                            st.success("Risk deleted from database")
+                            st.rerun()
+                else:
+                    if st.button("🗑️ Delete", key=f"del_{risk['id']}", use_container_width=True):
+                        if delete_risk_fn(risk['id']):
+                            st.success("Risk deleted")
+                            st.rerun()

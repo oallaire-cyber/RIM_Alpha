@@ -143,8 +143,8 @@ class TestMitigationAnalyzerAnalyze:
         
         assert isinstance(result, dict)
         assert "coverage_stats" in result
-        assert "risk_summaries" in result
-        assert "coverage_groups" in result
+        assert "risk_mitigation_summary" in result
+        assert "unmitigated_risks" in result
     
     def test_analyze_empty_data(self):
         """Test analyze handles empty data."""

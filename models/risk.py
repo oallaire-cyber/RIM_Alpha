@@ -76,7 +76,7 @@ class Risk:
     @property
     def is_business(self) -> bool:
         """Check if risk is business level."""
-        return self.level == RiskLevel.STRATEGIC
+        return self.level == RiskLevel.BUSINESS
     
     @property
     def is_operational(self) -> bool:

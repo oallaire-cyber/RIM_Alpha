@@ -250,7 +250,18 @@ class TestFilterManagerScopes:
         assert fm.remove_node_from_scope("s1", "z") is False
 
     def test_get_filters_for_query_includes_scope_ids(self):
-        fm = self._get_filter_manager()
+        mock_registry = MagicMock()
+        mock_registry.entity_types = {}
+        mock_registry.relationship_types = {}
+        mock_registry.get_risk_type.return_value = None
+        mock_registry.get_mitigation_type.return_value = None
+        mock_registry.get_influence_type.return_value = None
+        mock_registry.get_mitigates_type.return_value = None
+        mock_registry.get_additional_entity_types.return_value = {}
+        mock_registry.get_additional_relationship_types.return_value = {}
+        
+        from ui.filters import FilterManager
+        fm = FilterManager(registry=mock_registry)
         scope = self._make_scope("s1", "S1", ["a", "b"])
         fm.set_active_scopes([scope])
         q = fm.get_filters_for_query()
@@ -258,7 +269,18 @@ class TestFilterManagerScopes:
         assert set(q["scope_node_ids"]) == {"a", "b"}
 
     def test_get_filters_for_query_no_scope(self):
-        fm = self._get_filter_manager()
+        mock_registry = MagicMock()
+        mock_registry.entity_types = {}
+        mock_registry.relationship_types = {}
+        mock_registry.get_risk_type.return_value = None
+        mock_registry.get_mitigation_type.return_value = None
+        mock_registry.get_influence_type.return_value = None
+        mock_registry.get_mitigates_type.return_value = None
+        mock_registry.get_additional_entity_types.return_value = {}
+        mock_registry.get_additional_relationship_types.return_value = {}
+        
+        from ui.filters import FilterManager
+        fm = FilterManager(registry=mock_registry)
         q = fm.get_filters_for_query()
         assert "scope_node_ids" not in q
 

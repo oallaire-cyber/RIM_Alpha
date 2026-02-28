@@ -52,10 +52,6 @@ from ui.components import (
 
 from ui.sidebar import (
     render_filter_sidebar,
-    render_graph_controls,
-    render_layout_manager_sidebar,
-    render_database_controls,
-    render_export_import_sidebar,
 )
 
 from ui.panels import (
@@ -81,6 +77,22 @@ from ui.legend import (
     render_node_legend,
     render_edge_legend,
     render_status_legend,
+)
+
+from ui.home import (
+    init_session_state as init_home_session_state,
+    render_help_section,
+    render_connection_sidebar,
+    render_welcome_page,
+    render_statistics_dashboard,
+    render_exposure_dashboard,
+    render_visualization_filters as render_home_visualization_filters,
+    render_influence_explorer,
+    render_graph_options,
+    render_layout_management,
+    render_visualization_tab,
+    render_scope_selector,
+    render_main_content,
 )
 
 __all__ = [
@@ -124,10 +136,6 @@ __all__ = [
     "create_download_link",
     # Sidebar
     "render_filter_sidebar",
-    "render_graph_controls",
-    "render_layout_manager_sidebar",
-    "render_database_controls",
-    "render_export_import_sidebar",
     # Panels
     "render_influence_analysis_panel",
     "render_mitigation_analysis_panel",
@@ -147,4 +155,18 @@ __all__ = [
     "render_node_legend",
     "render_edge_legend",
     "render_status_legend",
+    # Home page
+    "init_home_session_state",
+    "render_help_section",
+    "render_connection_sidebar",
+    "render_welcome_page",
+    "render_statistics_dashboard",
+    "render_exposure_dashboard",
+    "render_home_visualization_filters",
+    "render_influence_explorer",
+    "render_graph_options",
+    "render_layout_management",
+    "render_visualization_tab",
+    "render_scope_selector",
+    "render_main_content",
 ]

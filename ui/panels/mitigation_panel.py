@@ -44,10 +44,9 @@ def render_mitigation_analysis_panel(
     """
     import streamlit as st
     
-    # Initialize cache
-    if "mitigation_analysis_cache" not in st.session_state:
-        st.session_state.mitigation_analysis_cache = None
-        st.session_state.mitigation_analysis_timestamp = None
+    # Initialize cache via centralized state manager
+    from utils.state_manager import init_analysis_cache_state
+    init_analysis_cache_state()
     
     # Check cache validity
     current_time = time.time()

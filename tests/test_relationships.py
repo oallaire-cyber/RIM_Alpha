@@ -43,9 +43,9 @@ class TestInfluencePostInit:
             id="inf-001",
             source_id="r1",
             target_id="r2",
-            influence_type="Level1_Op_to_Strat"
+            influence_type="Level1_Op_to_Bus"
         )
-        assert influence.influence_type == InfluenceType.LEVEL1_OP_TO_STRAT
+        assert influence.influence_type == InfluenceType.LEVEL1_OP_TO_BUS
     
     def test_string_strength_conversion(self):
         """Test that string strength is converted to enum."""
@@ -92,7 +92,7 @@ class TestInfluenceProperties:
             id="inf-001",
             source_id="r1",
             target_id="r2",
-            influence_type=InfluenceType.LEVEL1_OP_TO_STRAT
+            influence_type=InfluenceType.LEVEL1_OP_TO_BUS
         )
         
         assert isinstance(influence.type_icon, str)
@@ -103,7 +103,7 @@ class TestInfluenceProperties:
             id="inf-001",
             source_id="r1",
             target_id="r2",
-            influence_type=InfluenceType.LEVEL1_OP_TO_STRAT
+            influence_type=InfluenceType.LEVEL1_OP_TO_BUS
         )
         
         assert influence.color.startswith("#")

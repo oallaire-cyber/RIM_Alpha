@@ -71,11 +71,24 @@ def _render_mitigation_form(create_mitigation_fn: Callable[..., bool]):
                 placeholder="E.g.: Corporate ERM" if mit_type == "Inherited" else "E.g.: ISO 27001 A.12.3"
             )
         
+        # Scope addition
+        filter_mgr = st.session_state.get("filter_manager")
+        active_scopes = filter_mgr.active_scopes if filter_mgr else []
+        add_to_scope = False
+        if active_scopes:
+            scope_names = [s.name for s in active_scopes]
+            st.markdown("---")
+            add_to_scope = st.checkbox(
+                f"Add this new mitigation to active scope(s): {', '.join(scope_names)}",
+                value=True,
+                help="If checked, the new mitigation will be automatically added to the currently active scopes."
+            )
+        
         submitted = st.form_submit_button("Create Mitigation", type="primary", use_container_width=True)
         
         if submitted:
             if mit_name and mit_type and mit_status:
-                success = create_mitigation_fn(
+                result_id = create_mitigation_fn(
                     name=mit_name,
                     mitigation_type=mit_type,
                     status=mit_status,
@@ -83,7 +96,11 @@ def _render_mitigation_form(create_mitigation_fn: Callable[..., bool]):
                     owner=mit_owner,
                     source_entity=mit_source_entity
                 )
-                if success:
+                if result_id:
+                    if add_to_scope and filter_mgr:
+                        for scope in filter_mgr.active_scopes:
+                            filter_mgr.add_node_to_scope(scope.id, result_id)
+                    
                     st.success(f"Mitigation '{mit_name}' created successfully!")
                     st.rerun()
             else:
@@ -105,6 +122,10 @@ def _render_mitigation_list(
     if not mitigations:
         st.info("No mitigations created.")
         return
+        
+    from ui.components import render_pagination
+    start_idx, end_idx = render_pagination(len(mitigations), 20, "mitigations_list")
+    paginated_mitigations = mitigations[start_idx:end_idx]
     
     # Icons for types and statuses
     type_icons = {
@@ -119,7 +140,7 @@ def _render_mitigation_list(
         "Deferred": "⏸️"
     }
     
-    for mit in mitigations:
+    for mit in paginated_mitigations:
         type_icon = type_icons.get(mit.get('type', 'Dedicated'), '🛡️')
         status_icon = status_icons.get(mit.get('status', 'Proposed'), '❓')
         
@@ -149,7 +170,27 @@ def _render_mitigation_list(
             col_edit, col_del = st.columns(2)
             
             with col_del:
-                if st.button("🗑️ Delete", key=f"del_mit_{mit['id']}", use_container_width=True):
-                    if delete_mitigation_fn(mit['id']):
-                        st.success("Mitigation deleted")
-                        st.rerun()
+                filter_mgr = st.session_state.get("filter_manager")
+                active_scopes = filter_mgr.active_scopes if filter_mgr else []
+                
+                if active_scopes:
+                    if st.button("➖ Remove from Scopes", key=f"rm_scope_mit_{mit['id']}", use_container_width=True):
+                        removed = False
+                        for scope in filter_mgr.active_scopes:
+                            if filter_mgr.remove_node_from_scope(scope.id, mit['id']):
+                                removed = True
+                        if removed:
+                            st.success("Mitigation removed from active scopes")
+                            st.rerun()
+                    
+                    st.markdown("<div style='text-align: center; font-size: 0.8em; color: gray;'>or</div>", unsafe_allow_html=True)
+                    
+                    if st.button("🗑️ Delete Globally", key=f"del_global_mit_{mit['id']}", use_container_width=True, type="secondary"):
+                        if delete_mitigation_fn(mit['id']):
+                            st.success("Mitigation deleted from database")
+                            st.rerun()
+                else:
+                    if st.button("🗑️ Delete", key=f"del_mit_{mit['id']}", use_container_width=True):
+                        if delete_mitigation_fn(mit['id']):
+                            st.success("Mitigation deleted")
+                            st.rerun()

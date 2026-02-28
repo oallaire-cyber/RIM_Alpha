@@ -12,7 +12,7 @@ RIM follows a **modular architecture** with clear separation of concerns:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                         app.py                               │
-│                   (Home / Dashboard)                         │
+│          (Thin entry point → delegates to ui/home.py)         │
 └─────────────────────┬───────────────────────────────────────┘
                       │
           ┌───────────┴───────────┐
@@ -63,6 +63,17 @@ config/
 └── schema_loader.py # YAML schema system (SchemaConfig, AnalysisScopeConfig, etc.)
 ```
 
+### `/utils` — Centralised Utilities
+
+```
+utils/
+├── __init__.py        # Re-exports helpers + state manager
+├── state_manager.py   # Centralized st.session_state key registries & init
+├── db_manager.py      # Shared singleton connection (st.cache_resource)
+├── helpers.py         # Formatting helpers
+└── markdown_loader.py # Cached docs/*.md file loader
+```
+
 **Key exports**:
 - `APP_TITLE`, `APP_ICON`, `LAYOUT_MODE`
 - `NEO4J_DEFAULT_URI`, `NEO4J_DEFAULT_USER`
@@ -104,6 +115,7 @@ class RiskGraphManager:
     # Influence operations
     def create_influence(self, source_ref, target_ref, **kwargs)
     def get_all_influences(self) -> List[dict]
+    def get_semantic_influences(self) -> List[dict]
     
     # Mitigation operations
     def create_mitigation(self, **kwargs) -> str
@@ -245,7 +257,10 @@ class InfluenceAnalyzer:
 ```
 ui/
 ├── __init__.py       # Exports components
+├── home.py           # Home page rendering (dashboard, viz, analysis)
 ├── components.py     # Reusable UI components
+├── dynamic_tabs.py   # Schema-driven tab rendering
+├── dynamic_forms.py  # Schema-driven form builder
 ├── filters.py        # FilterManager class
 ├── layouts.py        # Layout generators + LayoutManager
 ├── legend.py         # Graph legend rendering
@@ -264,6 +279,36 @@ ui/
     ├── tpo_impacts_tab.py
     ├── risk_mitigations_tab.py
     └── import_export_tab.py
+```
+
+**Home Page** (`home.py`):
+
+Contains all dashboard/visualization/analysis rendering functions extracted
+from the monolithic `app.py` (v2.9.0). Key functions:
+
+```python
+# Session state
+def init_session_state()              # Home-specific state
+
+# Sidebar
+def render_connection_sidebar()       # Neo4j connection panel
+def render_help_section()             # Loads docs/*.md via markdown_loader
+def render_scope_selector()           # Analysis scope picker
+
+# Dashboard
+def render_welcome_page()             # Loads docs/welcome.md
+def render_statistics_dashboard()     # Scoped statistics
+def render_exposure_dashboard()       # Exposure calculation
+
+# Visualization
+def render_visualization_tab()        # Graph + filters + explorer + layouts
+def render_visualization_filters()    # Filter sidebar
+def render_influence_explorer()       # Node traversal
+def render_graph_options()            # Physics, edge visibility, capture
+def render_layout_management()        # Save/load/preset layouts
+
+# Orchestrator
+def render_main_content(manager)      # Wires everything together
 ```
 
 **FilterManager** (`filters.py`):
@@ -384,7 +429,7 @@ st.success() + st.rerun()
 User clicks Visualization tab
     │
     ▼
-render_visualization() [app.py]
+render_visualization_tab() [ui/home.py]
     │
     ├─── FilterManager.filter_nodes/edges() [ui/filters.py]
     │
@@ -431,7 +476,7 @@ calculate_exposure() [services/exposure_calculator.py]
 ExposureResult dataclass
     │
     ▼
-render_exposure_dashboard() [app.py]
+render_exposure_dashboard() [ui/home.py]
 ```
 
 ### Scope Filtering Flow
@@ -440,7 +485,7 @@ render_exposure_dashboard() [app.py]
 User selects scope(s) in sidebar
     │
     ▼
-_render_scope_selector() [app.py]
+render_scope_selector() [ui/home.py]
     │
     ├─── SchemaLoader.load_schema() → schema.scopes
     ├─── Optional: "Show connected neighbors" toggle
@@ -463,8 +508,8 @@ get_graph_data(filters) [database/queries/analysis.py]
     └─── Filter edges: keep only if both endpoints in expanded set
     │
     ├──► Visualization shows scoped subgraph
-    ├──► _compute_stats_from_graph() → Scoped statistics dashboard
-    ├──► CRUD tabs filtered via _scoped_getter() wrappers
+    ├──► _compute_stats_from_graph() [ui/home.py] → Scoped statistics dashboard
+    ├──► CRUD tabs filtered via _scoped_getter() wrappers [ui/home.py]
     ├──► get_influence_analysis(scope_node_ids) → Scoped influence analysis
     ├──► get_mitigation_analysis(scope_node_ids) → Scoped mitigation analysis
     └──► calculate_exposure(scope_node_ids, include_neighbors) → Scoped exposure
@@ -474,32 +519,41 @@ get_graph_data(filters) [database/queries/analysis.py]
 
 ## Session State Management
 
-Streamlit session state is used for:
+All `st.session_state` keys are defined, defaulted, and initialised from
+a single module: **`utils/state_manager.py`**.
+
+### Key Registries
+
+| Registry | Keys | Used By |
+|----------|------|---------|
+| `CONNECTION_DEFAULTS` | `manager`, `connected` | All pages |
+| `CONNECTION_FORM_DEFAULTS` | `neo4j_uri`, `neo4j_user` | Home sidebar |
+| `HOME_UI_DEFAULTS` | `physics_enabled`, `color_by`, `capture_mode`, `influence_explorer_enabled`, `selected_node_id` | Home page |
+| `CONFIG_PAGE_DEFAULTS` | `config_connection`, `config_connected`, `active_schema_name`, `active_schema`, `schema_modified`, `db_stats`, `health_report` | Configuration page |
+| `ANALYSIS_CACHE_DEFAULTS` | `influence_analysis_cache`, `influence_analysis_timestamp`, `mitigation_analysis_cache`, `mitigation_analysis_timestamp`, `pending_explore_node` | Analysis panels |
+
+In addition, `filter_manager` (`FilterManager`) and `layout_manager`
+(`LayoutManager`) are instantiated lazily inside `init_home_state()`.
+
+### Init Functions
 
 ```python
-# Connection
-st.session_state.neo4j_connected: bool
-st.session_state.manager: RiskGraphManager
-
-# Filters
-st.session_state.filter_levels: List[str]
-st.session_state.filter_categories: List[str]
-st.session_state.filter_origins: List[str]
-st.session_state.show_tpos: bool
-st.session_state.show_mitigations: bool
-
-# Layout
-st.session_state.saved_layouts: Dict[str, dict]
-st.session_state.current_layout: str
-
-# Exposure
-st.session_state.exposure_result: dict
-st.session_state.exposure_calculated: bool
-
-# UI State
-st.session_state.selected_node: str
-st.session_state.graph_refresh_counter: int
+from utils.state_manager import (
+    init_connection_state,      # CONNECTION_DEFAULTS only
+    init_home_state,            # connection + form + ui + FilterManager/LayoutManager
+    init_config_page_state,     # connection + config page keys
+    init_analysis_cache_state,  # influence & mitigation panel caches
+    init_all,                   # everything (useful for tests)
+    get, set,                   # thin wrappers around st.session_state
+)
 ```
+
+Each consumer calls the narrowest init function it needs:
+
+- `app.py` → `init_home_state()` (via `ui.home.init_session_state()`)
+- `pages/1_⚙️_Configuration.py` → `init_config_page_state()`
+- `ui/panels/influence_panel.py` → `init_analysis_cache_state()`
+- `ui/panels/mitigation_panel.py` → `init_analysis_cache_state()`
 
 ---
 
@@ -596,12 +650,12 @@ pytest tests/test_exposure_calculator.py
 ```
 tests/
 ├── __init__.py
+├── conftest.py
+├── test_markdown_loader.py      # Docs file loading tests
 ├── test_exposure_calculator.py
 ├── test_influence_analysis.py
-├── test_filters.py
 ├── test_scopes.py              # Scope feature: 26 tests
-└── fixtures/
-    └── sample_data.py
+└── ...
 ```
 
 ---
@@ -615,7 +669,7 @@ tests/
 3. Add methods to `RiskGraphManager`
 4. Create node style in `visualization/node_styles.py`
 5. Create tab in `ui/tabs/`
-6. Wire into `app.py`
+6. Wire into `ui/home.py` and `app.py`
 
 ### Adding a New Analysis
 
@@ -671,4 +725,4 @@ flake8>=6.0.0
 
 ---
 
-*Last updated: February 2026 | Version 2.6.0*
+*Last updated: February 2026 | Version 2.10.4*

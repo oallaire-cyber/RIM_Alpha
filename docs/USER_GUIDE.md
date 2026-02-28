@@ -42,9 +42,16 @@ The application has three main areas:
 
 | Area | Location | Purpose |
 |------|----------|---------|
-| **Sidebar** | Left panel | Connection, filters, legend, settings |
+| **Sidebar** | Left panel | UI Complexity Toggle, Connection, filters, legend, settings |
 | **Tab Bar** | Top center | Navigate between management tabs |
 | **Main Content** | Center | Forms, tables, visualization |
+
+### UI Complexity Modes
+
+RIM allows users to toggle the interface complexity from the **top of the sidebar**:
+
+- **Advanced Mode**: The full experience. Shows all tabs, advanced filters, and renders every node/edge in the graph regardless of exposure. Intended for Risk Managers and Analysts.
+- **Simple Mode**: A streamlined experience for non-technical stakeholders. Hides advanced tabs (Mitigations, Influences, Config, etc.), collapses complex filters, and brings focus to the graph by "ghosting" (making transparent) all nodes except the Top risks and TPOs.
 
 ### Navigation Tabs
 
@@ -628,4 +635,4 @@ Each multi-select filter has **All** and **None** buttons for quick selection.
 
 ---
 
-*Last updated: February 2026 | Version 2.8.0*
+*Last updated: February 2026 | Version 2.10.9*

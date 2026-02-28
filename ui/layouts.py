@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 import json
 import math
+import streamlit as st
 
 from config.settings import TPO_CLUSTERS
 
@@ -109,6 +110,7 @@ class LayoutManager:
         return name in self.layouts
 
 
+@st.cache_data
 def generate_layered_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     """
     Generate a layered layout with TPOs at top, Business in middle, Operational at bottom.
@@ -165,6 +167,7 @@ def generate_layered_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, 
     return positions
 
 
+@st.cache_data
 def generate_category_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     """
     Generate a layout grouped by categories in 2x2 grid, TPOs on top.
@@ -220,6 +223,7 @@ def generate_category_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str,
     return positions
 
 
+@st.cache_data
 def generate_tpo_cluster_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     """
     Generate a layout grouped by TPO clusters with risks below.
@@ -284,6 +288,7 @@ def generate_tpo_cluster_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[s
     return positions
 
 
+@st.cache_data
 def generate_auto_spread_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]] = None) -> Dict[str, Dict[str, float]]:
     """
     Generate a hierarchical layout using the Sugiyama algorithm.
@@ -334,17 +339,19 @@ def generate_auto_spread_layout(nodes: List[Dict[str, Any]], edges: List[Dict[st
         
         RIM hierarchy (top to bottom):
         - Layer 0: TPOs (goals/objectives at the top)
-        - Layer 1: Strategic risks (consequences)
-        - Layer 2: Operational risks (causes)
-        - Layer 3: Mitigations (positioned alongside their targets)
+        - Layer 1..N: Risks based on computed distance to TPOs
+        - Layer 99: Mitigations (positioned alongside their targets)
         """
         node_type = node.get("node_type", "Risk")
         level = node.get("level", "Operational")
+        dist = node.get("computed_distance", -1)
         
         if node_type == "TPO":
             return 0  # TPOs always at top
         elif node_type == "Mitigation":
-            return 3  # Mitigations in a separate layer
+            return 99  # Mitigations in a separate layer
+        elif dist > 0:
+            return dist
         elif level == "Business":
             return 1  # Strategic risks below TPOs
         else:  # Operational

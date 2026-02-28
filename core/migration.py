@@ -116,7 +116,7 @@ class SchemaMigrator:
         all_entity_ids = set(old_entities.keys()) | set(new_entities.keys())
         
         for entity_id in all_entity_ids:
-            if entity_id in ("custom_entities",):
+            if entity_id in ("custom_entities", "context_nodes"):
                 continue  # Skip list-based sections
                 
             old_entity = old_entities.get(entity_id, {})

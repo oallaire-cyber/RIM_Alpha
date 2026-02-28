@@ -94,14 +94,14 @@ class RiskGraphManager:
         probability: float = None,
         impact: float = None,
         origin: str = "New"
-    ) -> bool:
-        """Create a new risk node."""
+    ) -> Optional[str]:
+        """Create a new risk node. Returns the created node ID or None."""
         result = risks.create_risk(
             self._connection, name, level, categories, description, status,
             origin, owner, probability, impact, activation_condition,
             activation_decision_date
         )
-        return result is not None
+        return result
     
     def get_all_risks(
         self,
@@ -172,6 +172,43 @@ class RiskGraphManager:
     def get_all_influences(self) -> list:
         """Retrieve all influence relationships."""
         return influences.get_all_influences(self._connection)
+        
+    def get_semantic_influences(self) -> list:
+        """
+        Retrieve all relationships that have semantic type 'influence'.
+        This includes the kernel INFLUENCES, MITIGATES, and any custom
+        relationships configured as semantic: influence in the schema.
+        
+        Returns:
+            List of normalized relationship dictionaries with source_id and target_id.
+        """
+        from core import get_registry
+        registry = get_registry()
+        semantic_rels = []
+        
+        # Kernel: influences
+        inf_type = registry.get_influence_type()
+        if inf_type and inf_type.semantic == "influence":
+            semantic_rels.extend(self.get_all_influences())
+            
+        # Kernel: mitigates
+        mitigates_type = registry.get_mitigates_type()
+        if mitigates_type and mitigates_type.semantic == "influence":
+            mitigates = self.get_all_mitigates_relationships()
+            # Normalize to source_id/target_id format for the exposure engine
+            for m in mitigates:
+                m_normalized = dict(m)
+                m_normalized["source_id"] = m.get("mitigation_id")
+                m_normalized["target_id"] = m.get("risk_id")
+                semantic_rels.append(m_normalized)
+                
+        # Additional relationships configured as 'influence'
+        for rel_id, rel_def in registry.get_additional_relationship_types().items():
+            if rel_def.semantic == "influence":
+                custom_rels = self.get_relationships(rel_id)
+                semantic_rels.extend(custom_rels)
+                
+        return semantic_rels
     
     def get_influences_from_risk(self, risk_id: str) -> list:
         """Get all influences originating from a specific risk."""
@@ -207,10 +244,10 @@ class RiskGraphManager:
         name: str,
         cluster: str,
         description: str = ""
-    ) -> bool:
-        """Create a new TPO node."""
+    ) -> Optional[str]:
+        """Create a new TPO node. Returns the created node ID or None."""
         result = tpos.create_tpo(self._connection, reference, name, cluster, description)
-        return result is not None
+        return result
     
     def get_all_tpos(self, cluster_filter: list = None) -> list:
         """Retrieve all TPOs with optional cluster filter."""
@@ -302,13 +339,13 @@ class RiskGraphManager:
         description: str = "",
         owner: str = "",
         source_entity: str = ""
-    ) -> bool:
-        """Create a new mitigation node."""
+    ) -> Optional[str]:
+        """Create a new mitigation node. Returns the created node ID or None."""
         result = mitigations.create_mitigation(
             self._connection, name, mitigation_type, status,
             description, owner, source_entity
         )
-        return result is not None
+        return result
     
     def get_all_mitigations(
         self,
@@ -419,9 +456,9 @@ class RiskGraphManager:
     # STATISTICS & ANALYSIS
     # =========================================================================
     
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self, active_scopes: list = None) -> Dict[str, Any]:
         """Get comprehensive graph statistics."""
-        return analysis.get_statistics(self._connection)
+        return analysis.get_statistics(self._connection, active_scopes)
     
     def get_graph_data(self, filters: dict = None) -> tuple:
         """Get all data needed for graph visualization."""
@@ -431,9 +468,9 @@ class RiskGraphManager:
         """Get all edges with importance scores for progressive disclosure."""
         return analysis.get_all_edges_scored(self._connection)
     
-    def get_all_nodes_for_selection(self) -> list:
+    def get_all_nodes_for_selection(self, active_scopes: list = None) -> list:
         """Get all nodes formatted for dropdown selection."""
-        return analysis.get_all_nodes_for_selection(self._connection)
+        return analysis.get_all_nodes_for_selection(self._connection, active_scopes)
     
     # =========================================================================
     # INFLUENCE NETWORK ANALYSIS
@@ -484,7 +521,7 @@ class RiskGraphManager:
     # ADVANCED ANALYSIS (TO BE MOVED TO SERVICES MODULE IN PHASE 3)
     # =========================================================================
     
-    def get_influence_analysis(self, scope_node_ids=None) -> Dict[str, Any]:
+    def get_influence_analysis(self, active_scopes: list = None) -> Dict[str, Any]:
         """
         Comprehensive influence analysis including:
         - Top Propagators (risks with highest downstream impact)
@@ -494,7 +531,7 @@ class RiskGraphManager:
         - Risk Clusters (tightly interconnected groups)
         
         Args:
-            scope_node_ids: Optional list of node IDs to restrict analysis to.
+            active_scopes: Optional list of active AnalysisScopeConfig objects.
         """
         analysis = {
             "top_propagators": [],
@@ -511,20 +548,41 @@ class RiskGraphManager:
         # Get all nodes and edges for analysis
         all_risks = self.get_all_risks()
         all_tpos = self.get_all_tpos()
-        all_influences = self.get_all_influences()
+        all_influences = self.get_semantic_influences()
         all_tpo_impacts = self.get_all_tpo_impacts()
         
         # Pre-filter by scope if provided
-        if scope_node_ids is not None:
-            scope_set = set(scope_node_ids)
-            all_risks = [r for r in all_risks if r["id"] in scope_set]
+        if active_scopes:
+            scope_node_ids = set()
+            scope_include_neighbors = False
+            for scope in active_scopes:
+                scope_node_ids.update(scope.node_ids)
+                if getattr(scope, "include_connected_edges", False):
+                    scope_include_neighbors = True
+            
+            filtered_risks = [r for r in all_risks if r["id"] in scope_node_ids]
+            filtered_risk_ids = {r["id"] for r in filtered_risks}
+            
+            if scope_include_neighbors:
+                neighbor_risk_ids = set()
+                for inf in all_influences:
+                    src, tgt = inf["source_id"], inf["target_id"]
+                    if src in filtered_risk_ids:
+                        neighbor_risk_ids.add(tgt)
+                    if tgt in filtered_risk_ids:
+                        neighbor_risk_ids.add(src)
+                filtered_risk_ids.update(neighbor_risk_ids)
+                filtered_risks = [r for r in all_risks if r["id"] in filtered_risk_ids]
+            
+            all_risks = filtered_risks
+            
             all_influences = [
                 i for i in all_influences
-                if i["source_id"] in scope_set or i["target_id"] in scope_set
+                if i["source_id"] in filtered_risk_ids and i["target_id"] in filtered_risk_ids
             ]
             all_tpo_impacts = [
                 i for i in all_tpo_impacts
-                if i["risk_id"] in scope_set
+                if i["risk_id"] in filtered_risk_ids
             ]
             # Keep TPOs that are reached by scoped risks
             reached_tpo_ids = {i["tpo_id"] for i in all_tpo_impacts}
@@ -833,7 +891,7 @@ class RiskGraphManager:
         
         return analysis
     
-    def get_mitigation_analysis(self, scope_node_ids=None) -> Dict[str, Any]:
+    def get_mitigation_analysis(self, active_scopes: list = None) -> Dict[str, Any]:
         """
         Comprehensive mitigation analysis including:
         - Coverage overview (risks with/without mitigations)
@@ -842,7 +900,7 @@ class RiskGraphManager:
         - Cross-reference with influence analysis
         
         Args:
-            scope_node_ids: Optional list of risk IDs to restrict analysis to.
+            active_scopes: Optional list of active AnalysisScopeConfig objects.
         """
         analysis = {
             "coverage_stats": {},
@@ -860,11 +918,33 @@ class RiskGraphManager:
         all_mitigates = self.get_all_mitigates_relationships()
         
         # Pre-filter by scope if provided
-        if scope_node_ids is not None:
-            scope_set = set(scope_node_ids)
-            all_risks = [r for r in all_risks if r["id"] in scope_set]
+        if active_scopes:
+            scope_node_ids = set()
+            scope_include_neighbors = False
+            for scope in active_scopes:
+                scope_node_ids.update(scope.node_ids)
+                if getattr(scope, "include_connected_edges", False):
+                    scope_include_neighbors = True
+            
+            filtered_risks = [r for r in all_risks if r["id"] in scope_node_ids]
+            filtered_risk_ids = {r["id"] for r in filtered_risks}
+            
+            if scope_include_neighbors:
+                all_influences = self.get_semantic_influences()
+                neighbor_risk_ids = set()
+                for inf in all_influences:
+                    src, tgt = inf["source_id"], inf["target_id"]
+                    if src in filtered_risk_ids:
+                        neighbor_risk_ids.add(tgt)
+                    if tgt in filtered_risk_ids:
+                        neighbor_risk_ids.add(src)
+                filtered_risk_ids.update(neighbor_risk_ids)
+                filtered_risks = [r for r in all_risks if r["id"] in filtered_risk_ids]
+                
+            all_risks = filtered_risks
+            
             # Keep mitigates relationships targeting scoped risks
-            all_mitigates = [mr for mr in all_mitigates if mr.get("risk_id") in scope_set]
+            all_mitigates = [mr for mr in all_mitigates if mr.get("risk_id") in filtered_risk_ids]
             # Keep only mitigations connected to scoped risks
             connected_mit_ids = {mr["mitigation_id"] for mr in all_mitigates}
             all_mitigations = [m for m in all_mitigations if m["id"] in connected_mit_ids]
@@ -974,7 +1054,7 @@ class RiskGraphManager:
         
         # Get influence analysis to cross-reference
         try:
-            influence_analysis = self.get_influence_analysis(scope_node_ids=scope_node_ids)
+            influence_analysis = self.get_influence_analysis(active_scopes=active_scopes)
             
             top_propagator_ids = set(p["id"] for p in influence_analysis.get("top_propagators", []))
             convergence_ids = set(c["id"] for c in influence_analysis.get("convergence_points", []) if c.get("node_type") == "Risk")
@@ -1221,7 +1301,7 @@ class RiskGraphManager:
         return export_to_excel(
             filepath=filepath,
             risks=self.get_all_risks(),
-            influences=self.get_all_influences(),
+            influences=self.get_semantic_influences(),
             tpos=self.get_all_tpos(),
             tpo_impacts=self.get_all_tpo_impacts(),
             mitigations=self.get_all_mitigations(),
@@ -1239,7 +1319,7 @@ class RiskGraphManager:
         
         return export_to_excel_bytes(
             risks=self.get_all_risks(),
-            influences=self.get_all_influences(),
+            influences=self.get_semantic_influences(),
             tpos=self.get_all_tpos(),
             tpo_impacts=self.get_all_tpo_impacts(),
             mitigations=self.get_all_mitigations(),
@@ -1300,7 +1380,7 @@ class RiskGraphManager:
         
         # Gather all required data
         risks = self.get_all_risks()
-        influences = self.get_all_influences()
+        influences = self.get_semantic_influences()
         mitigations = self.get_all_mitigations()
         mitigates_rels = self.get_all_mitigates_relationships()
         

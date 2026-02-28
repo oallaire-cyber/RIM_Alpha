@@ -5,6 +5,7 @@ Tests the ExposureCalculator service and related data classes.
 """
 
 import pytest
+from datetime import datetime
 from services.exposure_calculator import (
     ExposureCalculator,
     RiskExposureResult,
@@ -20,7 +21,7 @@ class TestRiskExposureResult:
         result = RiskExposureResult(
             risk_id="risk-001",
             risk_name="Test Risk",
-            level="Strategic",
+            level="Business",
             likelihood=5.0,
             impact=8.0,
             base_exposure=40.0,
@@ -31,6 +32,7 @@ class TestRiskExposureResult:
             effective_mitigation_factor=0.76,
             upstream_risk_count=1,
             final_exposure=30.4,
+            trace=["Test trace"],
         )
         
         assert result.risk_id == "risk-001"
@@ -42,7 +44,7 @@ class TestRiskExposureResult:
         result = RiskExposureResult(
             risk_id="risk-001",
             risk_name="Test Risk",
-            level="Strategic",
+            level="Business",
             likelihood=5.0,
             impact=8.0,
             base_exposure=40.0,
@@ -53,6 +55,7 @@ class TestRiskExposureResult:
             effective_mitigation_factor=0.76,
             upstream_risk_count=1,
             final_exposure=30.4,
+            trace=["Test trace"],
         )
         
         data = result.to_dict()
@@ -78,6 +81,8 @@ class TestGlobalExposureResult:
             total_final_exposure=91.0,
             total_risks=5,
             risks_with_data=4,
+            strategic_exposure=120.0,
+            operational_exposure=80.0,
             mitigated_risks_count=3,
             unmitigated_risks_count=2,
             calculated_at="2025-01-15T10:00:00",
@@ -99,9 +104,11 @@ class TestGlobalExposureResult:
             total_final_exposure=91.0,
             total_risks=5,
             risks_with_data=4,
+            strategic_exposure=120.0,
+            operational_exposure=80.0,
             mitigated_risks_count=3,
             unmitigated_risks_count=2,
-            calculated_at="2025-01-15T10:00:00",
+            calculated_at=datetime(2025, 1, 15, 10, 0, 0),
             risk_results=[],
         )
         
@@ -122,6 +129,8 @@ class TestGlobalExposureResult:
             total_final_exposure=10.0,
             total_risks=1,
             risks_with_data=1,
+            strategic_exposure=10.0,
+            operational_exposure=0.0,
             mitigated_risks_count=1,
             unmitigated_risks_count=0,
             calculated_at="",
@@ -143,6 +152,8 @@ class TestGlobalExposureResult:
             total_final_exposure=90.0,
             total_risks=1,
             risks_with_data=1,
+            strategic_exposure=90.0,
+            operational_exposure=0.0,
             mitigated_risks_count=0,
             unmitigated_risks_count=1,
             calculated_at="",
@@ -227,10 +238,11 @@ class TestExposureCalculatorCalculations:
         )
         
         # op-002 has no mitigations in sample data
-        factor, count = calc._calculate_mitigation_factor("op-002")
+        factor, count, traces = calc._calculate_mitigation_factor("op-002")
         
         assert factor == 1.0
         assert count == 0
+        assert "No mitigations applied" in traces[0]
     
     def test_calculate_mitigation_factor_with_mitigations(self, sample_risk_network):
         """Test mitigation factor with mitigations applied."""
@@ -242,10 +254,11 @@ class TestExposureCalculatorCalculations:
         )
         
         # strat-001 has one High effectiveness mitigation
-        factor, count = calc._calculate_mitigation_factor("strat-001")
+        factor, count, traces = calc._calculate_mitigation_factor("strat-001")
         
         assert factor < 1.0  # Should be reduced
         assert count == 1
+        assert "effectiveness" in traces[0]
     
     def test_calculate_all_returns_results(self, sample_risk_network):
         """Test calculate_all returns global results."""

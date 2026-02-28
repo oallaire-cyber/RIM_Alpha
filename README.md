@@ -73,6 +73,8 @@ streamlit run app.py
 | **Exposure Calculation** | Quantitative scoring with influence limitation model |
 | **TPO Impact Tracking** | Link risks to program objectives |
 | **Analysis Scopes** | Define named node subsets for focused analysis with neighbor expansion, scoped statistics, exposure, influence and mitigation analysis |
+| **Computed Risk Distance** | Dynamic assessment of path length to nearest TPO for hierarchical layout |
+| **Complexity Toggle** | Switch between Simple and Advanced UI modes for different stakeholder technical levels |
 
 ### Visualization
 
@@ -104,9 +106,7 @@ streamlit run app.py
 
 ```
 rim/
-├── app.py                    # Main Streamlit application
-├── app_config.py             # Configuration Manager app
-├── calibration_simulator.py  # Monte Carlo validation tool
+├── app.py                    # Thin entry point (~60 lines)
 ├── config/                   # Application settings
 │   ├── settings.py           # Hardcoded defaults
 │   └── schema_loader.py      # YAML schema system
@@ -121,15 +121,23 @@ rim/
 │   ├── influence_analysis.py
 │   └── mitigation_analysis.py
 ├── ui/                       # Streamlit UI components
+│   ├── home.py               # Home page rendering (dashboard, viz, analysis)
 │   ├── panels/               # Analysis panels
 │   └── tabs/                 # Tab page renderers
 ├── visualization/            # PyVis graph rendering
 │   ├── node_styles.py        # Semantic shape system
 │   ├── edge_styles.py        # Relationship visualization
 │   └── colors.py             # Color palette
+├── pages/                    # Streamlit multi-page navigation
+│   ├── 1_⚙️_Configuration.py # Schema and data management
+│   └── 2_🎲_Simulation.py    # Monte Carlo calibration
 ├── utils/                    # Helper functions
+│   ├── state_manager.py      # Centralized session state management
+│   ├── db_manager.py         # Shared singleton connection
+│   └── markdown_loader.py    # Cached docs/*.md file loader
+├── docs/                     # Documentation (loaded at runtime for help section)
 ├── tests/                    # Test suite
-└── docs/                     # Documentation
+└── requirements.txt
 ```
 
 ## 🧪 Testing
@@ -158,6 +166,7 @@ python -m pytest tests/test_risk.py -v
 | `models/tpo.py` | `test_tpo.py` | ✓ Complete |
 | `models/relationships.py` | `test_relationships.py` | ✓ Complete |
 | `utils/helpers.py` | `test_helpers.py` | ✓ Complete |
+| `utils/state_manager.py` | `test_state_manager.py` | ✓ Complete |
 | `services/exposure_calculator.py` | `test_exposure_calculator.py` | Partial |
 | `services/influence_analysis.py` | `test_influence_analysis.py` | Partial |
 | `services/mitigation_analysis.py` | `test_mitigation_analysis.py` | Partial |
@@ -235,4 +244,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.8.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.10.9 | See [CHANGELOG.md](CHANGELOG.md) for history
