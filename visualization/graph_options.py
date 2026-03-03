@@ -355,3 +355,129 @@ def get_fullscreen_js() -> str:
         });
     </script>
     """
+
+def get_export_js() -> str:
+    """
+    Get JavaScript and CSS for the export functionality.
+    Includes jspdf library for PDF generation and extracts canvas exactly adjusted to screen resolution.
+    
+    Returns:
+        JavaScript and CSS string to inject
+    """
+    return """
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        .export-dropdown {
+            position: absolute;
+            top: 10px;
+            left: 140px;
+            z-index: 9999;
+            display: inline-block;
+        }
+        .export-btn {
+            padding: 10px 18px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        .export-btn:hover {
+            background-color: #27ae60;
+        }
+        .export-content {
+            display: none;
+            position: absolute;
+            background-color: #ffffff;
+            min-width: 120px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 10000;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        .export-content a {
+            color: #333333;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .export-content a:hover {
+            background-color: #f1f1f1;
+        }
+        .export-dropdown:hover .export-content {
+            display: block;
+        }
+    </style>
+    <div class="export-dropdown">
+        <button class="export-btn">📥 Export</button>
+        <div class="export-content">
+            <a onclick="exportPNG()">↳ As PNG Image</a>
+            <a onclick="exportPDF()">↳ As PDF Document</a>
+        </div>
+    </div>
+    <script>
+        function getCanvasDataURL() {
+            var srcCanvas = document.querySelector('#mynetwork canvas') || document.querySelector('canvas');
+            if(!srcCanvas) return null;
+            
+            // Create a temporary canvas that precisely matches the display resolution
+            var destCanvas = document.createElement('canvas');
+            destCanvas.width = srcCanvas.width;
+            destCanvas.height = srcCanvas.height;
+            var destCtx = destCanvas.getContext('2d');
+            
+            // Ensure white background so transparency translates properly to export
+            destCtx.fillStyle = '#ffffff';
+            destCtx.fillRect(0, 0, destCanvas.width, destCanvas.height);
+            destCtx.drawImage(srcCanvas, 0, 0);
+            
+            return {
+                dataURL: destCanvas.toDataURL('image/png', 1.0),
+                width: srcCanvas.width,
+                height: srcCanvas.height
+            };
+        }
+
+        function exportPNG() {
+            var canvasData = getCanvasDataURL();
+            if(!canvasData) { alert("Canvas not found!"); return; }
+            var a = document.createElement('a');
+            a.href = canvasData.dataURL;
+            a.download = 'rim_graph_export.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function exportPDF() {
+            var canvasData = getCanvasDataURL();
+            if(!canvasData) { alert("Canvas not found!"); return; }
+            
+            if(!window.jspdf || !window.jspdf.jsPDF) {
+                alert("jsPDF library failed to load");
+                return;
+            }
+            
+            var jsPDF = window.jspdf.jsPDF;
+            var orientation = canvasData.width > canvasData.height ? 'l' : 'p';
+            
+            // Create PDF mapped exactly to the high-res canvas pixels (adjusted to screen resolution)
+            var pdf = new jsPDF({
+                orientation: orientation,
+                unit: 'px',
+                format: [canvasData.width, canvasData.height]
+            });
+            
+            pdf.addImage(canvasData.dataURL, 'PNG', 0, 0, canvasData.width, canvasData.height);
+            pdf.save('rim_graph_export.pdf');
+        }
+    </script>
+    """

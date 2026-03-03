@@ -4,6 +4,23 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.12.0] - 2026-03-03
+
+### [F4] One-Click Visualization Export
+
+**New Features:**
+
+- **Visualization Export**: Users can now export the active styled graph view to PNG or PDF directly from the PyVis canvas or Streamlit container.
+  - Added an "📥 Export" button alongside the fullscreen toggle within the interactive graph container.
+  - The export extracts the canvas adjusting to the user's screen resolution, preserving current viewport, layouts, and zoom exactly as displayed.
+  - Supports PNG and PDF generation purely client-side via `jspdf` CDN injection, respecting transparency and color styling without requiring backend rendering.
+
+**Files Modified:**
+- `visualization/graph_options.py` — Added `get_export_js()` containing HTML/CSS/JS export mechanics.
+- `visualization/graph_renderer.py` — Injected the generated export capability into the PyVis HTML layout string.
+
+---
+
 ## [v2.11.0] - 2026-03-02
 
 ### Risk Subtype System (Schema-Driven Domain Extensions)

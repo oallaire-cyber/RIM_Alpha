@@ -13,7 +13,8 @@ from visualization.edge_styles import create_edge_config, filter_edges_by_score
 from visualization.graph_options import (
     get_network_options,
     get_position_capture_js,
-    get_fullscreen_js
+    get_fullscreen_js,
+    get_export_js
 )
 from ui.layouts import generate_auto_spread_layout
 
@@ -181,6 +182,9 @@ def render_graph(
     
     # Always add fullscreen capability
     html_content = html_content.replace('</body>', get_fullscreen_js() + '</body>')
+    
+    # Always add export capability
+    html_content = html_content.replace('</body>', get_export_js() + '</body>')
     
     # Clean up temp file
     try:

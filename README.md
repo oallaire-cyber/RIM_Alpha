@@ -246,4 +246,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.11.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.12.0 | See [CHANGELOG.md](CHANGELOG.md) for history

@@ -181,7 +181,7 @@ relationship_types:
 - **~~[F1]~~ Progressive UI Loading** ✅ _(v2.10.8)_: Pagination or virtual scrolling for CRUD tables on large scopes.
 - **~~[F2]~~ Intelligent Caching** ✅ _(v2.10.8)_: Apply `@st.cache_data` to expensive queries and layout algorithms. Cache must be keyed by active scope — a cache hit on a full-graph query must never serve a scoped view.
 - **~~[F3]~~ Complexity Toggle (Simple vs. Advanced Mode)** ✅ _(v2.10.9)_: Streamlined UI hiding advanced tabs and filters for non-technical stakeholders, with focal ghosting of graph nodes/edges outside the top 10 most exposed risks.
-- **F4. One-Click Visualization Export**: Export the active styled graph view to PNG or PDF.
+- **~~[F4]~~ One-Click Visualization Export** ✅ _(v2.12.0)_: Export the active styled graph view to PNG or PDF.
 - **F5. Automated Risk Threshold Alerts**: Visual flags when computed exposure exceeds predefined thresholds. Must be scope-aware.
 - **F6. Mitigation Exposure View (Business Focus)**: Dedicated view showing mitigations contributing to exposure reduction for selected Business Risks, filterable by lifecycle status. Must be scope-aware.
 - **F12. Generic Context Node and Context Edge CRUD UI**: A schema-driven UI to manage custom context nodes and context edges in the main app exactly how risks and influences are managed. Field types, labels, enums, units, and required markers driven entirely by property definitions. No type-specific code. Must be scope-aware — new ContextNodes/Edges created while a scope is active are offered registration into that scope.

@@ -23,7 +23,7 @@ The following features have been broken down into independent work streams. **Mu
 ### 🌊 Work Stream A: Visual & UI Enhancements (Frontend Focused)
 *Requires knowledge of Streamlit, PyVis, CSS, and UI/UX patterns. Can be developed without altering core database logic.*
 
-*   **[F4] One-Click Visualization Export**: Export the active styled graph view to PNG or PDF directly from the PyVis canvas or Streamlit container.
+*   ~~**[F4] One-Click Visualization Export**~~ ✅ _(v2.12.0)_: Export the active styled graph view to PNG or PDF directly from the PyVis canvas or Streamlit container.
 *   **[F13] Zone-Aware 4-Layer Visual Layout**: Extend `ui/layouts.py` to position nodes across four visual bands: `[Lower Context Zone] → [Operational Risks] → [Business Risks] → [Upper Context Zone]`. Y-axis position within risk bands is determined by computed level (`U7`).
 *   **[F19] Interactive Focus Mode (Neighborhood Highlight)**: When clicking a specific risk, mitigation, or TPO, automatically fade all nodes that are not connected to it to instantly highlight its root causes and consequences.
 *   **[F20] Exposure-Driven Opacity**: Combine the exposure color gradient with opacity. Low-exposure or acceptable risks naturally fade into the background, while high-exposure critical risks remain 100% opaque.
