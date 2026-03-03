@@ -10,6 +10,28 @@ from pathlib import Path
 import io
 
 
+def _clean_risk_df(df):
+    """Clean risk DataFrame for export: remove internal columns, reorder, drop all-null ext_ columns."""
+    # Drop internal columns
+    for col in ["all_props", "is_orphan", "computed_distance"]:
+        if col in df.columns:
+            df = df.drop(columns=[col])
+    
+    # Drop ext_* columns that are entirely null
+    ext_cols = [c for c in df.columns if c.startswith("ext_")]
+    for col in ext_cols:
+        if df[col].isna().all():
+            df = df.drop(columns=[col])
+    
+    # Reorder: standard columns first, then subtype, then ext_* columns
+    standard_cols = [c for c in df.columns if not c.startswith("ext_") and c != "subtype"]
+    subtype_col = ["subtype"] if "subtype" in df.columns else []
+    remaining_ext = [c for c in df.columns if c.startswith("ext_")]
+    df = df[standard_cols + subtype_col + remaining_ext]
+    
+    return df
+
+
 def export_to_excel(
     filepath: str,
     risks: List[Dict[str, Any]],
@@ -56,6 +78,7 @@ def export_to_excel(
         # Write to Excel
         with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
             if not df_risks.empty:
+                df_risks = _clean_risk_df(df_risks)
                 df_risks.to_excel(writer, sheet_name='Risks', index=False)
             if not df_influences.empty:
                 df_influences.to_excel(writer, sheet_name='Influences', index=False)
@@ -114,6 +137,7 @@ def export_to_excel_bytes(
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             if not df_risks.empty:
+                df_risks = _clean_risk_df(df_risks)
                 df_risks.to_excel(writer, sheet_name='Risks', index=False)
             if not df_influences.empty:
                 df_influences.to_excel(writer, sheet_name='Influences', index=False)

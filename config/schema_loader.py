@@ -123,6 +123,25 @@ class ImpactLevelConfig:
     color: str = "#808080"
 
 
+@dataclass
+class RiskSubtypeFieldConfig:
+    """Extension field configuration for a risk subtype."""
+    name: str
+    type: str = "string"                # string | enum | boolean | integer | float
+    required: bool = False
+    description: str = ""
+    values: List[str] = field(default_factory=list)  # only for type == "enum"
+
+
+@dataclass
+class RiskSubtypeConfig:
+    """Risk subtype configuration."""
+    id: str
+    label: str
+    applies_to: List[str] = field(default_factory=list)
+    extension_fields: List[RiskSubtypeFieldConfig] = field(default_factory=list)
+
+
 # =============================================================================
 # ENTITY CONFIGURATIONS
 # =============================================================================
@@ -137,6 +156,11 @@ class RiskEntityConfig:
     origins: List[OriginConfig] = field(default_factory=list)
     attributes: List[AttributeConfig] = field(default_factory=list)
     custom_attributes: List[CustomAttributeConfig] = field(default_factory=list)
+    subtypes: List[RiskSubtypeConfig] = field(default_factory=list)
+
+    def get_subtypes_for_level(self, level_id: str) -> List[RiskSubtypeConfig]:
+        """Return subtypes available for the given risk level ID."""
+        return [st for st in self.subtypes if level_id.lower() in st.applies_to]
 
 
 @dataclass
@@ -596,6 +620,24 @@ class SchemaLoader:
                 description=cattr_data.get("description", ""),
             ))
         
+        # Parse subtypes
+        for st_data in data.get("subtypes", []):
+            ext_fields = []
+            for f in st_data.get("extension_fields", []):
+                ext_fields.append(RiskSubtypeFieldConfig(
+                    name=f.get("name", ""),
+                    type=f.get("type", "string"),
+                    required=f.get("required", False),
+                    description=f.get("description", ""),
+                    values=f.get("values", []),
+                ))
+            entity.subtypes.append(RiskSubtypeConfig(
+                id=st_data.get("id", ""),
+                label=st_data.get("label", ""),
+                applies_to=st_data.get("applies_to", []),
+                extension_fields=ext_fields,
+            ))
+        
         return entity
     
     def _parse_tpo_entity(self, data: Dict[str, Any]) -> TPOEntityConfig:
@@ -932,6 +974,24 @@ class SchemaLoader:
                 {"id": ca.id, "label": ca.label, "type": ca.type,
                  "required": ca.required, "default": ca.default, "description": ca.description}
                 for ca in entity.custom_attributes
+            ],
+            "subtypes": [
+                {
+                    "id": st.id,
+                    "label": st.label,
+                    "applies_to": st.applies_to,
+                    "extension_fields": [
+                        {
+                            "name": f.name,
+                            "type": f.type,
+                            "required": f.required,
+                            "description": f.description,
+                            **({"values": f.values} if f.values else {}),
+                        }
+                        for f in st.extension_fields
+                    ],
+                }
+                for st in entity.subtypes
             ],
         }
     

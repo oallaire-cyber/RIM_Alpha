@@ -7,6 +7,7 @@ This document provides the foundational rules, architectural context, and operat
 - **No unauthorized complexity**: Do not implement highly complex computational features without ensuring the fundamental architecture (Phase 1) is rock-solid.
 - **Testing Gateways**: A phase or feature is NEVER considered complete until rigorous automated and manual testing is executed and passed.
 - **Schema-Driven Adaptability**: The platform is domain-agnostic. All domain-specific logic must reside in the `schema YAML`, NOT in the application code.
+  - **Risk Subtypes** (v2.11.0): Subtypes with optional `extension_fields` are defined in the YAML under `entities.risk.subtypes`. Extension fields are stored as `ext_*` properties on `:Risk` nodes. The exposure engine is not affected; extension fields are schema-driven metadata only.
 
 ## 2. The Golden Rules of the Graph Engine
 Agents working on the backend or database layer must strictly adhere to these principles:

@@ -90,6 +90,12 @@ def _compute_stats_from_graph(nodes, edges):
     tpo_edges = [e for e in edges if e.get("edge_type") == "IMPACTS_TPO"]
     mit_edges = [e for e in edges if e.get("edge_type") == "MITIGATES"]
     
+    # Count by subtype
+    subtype_counts = {}
+    for n in risk_nodes:
+        st_id = n.get("subtype", "generic") or "generic"
+        subtype_counts[st_id] = subtype_counts.get(st_id, 0) + 1
+    
     return {
         "total_risks": len(risk_nodes),
         "level1_risks": len([n for n in risk_nodes if n.get("level") == level1_label]),
@@ -101,6 +107,7 @@ def _compute_stats_from_graph(nodes, edges):
         "total_influences": len(influence_edges),
         "total_tpo_impacts": len(tpo_edges),
         "total_mitigates": len(mit_edges),
+        "subtype_counts": subtype_counts,
     }
 
 
@@ -222,6 +229,26 @@ def render_statistics_dashboard(stats: dict):
             st.metric("📌 TPO Impacts", stats.get("total_tpo_impacts", 0))
         with col10:
             st.metric("💊 Mitigates", stats.get("total_mitigates", 0))
+        
+        # Third row: subtype breakdown (only when >1 distinct subtype)
+        subtype_counts = stats.get("subtype_counts", {})
+        if len(subtype_counts) > 1:
+            from config.settings import get_active_schema
+            schema = get_active_schema()
+            subtype_label_map = {}
+            if schema:
+                for st_cfg in schema.risk.subtypes:
+                    subtype_label_map[st_cfg.id] = st_cfg.label
+            
+            st.markdown("**Risk Subtypes:**")
+            # Create columns for subtypes (max 5 per row)
+            st_items = list(subtype_counts.items())
+            for row_start in range(0, len(st_items), 5):
+                row_items = st_items[row_start:row_start + 5]
+                cols = st.columns(len(row_items))
+                for col, (st_id, count) in zip(cols, row_items):
+                    label = subtype_label_map.get(st_id, st_id.replace("_", " ").title())
+                    col.metric(f"🏷️ {label}", count)
 
 
 def render_exposure_dashboard(manager):
@@ -453,6 +480,31 @@ def render_visualization_filters(manager: RiskGraphManager):
                         help="Show only risks with exposure >= this value"
                     )
                     st.session_state.exposure_threshold = exposure_threshold
+
+                    # Subtype filter
+                    from config.settings import get_active_schema
+                    schema = get_active_schema()
+                    if schema and schema.risk.subtypes:
+                        all_subtype_labels = [st_cfg.label for st_cfg in schema.risk.subtypes]
+                        st.markdown("**Subtype**")
+                        col_st_label, col_st_all, col_st_none = st.columns([3, 1, 1])
+                        with col_st_all:
+                            if st.button("All", key="all_risk_subtype", use_container_width=True):
+                                st.session_state["filter_risk_subtypes"] = all_subtype_labels
+                                st.rerun()
+                        with col_st_none:
+                            if st.button("None", key="none_risk_subtype", use_container_width=True):
+                                st.session_state["filter_risk_subtypes"] = []
+                                st.rerun()
+                        current_st = st.session_state.get("filter_risk_subtypes", all_subtype_labels)
+                        selected_subtypes = st.multiselect(
+                            "Subtypes",
+                            all_subtype_labels,
+                            default=current_st if isinstance(current_st, list) else all_subtype_labels,
+                            key="filter_risk_subtypes_ms",
+                            label_visibility="collapsed"
+                        )
+                        st.session_state["filter_risk_subtypes"] = selected_subtypes
 
     def _render_relationship_filter(rel_id, rel_type):
         """Render filter controls for a single relationship type."""
@@ -847,6 +899,37 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
             filters = filter_mgr.get_filters_for_query()
             nodes, edges = manager.get_graph_data(filters)
             highlighted_node_id = None
+            
+            # ── Apply subtype filter ──────────────────────────────────────
+            selected_st_labels = st.session_state.get("filter_risk_subtypes")
+            if selected_st_labels is not None:
+                from config.settings import get_active_schema
+                schema = get_active_schema()
+                if schema and schema.risk.subtypes:
+                    all_labels = [s.label for s in schema.risk.subtypes]
+                    # Only filter if the user has deselected something
+                    if set(selected_st_labels) != set(all_labels):
+                        # Build label→id map
+                        label_to_id = {s.label: s.id for s in schema.risk.subtypes}
+                        allowed_ids = {label_to_id[lbl] for lbl in selected_st_labels if lbl in label_to_id}
+                        # Filter risk nodes
+                        filtered_nodes = []
+                        removed_ids = set()
+                        for n in nodes:
+                            if n.get("node_type") == "Risk":
+                                node_st = n.get("subtype") or "generic"
+                                if node_st not in allowed_ids:
+                                    removed_ids.add(n.get("id"))
+                                    continue
+                            filtered_nodes.append(n)
+                        if removed_ids:
+                            nodes = filtered_nodes
+                            # Remove edges referencing removed nodes
+                            edges = [
+                                e for e in edges
+                                if e.get("source") not in removed_ids
+                                and e.get("target") not in removed_ids
+                            ]
             
             # Load positions if layout selected
             positions = None

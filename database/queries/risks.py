@@ -25,7 +25,9 @@ def create_risk(
     probability: Optional[float] = None,
     impact: Optional[float] = None,
     activation_condition: Optional[str] = None,
-    activation_decision_date: Optional[str] = None
+    activation_decision_date: Optional[str] = None,
+    subtype: Optional[str] = None,
+    ext_fields: Optional[Dict[str, Any]] = None,
 ) -> Optional[str]:
     """
     Create a new Risk node.
@@ -43,6 +45,8 @@ def create_risk(
         impact: Impact score (0-10)
         activation_condition: Condition for contingent risks
         activation_decision_date: Decision date for contingent risks
+        subtype: Risk subtype ID (e.g., "generic", "cyber_entry_point")
+        ext_fields: Extension field dict with ext_ prefixed keys
     
     Returns:
         Created risk ID or None if failed
@@ -58,8 +62,16 @@ def create_risk(
     last_review_date = datetime.now().isoformat()
     next_review_date = (datetime.now() + timedelta(days=90)).isoformat()
     
-    query = """
-    CREATE (r:Risk {
+    # Build extension fields SET clause
+    ext_set_clause = ""
+    ext_items = {}
+    if ext_fields:
+        ext_items = {k: v for k, v in ext_fields.items() if k.startswith("ext_") and v is not None}
+        if ext_items:
+            ext_set_clause = "SET " + ", ".join(f"r.{k} = ${k}" for k in ext_items.keys())
+    
+    query = f"""
+    CREATE (r:Risk {{
         id: randomUUID(),
         name: $name,
         description: $description,
@@ -74,11 +86,13 @@ def create_risk(
         probability: $probability,
         impact: $impact,
         exposure: $exposure,
+        subtype: $subtype,
         created_at: datetime(),
         updated_at: datetime(),
         last_review_date: $last_review_date,
         next_review_date: $next_review_date
-    })
+    }})
+    {ext_set_clause}
     RETURN r.id as id
     """
     
@@ -96,9 +110,12 @@ def create_risk(
         "probability": probability,
         "impact": impact,
         "exposure": exposure,
+        "subtype": subtype or "generic",
         "last_review_date": last_review_date,
         "next_review_date": next_review_date
     }
+    # Merge extension field values into params
+    params.update(ext_items)
     
     result = conn.execute_query(query, params)
     return result[0]["id"] if result else None
@@ -164,12 +181,29 @@ def get_all_risks(
            r.owner as owner, r.probability as probability,
            r.impact as impact, r.exposure as exposure,
            r.current_score_type as current_score_type,
+           properties(r) as all_props,
            computed_distance,
            CASE WHEN computed_distance = -1 THEN true ELSE false END as is_orphan
     ORDER BY r.exposure DESC
     """
     
-    return conn.execute_query(query, params)
+    results = conn.execute_query(query, params)
+    # Post-process: extract subtype and ext_* keys from all_props into each result
+    processed = []
+    for row in results:
+        row_dict = dict(row)
+        all_props = row_dict.pop("all_props", {})
+        if all_props:
+            # Extract subtype from all_props (avoids Neo4j warning for missing property)
+            if "subtype" in all_props:
+                row_dict["subtype"] = all_props["subtype"]
+            for k, v in all_props.items():
+                if k.startswith("ext_") and k not in row_dict:
+                    row_dict[k] = v
+        # Ensure subtype key always exists
+        row_dict.setdefault("subtype", None)
+        processed.append(row_dict)
+    return processed
 
 
 def get_risk_by_id(conn: Neo4jConnection, risk_id: str) -> Optional[Dict[str, Any]]:
@@ -196,12 +230,25 @@ def get_risk_by_id(conn: Neo4jConnection, risk_id: str) -> Optional[Dict[str, An
            r.activation_decision_date as activation_decision_date,
            r.owner as owner, r.probability as probability,
            r.impact as impact, r.exposure as exposure,
+           properties(r) as all_props,
            computed_distance,
            CASE WHEN computed_distance = -1 THEN true ELSE false END as is_orphan
     """
     
     result = conn.execute_query(query, {"id": risk_id})
-    return result[0] if result else None
+    if not result:
+        return None
+    # Post-process: extract subtype and ext_* keys from all_props
+    row_dict = dict(result[0])
+    all_props = row_dict.pop("all_props", {})
+    if all_props:
+        if "subtype" in all_props:
+            row_dict["subtype"] = all_props["subtype"]
+        for k, v in all_props.items():
+            if k.startswith("ext_") and k not in row_dict:
+                row_dict[k] = v
+    row_dict.setdefault("subtype", None)
+    return row_dict
 
 
 def get_risk_by_name(conn: Neo4jConnection, name: str) -> Optional[Dict[str, Any]]:
@@ -304,12 +351,23 @@ def get_risks_with_filters(
            r.categories as categories, r.status as status,
            r.origin as origin, r.exposure as exposure, r.owner as owner,
            'Risk' as node_type,
+           properties(r) as all_props,
            computed_distance,
            CASE WHEN computed_distance = -1 THEN true ELSE false END as is_orphan
     ORDER BY r.exposure DESC
     """
     
-    return conn.execute_query(query, params)
+    results = conn.execute_query(query, params)
+    # Post-process: extract subtype from all_props (avoids Neo4j warning)
+    processed = []
+    for row in results:
+        row_dict = dict(row)
+        all_props = row_dict.pop("all_props", {})
+        if all_props and "subtype" in all_props:
+            row_dict["subtype"] = all_props["subtype"]
+        row_dict.setdefault("subtype", None)
+        processed.append(row_dict)
+    return processed
 
 
 # =============================================================================
@@ -329,7 +387,9 @@ def update_risk(
     probability: Optional[float] = None,
     impact: Optional[float] = None,
     activation_condition: Optional[str] = None,
-    activation_decision_date: Optional[str] = None
+    activation_decision_date: Optional[str] = None,
+    subtype: Optional[str] = None,
+    ext_fields: Optional[Dict[str, Any]] = None,
 ) -> bool:
     """
     Update an existing risk.
@@ -348,14 +408,33 @@ def update_risk(
         impact: Updated impact
         activation_condition: Updated activation condition
         activation_decision_date: Updated decision date
+        subtype: Risk subtype ID
+        ext_fields: Extension field dict with ext_ prefixed keys (None values = clear)
     
     Returns:
         True if successful, False otherwise
     """
     exposure = (probability * impact) if (probability and impact) else None
     
-    query = """
-    MATCH (r:Risk {id: $id})
+    # Build extension field SET and REMOVE clauses
+    ext_set_parts = []
+    ext_remove_parts = []
+    ext_params = {}
+    if ext_fields is not None:
+        for k, v in ext_fields.items():
+            if not k.startswith("ext_"):
+                continue
+            if v is not None:
+                ext_params[k] = v
+                ext_set_parts.append(f"r.{k} = ${k}")
+            else:
+                ext_remove_parts.append(f"r.{k}")
+    
+    ext_set_clause = (", " + ", ".join(ext_set_parts)) if ext_set_parts else ""
+    ext_remove_clause = ("REMOVE " + ", ".join(ext_remove_parts)) if ext_remove_parts else ""
+    
+    query = f"""
+    MATCH (r:Risk {{id: $id}})
     SET r.name = $name,
         r.level = $level,
         r.categories = $categories,
@@ -368,7 +447,9 @@ def update_risk(
         r.probability = $probability,
         r.impact = $impact,
         r.exposure = $exposure,
-        r.updated_at = datetime()
+        r.subtype = $subtype,
+        r.updated_at = datetime(){ext_set_clause}
+    {ext_remove_clause}
     RETURN r.id
     """
     
@@ -385,8 +466,10 @@ def update_risk(
         "owner": owner,
         "probability": probability,
         "impact": impact,
-        "exposure": exposure
+        "exposure": exposure,
+        "subtype": subtype or "generic",
     }
+    params.update(ext_params)
     
     result = conn.execute_query(query, params)
     return len(result) > 0

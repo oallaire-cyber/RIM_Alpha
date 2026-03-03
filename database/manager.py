@@ -93,13 +93,15 @@ class RiskGraphManager:
         owner: str = "",
         probability: float = None,
         impact: float = None,
-        origin: str = "New"
+        origin: str = "New",
+        subtype: str = None,
+        ext_fields: dict = None,
     ) -> Optional[str]:
         """Create a new risk node. Returns the created node ID or None."""
         result = risks.create_risk(
             self._connection, name, level, categories, description, status,
             origin, owner, probability, impact, activation_condition,
-            activation_decision_date
+            activation_decision_date, subtype=subtype, ext_fields=ext_fields
         )
         return result
     
@@ -137,13 +139,15 @@ class RiskGraphManager:
         owner: str,
         probability: float,
         impact: float,
-        origin: str = "New"
+        origin: str = "New",
+        subtype: str = None,
+        ext_fields: dict = None,
     ) -> bool:
         """Update an existing risk."""
         return risks.update_risk(
             self._connection, risk_id, name, level, categories, description,
             status, origin, owner, probability, impact, activation_condition,
-            activation_decision_date
+            activation_decision_date, subtype=subtype, ext_fields=ext_fields
         )
     
     def delete_risk(self, risk_id: str) -> bool:

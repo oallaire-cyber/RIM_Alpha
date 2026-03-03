@@ -60,7 +60,7 @@ RIM follows a **modular architecture** with clear separation of concerns:
 config/
 ├── __init__.py      # Exports all settings
 ├── settings.py      # Constants and configuration
-└── schema_loader.py # YAML schema system (SchemaConfig, AnalysisScopeConfig, etc.)
+└── schema_loader.py # YAML schema system (SchemaConfig, AnalysisScopeConfig, RiskSubtypeConfig, etc.)
 ```
 
 ### `/utils` — Centralised Utilities

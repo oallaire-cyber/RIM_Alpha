@@ -4,6 +4,45 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.11.0] - 2026-03-02
+
+### Risk Subtype System (Schema-Driven Domain Extensions)
+
+**New Feature:**
+
+- **Risk Subtypes**: Added a schema-driven subtype system to risk nodes, allowing domain-specific extension fields to be attached to risks without modifying the exposure calculation engine.
+  - 9 built-in subtypes: Generic, Cyber — Entry Point-Oriented, Cyber — Target-Oriented, Supply Chain / Industrial, Engineering / Technical, Programme / Schedule, Regulatory / Compliance, Financial / Contractual, Strategic.
+  - Each subtype defines `applies_to` levels (business, operational, or both) and optional `extension_fields` (string, enum, boolean, integer, float).
+  - Extension fields are stored as flat `ext_*` prefixed properties on the Neo4j `:Risk` node.
+
+**Schema & Data Layer:**
+
+- `schemas/default/schema.yaml` — Added `subtypes:` list under `entities.risk` with 9 subtype definitions and their extension fields.
+- `config/schema_loader.py` — Added `RiskSubtypeFieldConfig` and `RiskSubtypeConfig` dataclasses. Added `subtypes` field and `get_subtypes_for_level()` helper to `RiskEntityConfig`. Updated parsing (`_parse_risk_entity()`) and serialization (`_risk_entity_to_dict()`) for full round-trip support.
+
+**Database Layer:**
+
+- `database/queries/risks.py` — `create_risk()` and `update_risk()` now accept `subtype` and `ext_fields` parameters with dynamic Cypher SET/REMOVE clauses. `get_all_risks()` and `get_risk_by_id()` now return `subtype` and dynamically captured `ext_*` properties via `properties(r)`.
+- `database/manager.py` — `RiskGraphManager.create_risk()` and `update_risk()` updated to pass through `subtype` and `ext_fields`.
+
+**UI Layer:**
+
+- `ui/tabs/risks_tab.py` — Risk creation form now includes a "Subtype" selectbox (filtered by selected level) and dynamically rendered extension fields. Risk list view shows subtype badge and domain fields in detail expander.
+- `ui/home.py` — Statistics dashboard shows risk count breakdown by subtype when >1 distinct subtype exists.
+
+**Import/Export:**
+
+- `services/export_service.py` — Added `_clean_risk_df()` helper. Exported risk sheets now include `subtype` column and dynamic `ext_*` columns (all-null columns dropped).
+- `services/import_service.py` — `_import_risks()` reads `subtype` and `ext_*` columns from Excel, passing them to `create_risk()`.
+
+**Tests:**
+
+- `tests/test_risk_subtypes.py` — 37 unit tests covering schema parsing, extension field types, `get_subtypes_for_level()`, serialization round-trip, and dataclass defaults.
+
+**Engine Boundary:** Zero modifications to `services/exposure_calculator.py`, `services/influence_analysis.py`, or `services/mitigation_analysis.py`.
+
+---
+
 ## [v2.10.9] - 2026-02-27
 
 ### F3 — Complexity Toggle (Simple vs. Advanced Mode)

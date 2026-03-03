@@ -190,6 +190,11 @@ class ExcelImporter:
             df = pd.read_excel(filepath, sheet_name='Risks')
             result.log(f"Found {len(df)} risks in Excel file")
             
+            # Detect ext_* columns
+            ext_columns = [c for c in df.columns if c.startswith("ext_")]
+            if ext_columns:
+                result.log(f"Found extension columns: {', '.join(ext_columns)}")
+            
             for idx, row in df.iterrows():
                 row_num = idx + 2
                 try:
@@ -232,6 +237,26 @@ class ExcelImporter:
                     
                     activation_date = self._parse_date(row.get('activation_decision_date'))
                     
+                    # Parse subtype
+                    subtype = None
+                    if 'subtype' in df.columns and not pd.isna(row.get('subtype')):
+                        subtype = str(row.get('subtype'))
+                    
+                    # Parse extension fields
+                    ext_fields = {}
+                    for col in ext_columns:
+                        val = row.get(col)
+                        if not pd.isna(val):
+                            # Cast booleans properly
+                            if isinstance(val, (bool,)):
+                                ext_fields[col] = val
+                            elif isinstance(val, (int,)):
+                                ext_fields[col] = int(val)
+                            elif isinstance(val, (float,)):
+                                ext_fields[col] = float(val)
+                            else:
+                                ext_fields[col] = str(val)
+                    
                     # Create risk
                     if self.create_risk(
                         name=risk_name,
@@ -244,7 +269,9 @@ class ExcelImporter:
                         owner=owner,
                         probability=probability,
                         impact=impact,
-                        origin=origin
+                        origin=origin,
+                        subtype=subtype,
+                        ext_fields=ext_fields if ext_fields else None,
                     ):
                         result.risks_created += 1
                         result.log(f"Created risk: {risk_name}")

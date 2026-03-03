@@ -75,6 +75,7 @@ streamlit run app.py
 | **Analysis Scopes** | Define named node subsets for focused analysis with neighbor expansion, scoped statistics, exposure, influence and mitigation analysis |
 | **Computed Risk Distance** | Dynamic assessment of path length to nearest TPO for hierarchical layout |
 | **Complexity Toggle** | Switch between Simple and Advanced UI modes for different stakeholder technical levels |
+| **Risk Subtypes** | Schema-driven domain-specific extension fields on risks (Cyber, Supply Chain, Financial, etc.) |
 
 ### Visualization
 
@@ -173,6 +174,7 @@ python -m pytest tests/test_risk.py -v
 | `config/schema_loader.py` (scopes) | `test_scopes.py` | ✓ Complete |
 | `ui/filters.py` (scopes) | `test_scopes.py` | ✓ Complete |
 | `database/manager.py` (scoped exposure) | `test_scopes.py` | ✓ Complete |
+| `config/schema_loader.py` (subtypes) | `test_risk_subtypes.py` | ✓ Complete |
 
 ## 🔧 Configuration
 
@@ -244,4 +246,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.10.9 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.11.0 | See [CHANGELOG.md](CHANGELOG.md) for history

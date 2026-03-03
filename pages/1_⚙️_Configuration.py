@@ -25,6 +25,7 @@ from config.schema_loader import (
     LevelConfig, CategoryConfig, ClusterConfig, TypeConfig, StatusConfig,
     StrengthConfig, EffectivenessConfig, ImpactLevelConfig, CustomAttributeConfig,
     AttributeConfig, ContextNodeConfig, ContextEdgeConfig,
+    RiskSubtypeConfig, RiskSubtypeFieldConfig,
     validate_schema, save_schema, get_loader
 )
 from database.connection import Neo4jConnection
@@ -533,6 +534,12 @@ def render_risk_config(schema: SchemaConfig):
     # Risk Origins
     st.markdown("### 🏷️ Risk Origins")
     render_origin_editor(schema)
+    
+    st.markdown("---")
+    
+    # Risk Subtypes
+    st.markdown("### 🏷️ Risk Subtypes")
+    render_subtype_editor(schema)
 
 
 def render_level_editor(schema: SchemaConfig):
@@ -705,6 +712,132 @@ def render_origin_editor(schema: SchemaConfig):
             id=f"new_origin_{len(origins)}",
             label="New Origin",
             description=""
+        ))
+        st.session_state.schema_modified = True
+        st.rerun()
+
+
+def render_subtype_editor(schema: SchemaConfig):
+    """Edit risk subtypes with nested extension fields."""
+    subtypes = schema.risk.subtypes
+    # Gather available level IDs for the applies_to checkboxes
+    level_ids = [lvl.id for lvl in schema.risk.levels]
+    level_labels = {lvl.id: lvl.label for lvl in schema.risk.levels}
+
+    for i, st_cfg in enumerate(subtypes):
+        with st.expander(f"🏷️ {st_cfg.label}", expanded=False):
+            col1, col2 = st.columns([3, 1])
+
+            with col1:
+                new_id = st.text_input("ID", st_cfg.id, key=f"subtype_id_{i}")
+                new_label = st.text_input("Label", st_cfg.label, key=f"subtype_label_{i}")
+
+                # Applies-to level checkboxes
+                st.markdown("**Applies to levels:**")
+                applies_cols = st.columns(len(level_ids)) if level_ids else [st]
+                new_applies = []
+                for j, lid in enumerate(level_ids):
+                    with applies_cols[j]:
+                        checked = st.checkbox(
+                            level_labels.get(lid, lid),
+                            value=(lid in st_cfg.applies_to),
+                            key=f"subtype_applies_{i}_{lid}"
+                        )
+                        if checked:
+                            new_applies.append(lid)
+
+                # Detect changes
+                if (new_id != st_cfg.id or new_label != st_cfg.label
+                        or sorted(new_applies) != sorted(st_cfg.applies_to)):
+                    st_cfg.id = new_id
+                    st_cfg.label = new_label
+                    st_cfg.applies_to = new_applies
+                    st.session_state.schema_modified = True
+
+            with col2:
+                if st.button("🗑️ Delete Subtype", key=f"del_subtype_{i}"):
+                    if len(subtypes) > 1:
+                        subtypes.pop(i)
+                        st.session_state.schema_modified = True
+                        st.rerun()
+                    else:
+                        st.warning("Must have at least one subtype")
+
+            # ── Extension fields ──────────────────────────────────────────
+            st.markdown("**Extension Fields:**")
+            ext_fields = st_cfg.extension_fields
+            if ext_fields:
+                for k, ef in enumerate(ext_fields):
+                    ef_cols = st.columns([2, 1, 1, 1, 1])
+                    with ef_cols[0]:
+                        new_name = st.text_input(
+                            "Name", ef.name, key=f"ef_name_{i}_{k}"
+                        )
+                        if new_name != ef.name:
+                            ef.name = new_name
+                            st.session_state.schema_modified = True
+                    with ef_cols[1]:
+                        type_opts = ["string", "enum", "boolean", "integer", "float"]
+                        cur_idx = type_opts.index(ef.type) if ef.type in type_opts else 0
+                        new_type = st.selectbox(
+                            "Type", type_opts, index=cur_idx,
+                            key=f"ef_type_{i}_{k}"
+                        )
+                        if new_type != ef.type:
+                            ef.type = new_type
+                            st.session_state.schema_modified = True
+                    with ef_cols[2]:
+                        new_req = st.checkbox(
+                            "Required", ef.required, key=f"ef_req_{i}_{k}"
+                        )
+                        if new_req != ef.required:
+                            ef.required = new_req
+                            st.session_state.schema_modified = True
+                    with ef_cols[3]:
+                        new_desc = st.text_input(
+                            "Desc", ef.description, key=f"ef_desc_{i}_{k}"
+                        )
+                        if new_desc != ef.description:
+                            ef.description = new_desc
+                            st.session_state.schema_modified = True
+                    with ef_cols[4]:
+                        if st.button("🗑️", key=f"del_ef_{i}_{k}"):
+                            ext_fields.pop(k)
+                            st.session_state.schema_modified = True
+                            st.rerun()
+
+                    # Enum values editor (only for enum type)
+                    if ef.type == "enum":
+                        vals_str = ", ".join(ef.values) if ef.values else ""
+                        new_vals = st.text_input(
+                            "Enum values (comma-separated)",
+                            vals_str, key=f"ef_vals_{i}_{k}"
+                        )
+                        parsed = [v.strip() for v in new_vals.split(",") if v.strip()]
+                        if parsed != ef.values:
+                            ef.values = parsed
+                            st.session_state.schema_modified = True
+            else:
+                st.caption("No extension fields defined.")
+
+            # Add extension field button
+            if st.button("➕ Add Extension Field", key=f"add_ef_{i}"):
+                ext_fields.append(RiskSubtypeFieldConfig(
+                    name=f"new_field_{len(ext_fields)}",
+                    type="string",
+                    required=False,
+                    description=""
+                ))
+                st.session_state.schema_modified = True
+                st.rerun()
+
+    # Add new subtype
+    if st.button("➕ Add Risk Subtype"):
+        subtypes.append(RiskSubtypeConfig(
+            id=f"new_subtype_{len(subtypes)}",
+            label="New Subtype",
+            applies_to=list(level_ids),
+            extension_fields=[]
         ))
         st.session_state.schema_modified = True
         st.rerun()
