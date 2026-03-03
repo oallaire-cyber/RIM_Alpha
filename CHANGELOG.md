@@ -4,6 +4,22 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.13.0] - 2026-03-03
+
+### [F13] Zone-Aware 4-Layer Visual Layout
+
+**New Features:**
+
+- **Zone-Aware Layout Algorithm**: Added a hierarchical layout positioning nodes across four bands (`Upper Context Zone`, `Business Risks`, `Operational Risks`, `Lower Context Zone`).
+- **Dynamic Vertical Placement**: Inside the `Business` and `Operational` risk bands, nodes are vertically sorted by their computed distance (U7) from TPOs, creating an automatic hierarchy based on graph influence topology.
+- **Improved Semantic Presentation**: Mitigations are clustered closer to their designated target risks along the sides. 
+
+**Files Modified:**
+- `ui/layouts.py` — Added `generate_zone_aware_layout()`.
+- `ui/home.py` — Added "🌐 Zone-Aware" predefined layout toggle.
+
+---
+
 ## [v2.12.0] - 2026-03-03
 
 ### [F4] One-Click Visualization Export

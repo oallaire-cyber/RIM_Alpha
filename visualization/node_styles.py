@@ -122,6 +122,8 @@ def create_node_config(
     
     if is_highlighted:
         size += 10
+        
+    font_size = max(16, int(size * 0.5))
     
     # 🔲 Border Styling
     border_color = base_color
@@ -165,9 +167,10 @@ def create_node_config(
         },
         "font": {
             "color": "#FFFFFF" if entity_type.shape == "box" else "#2C3E50",
-            "size": 20,
+            "size": font_size,
             "face": "Arial",
-            "bold": node_type_id == "risk"
+            "bold": node_type_id == "risk",
+            "vadjust": -5
         },
         "shadow": {
             "enabled": True,

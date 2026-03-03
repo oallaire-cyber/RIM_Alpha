@@ -130,28 +130,33 @@ def generate_layered_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, 
     
     # TPOs at very top
     y_tpo = 50
-    x_spacing = 800 / max(len(tpos), 1)
+    min_x_spacing = 400
+    
+    x_spacing = max(800 / max(len(tpos), 1), min_x_spacing)
+    start_x = 550 - (len(tpos) - 1) * x_spacing / 2
     for i, node in enumerate(tpos):
         positions[node["id"]] = {
-            "x": 100 + (i * x_spacing),
+            "x": start_x + (i * x_spacing),
             "y": y_tpo
         }
     
     # Business in middle
     y_strategic = 250
-    x_spacing = 800 / max(len(strategic), 1)
+    x_spacing = max(800 / max(len(strategic), 1), min_x_spacing)
+    start_x = 550 - (len(strategic) - 1) * x_spacing / 2
     for i, node in enumerate(strategic):
         positions[node["id"]] = {
-            "x": 100 + (i * x_spacing),
+            "x": start_x + (i * x_spacing),
             "y": y_strategic
         }
     
     # Operational at bottom
     y_operational = 550
-    x_spacing = 800 / max(len(operational), 1)
+    x_spacing = max(800 / max(len(operational), 1), min_x_spacing)
+    start_x = 550 - (len(operational) - 1) * x_spacing / 2
     for i, node in enumerate(operational):
         positions[node["id"]] = {
-            "x": 100 + (i * x_spacing),
+            "x": start_x + (i * x_spacing),
             "y": y_operational
         }
     
@@ -183,10 +188,12 @@ def generate_category_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str,
     
     # Place TPOs at the top
     tpos = [n for n in nodes if n.get("node_type") == "TPO"]
-    x_spacing = 800 / max(len(tpos), 1)
+    min_x_spacing = 250
+    x_spacing = max(800 / max(len(tpos), 1), min_x_spacing)
+    start_x = 550 - (len(tpos) - 1) * x_spacing / 2
     for i, node in enumerate(tpos):
         positions[node["id"]] = {
-            "x": 100 + (i * x_spacing),
+            "x": start_x + (i * x_spacing),
             "y": 50
         }
     
@@ -579,6 +586,176 @@ def generate_auto_spread_layout(nodes: List[Dict[str, Any]], edges: List[Dict[st
     return positions
 
 
+@st.cache_data
+def generate_zone_aware_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]] = None) -> Dict[str, Dict[str, float]]:
+    """
+    Generate a 4-layer hierarchical layout based on zones.
+    
+    Bands:
+    1. Upper Context Zone (zone == "upper" or node_type == "TPO")
+    2. Business Risks (level == "Business", node_type == "Risk")
+    3. Operational Risks (level == "Operational", node_type == "Risk")
+    4. Lower Context Zone (zone == "lower")
+    
+    Y-axis within risk bands is determined by computed_distance (smaller is higher).
+    """
+    positions = {}
+    
+    # 1. Categorize nodes into bands
+    upper_nodes = []
+    business_nodes = []
+    operational_nodes = []
+    lower_nodes = []
+    mitigations = []
+    
+    for node in nodes:
+        node_type = node.get("node_type", "Risk")
+        zone = node.get("zone")
+        level = node.get("level")
+        
+        if node_type == "Mitigation":
+            mitigations.append(node)
+        elif zone == "upper" or node_type == "TPO":
+            upper_nodes.append(node)
+        elif zone == "lower":
+            lower_nodes.append(node)
+        elif node_type == "Risk":
+            if level == "Business":
+                business_nodes.append(node)
+            else:
+                operational_nodes.append(node)
+        else:
+            # Default fallback
+            operational_nodes.append(node)
+            
+    # Sort risk nodes by computed_distance
+    # Default high distance for uncomputed, or 0 if None
+    def get_distance(n):
+        dist = n.get("computed_distance", -1)
+        return dist if dist is not None and dist >= 0 else 999
+        
+    business_nodes.sort(key=get_distance)
+    operational_nodes.sort(key=get_distance)
+    
+    # 2. Assign positions based on bands
+    
+    # Center X
+    center_x = 550
+    x_spread = 800
+    min_x_spacing = 250
+    
+    # Band limits (Y)
+    y_upper = 50
+    
+    # helper for spacing nodes in a band
+    def position_band(band_nodes, start_y, base_x_spread):
+        if not band_nodes:
+            return start_y
+            
+        # Group by computed_distance
+        distance_groups = {}
+        for node in band_nodes:
+            dist = get_distance(node)
+            if dist not in distance_groups:
+                distance_groups[dist] = []
+            distance_groups[dist].append(node)
+            
+        distances = sorted(distance_groups.keys())
+        y_step = 150
+        
+        current_y = start_y
+        for dist in distances:
+            group = distance_groups[dist]
+            x_spacing = max(base_x_spread / max(len(group), 1), min_x_spacing)
+            start_x = center_x - (len(group) - 1) * x_spacing / 2
+            
+            for i, node in enumerate(group):
+                positions[node["id"]] = {
+                    "x": start_x + (i * x_spacing),
+                    "y": current_y
+                }
+            current_y += y_step
+            
+        return current_y
+        
+    # Standard single line spread if not using grouped
+    def position_band_simple(band_nodes, y_pos, spread):
+        if not band_nodes:
+            return
+        x_spacing = max(spread / max(len(band_nodes), 1), min_x_spacing)
+        start_x = center_x - (len(band_nodes) - 1) * x_spacing / 2
+        for i, node in enumerate(band_nodes):
+            positions[node["id"]] = {
+                "x": start_x + (i * x_spacing),
+                "y": y_pos
+            }
+
+    # Upper nodes
+    position_band_simple(upper_nodes, y_upper, x_spread)
+    
+    # Business nodes
+    y_business_start = 250
+    y_business_end = position_band(business_nodes, y_business_start, x_spread)
+    if y_business_end == y_business_start: y_business_end = y_business_start + 100
+    
+    # Operational nodes
+    y_operational_start = y_business_end + 100
+    y_operational_end = position_band(operational_nodes, y_operational_start, x_spread)
+    if y_operational_end == y_operational_start: y_operational_end = y_operational_start + 100
+    
+    # Lower nodes
+    y_lower = y_operational_end + 100
+    position_band_simple(lower_nodes, y_lower, x_spread)
+    
+    # Mitigations
+    # Place on the right, or try to align with targets if target exist
+    if mitigations:
+        # Build node id -> target node lookup
+        mitigation_targets = {}
+        if edges:
+            for edge in edges:
+                if edge.get("edge_type", "").upper() == "MITIGATES":
+                    # the edge source might be risk or mitigation depending on schema?
+                    # Generally MITIGATES is mitigation -> risk, so source=mit, target=risk
+                    src = edge.get("source")
+                    tgt = edge.get("target")
+                    if src not in mitigation_targets:
+                        mitigation_targets[src] = []
+                    mitigation_targets[src].append(tgt)
+        
+        unaligned_mitigations = []
+        for node in mitigations:
+            nid = node["id"]
+            if nid in mitigation_targets and mitigation_targets[nid]:
+                # average Y of targets
+                targets = mitigation_targets[nid]
+                target_ys = [positions[t]["y"] for t in targets if t in positions]
+                if target_ys:
+                    avg_y = sum(target_ys) / len(target_ys)
+                    # Find x right of the target
+                    target_xs = [positions[t]["x"] for t in targets if t in positions]
+                    max_x = max(target_xs) if target_xs else center_x + 400
+                    
+                    positions[nid] = {
+                        "x": min(max_x + 250, 1300),
+                        "y": avg_y
+                    }
+                else:
+                    unaligned_mitigations.append(node)
+            else:
+                unaligned_mitigations.append(node)
+                
+        # place unaligned
+        y_mit_start = y_business_start
+        for i, node in enumerate(unaligned_mitigations):
+            positions[node["id"]] = {
+                "x": center_x + 500,
+                "y": y_mit_start + (i * 60)
+            }
+            
+    return positions
+
+
 # Layout generators registry
 # Note: auto_spread now uses Sugiyama algorithm for hierarchical layout
 LAYOUT_GENERATORS = {
@@ -586,6 +763,7 @@ LAYOUT_GENERATORS = {
     "category": ("By Category", generate_category_layout),
     "tpo_cluster": ("By TPO Cluster", generate_tpo_cluster_layout),
     "auto_spread": ("Hierarchical (Sugiyama)", generate_auto_spread_layout),
+    "zone_aware": ("Zone-Aware (4-Layer)", generate_zone_aware_layout),
 }
 
 

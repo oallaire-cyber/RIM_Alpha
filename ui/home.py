@@ -58,6 +58,7 @@ from ui.layouts import (
     generate_category_layout,
     generate_tpo_cluster_layout,
     generate_auto_spread_layout,
+    generate_zone_aware_layout,
 )
 
 
@@ -807,9 +808,19 @@ def render_layout_management(manager: RiskGraphManager):
                 st.session_state.selected_layout_name = auto_name
                 st.rerun()
         
-        col_preset_5, _ = st.columns(2)
+        col_preset_5, col_preset_6 = st.columns(2)
         
         with col_preset_5:
+            if st.button("🌐 Zone-Aware", key="preset_zone_aware", use_container_width=True,
+                        help="4-Layer Zone positioning"):
+                nodes, edges = manager.get_graph_data({"show_tpos": True})
+                positions = generate_zone_aware_layout(nodes, edges)
+                auto_name = f"zone_aware_{datetime.now().strftime('%Y%m%d_%H%M')}"
+                layout_mgr.save_layout(auto_name, positions)
+                st.session_state.selected_layout_name = auto_name
+                st.rerun()
+                
+        with col_preset_6:
             if st.button("🔄 Reset Layout", key="reset_layout", use_container_width=True):
                 if "selected_layout_name" in st.session_state:
                     del st.session_state.selected_layout_name
