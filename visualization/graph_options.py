@@ -488,3 +488,248 @@ def get_export_js() -> str:
         }
     </script>
     """
+
+def get_focus_mode_js() -> str:
+    """
+    Get JavaScript and CSS for the interactive focus mode.
+    Fades out nodes that are not connected to the clicked node.
+    
+    Returns:
+        JavaScript and CSS string to inject
+    """
+    return """
+    <style>
+        .focus-control {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            z-index: 9999;
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            color: #333;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+        }
+        .focus-control input {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        .focus-control label {
+            cursor: pointer;
+            user-select: none;
+        }
+    </style>
+    <div class="focus-control" title="When checking, clicking a node highlights its entire chain. Unchecked highlights only direct neighbors.">
+        <input type="checkbox" id="fullChainToggle">
+        <label for="fullChainToggle">Full Chain Focus</label>
+    </div>
+    <script>
+        // Ensure network is ready
+        setTimeout(function() {
+            if (typeof network === 'undefined' || !network) return;
+            
+            var originalColors = {};
+            var originalNodeOpacities = {};
+            var originalEdgeOpacities = {};
+            var isFocusModeActive = false;
+            
+            // Backup original colors and opacities if we haven't
+            function backupColors() {
+                var nodes = network.body.data.nodes.get();
+                var edges = network.body.data.edges.get();
+                
+                nodes.forEach(function(node) {
+                    if (!originalColors[node.id]) {
+                        originalColors[node.id] = node.color ? JSON.parse(JSON.stringify(node.color)) : null;
+                        originalNodeOpacities[node.id] = node.font ? node.font.color : null;
+                    }
+                });
+                
+                edges.forEach(function(edge) {
+                    if (!originalColors['edge_' + edge.id]) {
+                        originalColors['edge_' + edge.id] = edge.color ? JSON.parse(JSON.stringify(edge.color)) : null;
+                    }
+                });
+            }
+            
+            // Helper to get rgba string with new alpha
+            function setAlpha(colStr, alpha) {
+                if (typeof colStr === 'object' && colStr !== null) {
+                    // Usually color objects have background, border, highlight etc.
+                    var ret = {};
+                    for (var k in colStr) {
+                        ret[k] = setAlpha(colStr[k], alpha);
+                    }
+                    return ret;
+                }
+                
+                if (typeof colStr !== 'string') return colStr;
+                
+                if (colStr.startsWith('rgba')) {
+                    return colStr.replace(/rgba\\(([^,]+),([^,]+),([^,]+),[^)]+\\)/, 'rgba($1,$2,$3,' + alpha + ')');
+                } else if (colStr.startsWith('#')) {
+                    var hex = colStr.replace('#', '');
+                    if (hex.length === 3) {
+                        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+                    }
+                    var r = parseInt(hex.substring(0, 2), 16);
+                    var g = parseInt(hex.substring(2, 4), 16);
+                    var b = parseInt(hex.substring(4, 6), 16);
+                    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+                }
+                // Fallback
+                return colStr;
+            }
+            
+            // Get all connected nodes (1-hop)
+            function getDirectNeighbors(nodeId) {
+                var connected = network.getConnectedNodes(nodeId);
+                var set = new Set(connected);
+                set.add(nodeId);
+                return set;
+            }
+            
+            // Get all reachable nodes (full connected component) - treating edges as undirected for highlighting
+            function getFullChain(startNodeId) {
+                var edges = network.body.data.edges.get();
+                var adj = {};
+                
+                edges.forEach(function(e) {
+                    if (!adj[e.from]) adj[e.from] = [];
+                    if (!adj[e.to]) adj[e.to] = [];
+                    adj[e.from].push(e.to);
+                    adj[e.to].push(e.from);
+                });
+                
+                var visited = new Set();
+                var queue = [startNodeId];
+                visited.add(startNodeId);
+                
+                while (queue.length > 0) {
+                    var cur = queue.shift();
+                    var neighbors = adj[cur] || [];
+                    neighbors.forEach(function(n) {
+                        if (!visited.has(n)) {
+                            visited.add(n);
+                            queue.push(n);
+                        }
+                    });
+                }
+                
+                return visited;
+            }
+            
+            function applyFocusMode(selectedNodeId) {
+                backupColors();
+                isFocusModeActive = true;
+                var isFullChain = document.getElementById('fullChainToggle').checked;
+                
+                var keepNodes = isFullChain ? getFullChain(selectedNodeId) : getDirectNeighbors(selectedNodeId);
+                
+                var nodesToUpdate = [];
+                var edgesToUpdate = [];
+                
+                var allNodes = network.body.data.nodes.get();
+                var allEdges = network.body.data.edges.get();
+                
+                // Fade nodes
+                allNodes.forEach(function(node) {
+                    var origCol = originalColors[node.id];
+                    var origFontCol = originalNodeOpacities[node.id] || '#333333';
+                    
+                    if (keepNodes.has(node.id)) {
+                        nodesToUpdate.push({
+                            id: node.id,
+                            color: origCol,
+                            font: { color: origFontCol }
+                        });
+                    } else {
+                        nodesToUpdate.push({
+                            id: node.id,
+                            color: setAlpha(origCol, 0.1),
+                            font: { color: setAlpha(origFontCol, 0.1) }
+                        });
+                    }
+                });
+                
+                // Fade edges
+                allEdges.forEach(function(edge) {
+                    var origCol = originalColors['edge_' + edge.id];
+                    
+                    if (keepNodes.has(edge.from) && keepNodes.has(edge.to)) {
+                        edgesToUpdate.push({
+                            id: edge.id,
+                            color: origCol
+                        });
+                    } else {
+                        edgesToUpdate.push({
+                            id: edge.id,
+                            color: setAlpha(origCol, 0.1)
+                        });
+                    }
+                });
+                
+                network.body.data.nodes.update(nodesToUpdate);
+                network.body.data.edges.update(edgesToUpdate);
+            }
+            
+            function resetFocusMode() {
+                if (!isFocusModeActive) return;
+                
+                var nodesToUpdate = [];
+                var edgesToUpdate = [];
+                
+                var allNodes = network.body.data.nodes.get();
+                var allEdges = network.body.data.edges.get();
+                
+                allNodes.forEach(function(node) {
+                    if (originalColors[node.id]) {
+                        nodesToUpdate.push({
+                            id: node.id,
+                            color: originalColors[node.id],
+                            font: { color: originalNodeOpacities[node.id] || '#333333' }
+                        });
+                    }
+                });
+                
+                allEdges.forEach(function(edge) {
+                    if (originalColors['edge_' + edge.id]) {
+                        edgesToUpdate.push({
+                            id: edge.id,
+                            color: originalColors['edge_' + edge.id]
+                        });
+                    }
+                });
+                
+                network.body.data.nodes.update(nodesToUpdate);
+                network.body.data.edges.update(edgesToUpdate);
+                isFocusModeActive = false;
+            }
+            
+            network.on("click", function (params) {
+                if (params.nodes.length > 0) {
+                    var clickedNodeId = params.nodes[0];
+                    applyFocusMode(clickedNodeId);
+                } else {
+                    resetFocusMode();
+                }
+            });
+            
+            // Allow re-evaluating focus if toggle is clicked while a node is selected
+            document.getElementById('fullChainToggle').addEventListener('change', function() {
+                if (isFocusModeActive) {
+                    var selectedNodes = network.getSelectedNodes();
+                    if (selectedNodes && selectedNodes.length > 0) {
+                        applyFocusMode(selectedNodes[0]);
+                    }
+                }
+            });
+            
+        }, 1000);
+    </script>
+    """

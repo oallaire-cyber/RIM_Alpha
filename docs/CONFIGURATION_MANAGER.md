@@ -47,7 +47,7 @@ Schemas are stored in `schemas/<schema_name>/schema.yaml` and define:
 
 | Schema | Purpose |
 |--------|---------|
-| `default` | SMR nuclear project (Strategic/Operational levels) |
+| `default` | ODT New Space project (Business/Operational levels) |
 | `it_security` | Cybersecurity (Enterprise/Tactical, CIA-based TPOs) |
 
 ### Creating New Schemas
@@ -114,9 +114,9 @@ Data operations (requires Neo4j connection):
 
 | Operation | Description |
 |-----------|-------------|
-| **🔄 Reset Demo Data** | Wipes the entire database and reloads both `demo_data_loader_en.cypher` (SNR) and `demo_tc_dataset.cypher` (TC01-TC07). Requires confirmation checkbox. Shows two progress bars and a before/after node count on completion. |
+| **🔄 Reset Demo Data** | Wipes the entire database and reloads both `demo_data_loader_en.cypher` (ODT) and `demo_tc_dataset.cypher` (TC01-TC07). Requires confirmation checkbox. Shows two progress bars and a before/after node count on completion. |
 | **Clear Database** | Delete all nodes/relationships (requires `DELETE ALL` text confirmation) |
-| **Load Demo Data** | Insert SNR sample data for testing (individual load without TC dataset) |
+| **Load Demo Data** | Insert ODT sample data for testing (individual load without TC dataset) |
 | **Backup to JSON** | Export entire database to JSON file |
 | **Restore from JSON** | Import JSON backup (replaces existing data) |
 
@@ -157,7 +157,7 @@ Schema selection and quick stats:
 ```
 schemas/
 ├── default/
-│   └── schema.yaml       # SMR nuclear configuration
+│   └── schema.yaml       # ODT New Space configuration
 ├── it_security/
 │   └── schema.yaml       # Cybersecurity configuration
 └── <custom>/
@@ -272,5 +272,5 @@ export RIM_SCHEMA=my_project    # Bash
 | `config/schema_loader.py` | ~1,100 | Schema loading, validation, and scope parsing |
 | `config/settings.py` | ~350 | Dynamic settings from schema |
 | `ui/legend.py` | ~400 | Dynamic legend from schema |
-| `schemas/default/schema.yaml` | ~300 | Default SMR schema (with scopes) |
+| `schemas/default/schema.yaml` | ~700 | Default ODT schema (with scopes) |
 | `schemas/it_security/schema.yaml` | ~500 | IT Security schema with custom entities |

@@ -14,7 +14,8 @@ from visualization.graph_options import (
     get_network_options,
     get_position_capture_js,
     get_fullscreen_js,
-    get_export_js
+    get_export_js,
+    get_focus_mode_js
 )
 from ui.layouts import generate_auto_spread_layout
 
@@ -185,6 +186,9 @@ def render_graph(
     
     # Always add export capability
     html_content = html_content.replace('</body>', get_export_js() + '</body>')
+    
+    # Always add focus mode JS
+    html_content = html_content.replace('</body>', get_focus_mode_js() + '</body>')
     
     # Clean up temp file
     try:

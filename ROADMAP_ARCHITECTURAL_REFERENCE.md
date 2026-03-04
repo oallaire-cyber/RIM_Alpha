@@ -186,8 +186,8 @@ relationship_types:
 - **F6. Mitigation Exposure View (Business Focus)**: Dedicated view showing mitigations contributing to exposure reduction for selected Business Risks, filterable by lifecycle status. Must be scope-aware.
 - **F12. Generic Context Node and Context Edge CRUD UI**: A schema-driven UI to manage custom context nodes and context edges in the main app exactly how risks and influences are managed. Field types, labels, enums, units, and required markers driven entirely by property definitions. No type-specific code. Must be scope-aware — new ContextNodes/Edges created while a scope is active are offered registration into that scope.
 - **F18. Extend Data Management for Context Data**: Extend the existing Excel import/export and JSON backup/restore capabilities in the main app to fully handle ContextNode and ContextEdge data alongside core entities.
-- **F13. Zone-Aware 4-Layer Visual Layout**: Extend the layout engine with a zone-aware hierarchical mode positioning nodes across four visual bands: `[Lower Context Zone] → [Operational Risks] → [Business Risks] → [Upper Context Zone]`. Y-axis position within risk bands is determined by computed level (U7). Togglable alongside existing layout options.
-- **F19. Interactive Focus Mode (Neighborhood Highlight)**: When clicking a specific risk, mitigation, or TPO, automatically fade all nodes that are not connected to it to instantly highlight its root causes and consequences.
+- **~~[F13]~~ Zone-Aware 4-Layer Visual Layout** ✅ _(v2.13.0)_: Extend the layout engine with a zone-aware hierarchical mode.
+- **~~[F19]~~ Interactive Focus Mode (Neighborhood Highlight)** ✅ _(v2.14.0)_: When clicking a specific risk, mitigation, or TPO, automatically fade all nodes that are not connected to it to instantly highlight its root causes and consequences.
 - **F20. Exposure-Driven Opacity**: Combine the exposure color gradient with opacity. Low-exposure or acceptable risks naturally fade into the background, while high-exposure critical risks remain 100% opaque.
 - **F21. Lifecycle & Status Ghosting**: Use transparency as a metaphor for things that are "not fully realized yet" (e.g., Contingent Risks, or "Proposed" / "Deferred" mitigations appear at 50% opacity, while "Implemented" mitigations are fully solid).
 ### Complex Workload
@@ -384,7 +384,7 @@ _Goal: Expose ContextNode infrastructure through working UI. Introduce zone-awar
 > 🛑 **GATEWAY 2: Extensive Code Review & Testing Pass**
 >
 > - **Automatic:** Pydantic rejection tests for malformed ContextNode property types. Mathematical parity tests for What-If sandbox vs. committed DB state. **Critical scope test:** confirm that sandbox exposure calculations for a scoped graph are identical whether the full graph contains 20 or 200 nodes outside the active scope. Zone layout tests verifying upper/lower node placement matches schema zone definitions.
-> - **Manual:** UAT via Phase 2 Document. Add a new `context_node` type mid-sprint and verify zero code changes needed. Confirm zone-aware layout on both SMR nuclear and cybersecurity demo datasets. Activate a scope, run What-If, confirm only scoped nodes appear in the sandbox preview. Validate What-If does not alter DB state.
+> - **Manual:** UAT via Phase 2 Document. Add a new `context_node` type mid-sprint and verify zero code changes needed. Confirm zone-aware layout on both ODT New Space and cybersecurity demo datasets. Activate a scope, run What-If, confirm only scoped nodes appear in the sandbox preview. Validate What-If does not alter DB state.
 
 ---
 
@@ -399,7 +399,7 @@ _Goal: Introduce SPICE scenario management. Build P&L exposure view. Lay the com
 > 🛑 **GATEWAY 3: Extensive Code Review & Testing Pass**
 >
 > - **Automatic:** SPICE financial aggregation math vs. manually computed expected values. Resilience State threshold transition tests at boundary values (exposure exactly at threshold, zero scenarios, scenarios with no perimeter link). Verify `scenario` ContextNodes created via generic CRUD (F12) are correctly recognized by the SPICE Scenario Manager without special-casing.
-> - **Manual:** UAT via Phase 3 Document. Validate on SMR nuclear demo dataset. Verify Resilience State responds correctly to probability and impact parameter changes. Confirm P&L dashboard aggregates correctly across multiple perimeters within a scope.
+> - **Manual:** UAT via Phase 3 Document. Validate on ODT New Space demo dataset. Verify Resilience State responds correctly to probability and impact parameter changes. Confirm P&L dashboard aggregates correctly across multiple perimeters within a scope.
 
 ---
 
@@ -479,7 +479,7 @@ The schema-driven ContextNode architecture makes the platform deployable across 
 
 | Domain                 | Upper Zone Nodes                       | Lower Zone Nodes                                                         | Key Relationship Types                   |
 | ---------------------- | -------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------- |
-| **Nuclear SMR**        | Company, BusinessPerimeter, Scenario   | —                                                                        | IMPACT_FINANCIALLY, SCENARIO_ILLUSTRATES |
+| **New Space ODT**      | Company, BusinessPerimeter, Scenario   | —                                                                        | IMPACT_FINANCIALLY, SCENARIO_ILLUSTRATES |
 | **Cybersecurity**      | Company, BusinessPerimeter, Scenario   | FunctionalTarget, TechnicalTarget, EntryPoint, Attacker, SponsorOfAttack | ENABLE, TARGET, USE, MANAGE              |
 | **Aerospace**          | Programme, BusinessPerimeter, Scenario | SubSystem, Component, Supplier                                           | DEPENDS_ON, SUPPLIED_BY                  |
 | **Financial Services** | Entity, RegulatoryPerimeter, Scenario  | CounterParty, Instrument                                                 | EXPOSES_TO, COLLATERALIZES               |

@@ -252,12 +252,12 @@ Vendor Bankruptcy
 | Selected | Border width +4px, bright border color |
 | Highlighted | Gold border, pulsing effect |
 
-### Neighborhood Highlighting
+### Interactive Focus Mode (Neighborhood Highlighting)
 
-When using "Explore in Graph":
-- Selected node: Gold highlight
-- Direct neighbors: Visible
-- Non-neighbors: Faded (50% opacity)
+When clicking any node in the map visualization:
+- **Selected node & Connections**: Remain fully opaque (100%)
+- **Unrelated nodes**: Dynamically faded (10% opacity) highlighting structure
+- **Full Chain Focus**: When enabled, highlights the entire transitively connected subgraph rather than just direct 1-hop neighbors.
 
 ---
 
@@ -351,4 +351,4 @@ BORDER_DASHES = {
 
 ---
 
-*Last updated: February 2026 | Version 2.2.0*
+*Last updated: March 2026 | Version 2.14.0*
