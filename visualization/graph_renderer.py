@@ -17,7 +17,7 @@ from visualization.graph_options import (
     get_export_js,
     get_focus_mode_js
 )
-from ui.layouts import generate_auto_spread_layout
+
 
 
 def hex_to_rgba(hex_str: str, alpha: float) -> str:
@@ -49,7 +49,10 @@ def render_graph(
     max_edges: Optional[int] = None,
     edge_scores: Optional[Dict[Tuple[str, str], float]] = None,
     height: int = 720,
-    complexity_mode: str = "Advanced"
+    complexity_mode: str = "Advanced",
+    exposure_opacity: bool = False,
+    high_exposure_threshold: float = 60.0,
+    lifecycle_ghosting: bool = False
 ) -> Optional[str]:
     """
     Render the RIM graph using PyVis.
@@ -66,6 +69,9 @@ def render_graph(
         edge_scores: Dict mapping (source, target) to score
         height: Graph container height in pixels
         complexity_mode: "Simple" or "Advanced" for rendering complexity
+        exposure_opacity: Enable exposure-driven opacity (F20)
+        high_exposure_threshold: Threshold percentage for fully opaque nodes
+        lifecycle_ghosting: Enable status/lifecycle ghosting (F21)
     
     Returns:
         HTML content string, or None if using Streamlit
@@ -79,6 +85,7 @@ def render_graph(
     # Generate auto layout if physics disabled and no positions
     # Pass edges to enable Sugiyama crossing minimization
     if not physics_enabled and not positions:
+        from ui.layouts import generate_auto_spread_layout
         positions = generate_auto_spread_layout(nodes, filtered_edges)
         
     # Set up simple mode node transparency
@@ -125,7 +132,14 @@ def render_graph(
     
     # Add nodes
     for node in nodes:
-        node_config = create_node_config(node, color_by, highlighted_node_id)
+        node_config = create_node_config(
+            node, 
+            color_by=color_by, 
+            highlighted_node_id=highlighted_node_id,
+            exposure_opacity=exposure_opacity,
+            high_exposure_threshold=high_exposure_threshold,
+            lifecycle_ghosting=lifecycle_ghosting
+        )
         
         # Apply positions if provided
         if positions and node["id"] in positions:
@@ -235,7 +249,10 @@ def render_graph_streamlit(
         max_edges=max_edges,
         edge_scores=edge_scores,
         height=height,
-        complexity_mode=complexity_mode
+        complexity_mode=complexity_mode,
+        exposure_opacity=st.session_state.get("exposure_opacity_enabled", False),
+        high_exposure_threshold=st.session_state.get("high_exposure_threshold", 60),
+        lifecycle_ghosting=st.session_state.get("lifecycle_ghosting_enabled", False)
     )
     
     if html_content:
@@ -250,6 +267,9 @@ def render_subgraph(
     max_depth: Optional[int] = 5,
     include_tpos: bool = True,
     level_filter: Optional[str] = None,
+    exposure_opacity: bool = False,
+    high_exposure_threshold: float = 60.0,
+    lifecycle_ghosting: bool = False,
     **kwargs
 ) -> Optional[str]:
     """
@@ -263,6 +283,9 @@ def render_subgraph(
         max_depth: Maximum traversal depth
         include_tpos: Whether to include TPO nodes
         level_filter: Filter to specific level ("Business", "Operational", or None for all)
+        exposure_opacity: Enable exposure-driven opacity (F20)
+        high_exposure_threshold: Threshold percentage for fully opaque nodes
+        lifecycle_ghosting: Enable status/lifecycle ghosting (F21)
         **kwargs: Additional arguments passed to render_graph
     
     Returns:
@@ -342,5 +365,8 @@ def render_subgraph(
     return render_graph(
         nodes=filtered_nodes,
         edges=filtered_edges,
+        exposure_opacity=exposure_opacity,
+        high_exposure_threshold=high_exposure_threshold,
+        lifecycle_ghosting=lifecycle_ghosting,
         **kwargs
     )

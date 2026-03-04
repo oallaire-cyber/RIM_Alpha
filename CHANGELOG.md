@@ -4,6 +4,24 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.15.0] - 2026-03-04
+
+### [F20] Exposure-Driven Opacity & [F21] Lifecycle Status Ghosting
+
+**New Features:**
+
+- **Exposure-Driven Opacity**: Risks now automatically scale their opacity based on their final computed exposure score. Critical risks (nearing the maximum 16.0 score) remain 100% opaque, while lower-exposure risks gradually fade into the background, providing immediate visual depth to the threat landscape.
+- **High Exposure Opacity Threshold**: Added a slider to "Display Options" to allow users to define what percentage of the max exposure should be considered "high enough" to remain fully opaque.
+- **Lifecycle & Status Ghosting**: Entities that represent future or unrealized states—such as Contingent Risks and Proposed or Deferred Mitigations—now automatically render at 50% opacity to visually distinguish them from actively realized elements.
+
+**Files Modified:**
+- `ui/home.py` — Added toggle checkboxes and configuration slider in the primary visualization display options panel.
+- `visualization/node_styles.py` — Infused PyVis `rgba` conversion logic into the `create_node_config` loop incorporating mathematical opacity scaling.
+- `visualization/graph_renderer.py` — Piped UI state parameters securely from Streamlit down to individual node configurations.
+- `tests/test_visualization.py` — Added comprehensive unit tests evaluating opacity boundary conditions and status edge cases.
+
+---
+
 ## [v2.14.0] - 2026-03-04
 
 ### [F19] Interactive Focus Mode (Neighborhood Highlight)

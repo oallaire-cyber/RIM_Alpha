@@ -593,6 +593,40 @@ def render_visualization_filters(manager: RiskGraphManager):
         )
         st.session_state.color_by = color_by
 
+        st.markdown("---")
+        
+        # F20: Exposure-Driven Opacity
+        st.markdown("**🌫️ Exposure-Driven Opacity**")
+        exposure_opacity = st.checkbox(
+            "Enable Opacity by Exposure",
+            value=st.session_state.get("exposure_opacity_enabled", False),
+            help="High exposure risks remain solid, low exposure risks fade into background."
+        )
+        st.session_state.exposure_opacity_enabled = exposure_opacity
+        
+        if exposure_opacity:
+            high_exposure_threshold = st.slider(
+                "High Exposure Threshold",
+                min_value=0,
+                max_value=100,
+                value=st.session_state.get("high_exposure_threshold", 60),
+                step=5,
+                format="%d",
+                help="Risks with an exposure score above this value will be 100% opaque."
+            )
+            st.session_state.high_exposure_threshold = high_exposure_threshold
+
+        st.markdown("---")
+
+        # F21: Lifecycle Ghosting
+        st.markdown("**👻 Lifecycle & Status Ghosting**")
+        lifecycle_ghosting = st.checkbox(
+            "Enable Status Ghosting",
+            value=st.session_state.get("lifecycle_ghosting_enabled", False),
+            help="Contingent risks and Proposed/Deferred mitigations appear semi-transparent."
+        )
+        st.session_state.lifecycle_ghosting_enabled = lifecycle_ghosting
+
     return filter_mgr
 
 
