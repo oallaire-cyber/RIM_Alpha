@@ -949,6 +949,11 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
                 positions = st.session_state.layout_manager.load_layout(layout_name)
                 if positions:
                     st.info(f"📍 Active layout: **{layout_name}**")
+            elif not st.session_state.get("physics_enabled", True):
+                # Auto-apply Zone-Aware layout if physics is disabled to prevent overlapping
+                from ui.layouts import generate_zone_aware_layout
+                positions = generate_zone_aware_layout(nodes, edges)
+                st.info("📍 Auto-applied **Zone-Aware** layout (Physics disabled)")
         # Overlay calculated final exposure if available
         exposure_results = st.session_state.get("exposure_results")
         if exposure_results and "risk_results" in exposure_results:

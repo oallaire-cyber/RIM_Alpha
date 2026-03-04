@@ -25,15 +25,22 @@ def get_network_options(physics_enabled: bool = True) -> str:
             "font": {{
                 "size": 18,
                 "face": "Arial",
-                "multi": "html",
-                "bold": {{"color": "#333333", "size": 18}},
                 "vadjust": -5
             }},
             "borderWidth": 2,
             "shadow": true,
             "widthConstraint": {{
                 "minimum": 50,
-                "maximum": 180
+                "maximum": 280
+            }},
+            "scaling": {{
+                "min": 30,
+                "max": 150,
+                "label": {{
+                    "enabled": true,
+                    "min": 18,
+                    "max": 55
+                }}
             }}
         }},
         "edges": {{

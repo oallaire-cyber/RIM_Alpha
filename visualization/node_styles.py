@@ -116,15 +116,13 @@ def create_node_config(
         base_color = get_color_by_exposure(exposure)
     
     # 📐 Size Calculation
-    # Scale size with exposure if it's a risk
-    base_size = 30
-    size = base_size + (exposure * 1.2) if exposure else base_size
+    # Vis.js uses 'value' for its scaling engine.
+    base_value = 10
+    value = base_value + (exposure * 0.5) if exposure else base_value
     
     if is_highlighted:
-        size += 10
+        value += 5
         
-    font_size = max(16, int(size * 0.5))
-    
     # 🔲 Border Styling
     border_color = base_color
     border_width = 2
@@ -150,7 +148,7 @@ def create_node_config(
         "label": label,
         "title": build_generic_tooltip(node, entity_type, is_highlighted),
         "shape": shape,
-        "size": size,
+        "value": value,
         "color": {
             "background": base_color,
             "border": border_color,
@@ -167,9 +165,7 @@ def create_node_config(
         },
         "font": {
             "color": "#FFFFFF" if entity_type.shape == "box" else "#2C3E50",
-            "size": font_size,
             "face": "Arial",
-            "bold": node_type_id == "risk",
             "vadjust": -5
         },
         "shadow": {

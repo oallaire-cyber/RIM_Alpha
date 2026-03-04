@@ -130,7 +130,7 @@ def generate_layered_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, 
     
     # TPOs at very top
     y_tpo = 50
-    min_x_spacing = 400
+    min_x_spacing = 500
     
     x_spacing = max(800 / max(len(tpos), 1), min_x_spacing)
     start_x = 550 - (len(tpos) - 1) * x_spacing / 2
@@ -162,11 +162,16 @@ def generate_layered_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, 
     
     # Mitigations on the right side
     if mitigations:
-        y_mit = 300
+        y_mit_start = 300
+        cols = 3
+        col_width = 150
+        row_height = 80
         for i, node in enumerate(mitigations):
+            col = i % cols
+            row = i // cols
             positions[node["id"]] = {
-                "x": 950,
-                "y": y_mit + (i * 50)
+                "x": 950 + (col * col_width),
+                "y": y_mit_start + (row * row_height)
             }
     
     return positions
@@ -188,7 +193,7 @@ def generate_category_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str,
     
     # Place TPOs at the top
     tpos = [n for n in nodes if n.get("node_type") == "TPO"]
-    min_x_spacing = 250
+    min_x_spacing = 500
     x_spacing = max(800 / max(len(tpos), 1), min_x_spacing)
     start_x = 550 - (len(tpos) - 1) * x_spacing / 2
     for i, node in enumerate(tpos):
@@ -642,7 +647,7 @@ def generate_zone_aware_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str
     # Center X
     center_x = 550
     x_spread = 800
-    min_x_spacing = 250
+    min_x_spacing = 600
     
     # Band limits (Y)
     y_upper = 50
@@ -661,7 +666,7 @@ def generate_zone_aware_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str
             distance_groups[dist].append(node)
             
         distances = sorted(distance_groups.keys())
-        y_step = 150
+        y_step = 250
         
         current_y = start_y
         for dist in distances:
@@ -694,17 +699,17 @@ def generate_zone_aware_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str
     position_band_simple(upper_nodes, y_upper, x_spread)
     
     # Business nodes
-    y_business_start = 250
+    y_business_start = 300
     y_business_end = position_band(business_nodes, y_business_start, x_spread)
-    if y_business_end == y_business_start: y_business_end = y_business_start + 100
+    if y_business_end == y_business_start: y_business_end = y_business_start + 150
     
     # Operational nodes
-    y_operational_start = y_business_end + 100
+    y_operational_start = y_business_end + 150
     y_operational_end = position_band(operational_nodes, y_operational_start, x_spread)
-    if y_operational_end == y_operational_start: y_operational_end = y_operational_start + 100
+    if y_operational_end == y_operational_start: y_operational_end = y_operational_start + 150
     
     # Lower nodes
-    y_lower = y_operational_end + 100
+    y_lower = y_operational_end + 150
     position_band_simple(lower_nodes, y_lower, x_spread)
     
     # Mitigations
@@ -746,11 +751,18 @@ def generate_zone_aware_layout(nodes: List[Dict[str, Any]], edges: List[Dict[str
                 unaligned_mitigations.append(node)
                 
         # place unaligned
+        # place unaligned mitigations in a grid
         y_mit_start = y_business_start
+        cols = 3
+        col_width = 180
+        row_height = 90
+        
         for i, node in enumerate(unaligned_mitigations):
+            col = i % cols
+            row = i // cols
             positions[node["id"]] = {
-                "x": center_x + 500,
-                "y": y_mit_start + (i * 60)
+                "x": center_x + 500 + (col * col_width),
+                "y": y_mit_start + (row * row_height)
             }
             
     return positions
