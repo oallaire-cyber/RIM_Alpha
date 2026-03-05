@@ -711,26 +711,59 @@ context_edges:
     bidirectional: false
     properties: []
 scopes:
-- id: snr_demo
-  name: 🏭 SNR Demo - Full Example
-  description: 'Complete SMR nuclear program example: 8 business risks, 7 operational
-    risks, 15 mitigations, 3 TPOs'
+- id: odt_demo
+  name: 🚀 ODT Demo - Full Example
+  description: 'Complete New Space program example: 12 business risks, 17 operational
+    risks, 15+ mitigations, 3 TPOs'
   node_ids:
-  - RS-01
-  - RS-02
-  - RS-03
-  - RS-04
-  - RS-05
-  - RS-06
-  - RS-07
-  - RS-08
-  - RO-01
-  - RO-02
-  - RO-03
-  - RO-04
-  - RO-05
-  - RO-06
-  - RO-07
+  - RC-01
+  - RC-02
+  - RC-03
+  - RC-04
+  - RC-05
+  - RH-01
+  - RH-02
+  - RH-03
+  - RH-04
+  - RH-05
+  - RH-06
+  - RH-07
+  - RA-01
+  - RA-02
+  - RA-03
+  - RA-04
+  - RA-05
+  - ROE-01
+  - ROE-02
+  - ROE-03
+  - ROM-01
+  - ROM-02
+  - ROM-03
+  - ROM-04
+  - ROL-01
+  - ROL-02
+  - ROC-01
+  - ROC-02
+  - ROF-01
+  - ROF-02
+  - ROH-01
+  - ROH-02
+  - ROR-01
+  - ROI-01
+  - SEC-01
+  - SEC-02
+  - SEC-03
+  - SEC-04
+  - SEC-05
+  - SEC-06
+  - SEC-07
+  - SEC-08
+  - SEC-09
+  - SEC-10
+  - SEC-11
+  - SEC-12
+  - SEC-13
+  - SEC-14
   include_connected_edges: true
   show_boundary_edges: false
   color: '#2ECC71'

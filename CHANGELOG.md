@@ -4,6 +4,78 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.15.0] - 2026-03-04
+
+### [F20] Exposure-Driven Opacity & [F21] Lifecycle Status Ghosting
+
+**New Features:**
+
+- **Exposure-Driven Opacity**: Risks now automatically scale their opacity based on their final computed exposure score. Critical risks (nearing the maximum 16.0 score) remain 100% opaque, while lower-exposure risks gradually fade into the background, providing immediate visual depth to the threat landscape.
+- **High Exposure Opacity Threshold**: Added a slider to "Display Options" to allow users to define what percentage of the max exposure should be considered "high enough" to remain fully opaque.
+- **Lifecycle & Status Ghosting**: Entities that represent future or unrealized states—such as Contingent Risks and Proposed or Deferred Mitigations—now automatically render at 50% opacity to visually distinguish them from actively realized elements.
+
+**Files Modified:**
+- `ui/home.py` — Added toggle checkboxes and configuration slider in the primary visualization display options panel.
+- `visualization/node_styles.py` — Infused PyVis `rgba` conversion logic into the `create_node_config` loop incorporating mathematical opacity scaling.
+- `visualization/graph_renderer.py` — Piped UI state parameters securely from Streamlit down to individual node configurations.
+- `tests/test_visualization.py` — Added comprehensive unit tests evaluating opacity boundary conditions and status edge cases.
+
+---
+
+## [v2.14.0] - 2026-03-04
+
+### [F19] Interactive Focus Mode (Neighborhood Highlight)
+
+**New Features:**
+
+- **Interactive Focus Mode**: Added a dynamic client-side node clicking interaction to the PyVis visualization. Clicking any node instantly fades out all unrelated nodes and edges, drawing focus strictly to the selected node's upstream and downstream influence chains.
+- **Configurable Fading Depth**: Introduced a "Full Chain Focus" toggle that allows the user to switch between isolating the immediate 1-hop neighborhood or the entire transitively connected sub-component (Breadth-First Search).
+
+**Files Modified:**
+- `visualization/graph_options.py` — Added `get_focus_mode_js()` injecting the fade state management logic.
+- `visualization/graph_renderer.py` — Injected the focus mode interactability into PyVis rendering output.
+
+
+## [v2.13.0] - 2026-03-03
+
+### [F13] Zone-Aware 4-Layer Visual Layout
+
+**New Features:**
+
+- **Zone-Aware Layout Algorithm**: Added a hierarchical layout positioning nodes across four bands (`Upper Context Zone`, `Business Risks`, `Operational Risks`, `Lower Context Zone`).
+- **Dynamic Vertical Placement**: Inside the `Business` and `Operational` risk bands, nodes are vertically sorted by their computed distance (U7) from TPOs, creating an automatic hierarchy based on graph influence topology.
+- **Improved Semantic Presentation**: Mitigations are clustered closer to their designated target risks along the sides. 
+- **Graph Sizing and Dynamic Scaling**: Migrated node sizing to use Vis.js native `value` scaling to allow node size and text size to organically scale proportionally to their exposure level, preventing overlapping.
+- **Layout Polishes**: 
+  - Increased minimum padding ranges across static layouts to accommodate the larger bounding boxes of scaled nodes.
+  - Automatically calculate and render the Zone-Aware layout when turning physics OFF to prevent the initial state from freezing in chaos.
+  - Distribute unaligned mitigations into a multi-column grid layout to prevent vertical mass overlaps.
+
+**Files Modified:**
+- `ui/layouts.py` — Added `generate_zone_aware_layout()`; refactored mitigation placement logic into a grid layout; increased horizontal and vertical padding limits.
+- `ui/home.py` — Added "🌐 Zone-Aware" predefined layout toggle; added automatic physics-disabled layout fallback state.
+- `visualization/node_styles.py` — Replaced static `size` logic with Vis.js native `value` logic for shapes to enable proportional font scaling.
+- `visualization/graph_options.py` — Added dynamic label scale ranges (`scaling: {label: {min, max}}`) and bounded minimum node sizes.
+
+---
+
+## [v2.12.0] - 2026-03-03
+
+### [F4] One-Click Visualization Export
+
+**New Features:**
+
+- **Visualization Export**: Users can now export the active styled graph view to PNG or PDF directly from the PyVis canvas or Streamlit container.
+  - Added an "📥 Export" button alongside the fullscreen toggle within the interactive graph container.
+  - The export extracts the canvas adjusting to the user's screen resolution, preserving current viewport, layouts, and zoom exactly as displayed.
+  - Supports PNG and PDF generation purely client-side via `jspdf` CDN injection, respecting transparency and color styling without requiring backend rendering.
+
+**Files Modified:**
+- `visualization/graph_options.py` — Added `get_export_js()` containing HTML/CSS/JS export mechanics.
+- `visualization/graph_renderer.py` — Injected the generated export capability into the PyVis HTML layout string.
+
+---
+
 ## [v2.11.0] - 2026-03-02
 
 ### Risk Subtype System (Schema-Driven Domain Extensions)
@@ -235,23 +307,23 @@ All notable changes to the Risk Influence Map (RIM) application.
   - Self-contained Cypher loader for 7 test cases (TC01–TC07) covering all major RIM scenario types
   - **37 risks**, **25 mitigations**, **18 influences**, **2 TPOs**, **3 TPO impacts**
   - Idempotent `MERGE`-based statements using UUID v5 deterministic IDs — safe to reload without creating duplicates
-  - Entities prefixed `[TCxx]` to coexist with SNR demo data in the same database
+  - Entities prefixed `[TCxx]` to coexist with ODT demo data in the same database
 
 - **Excel Demo Dataset** (`test_datasets/DEMO_Complete.xlsx`)
   - Excel equivalent of `demo_tc_dataset.cypher`, color-coded by test case
   - Use for Import/Export feature demonstrations
 
 - **8 Pre-configured Analysis Scopes** (`schemas/default/schema.yaml`)
-  - `snr_demo` — Full SNR nuclear program (RS-01–08, RO-01–07 + connected mitigations/TPOs via `include_connected_edges`)
+  - `odt_demo` — Full ODT New Space program (RC-01–05, RH-01–07, RA-01-05 + connected mitigations/TPOs via `include_connected_edges`)
   - `tc01_baseline` through `tc07_influence_strengths` — One scope per test case, each with pre-wired UUID `node_ids`
   - TC scopes use deterministic UUIDs matching `demo_tc_dataset.cypher` — no post-import update step required
   - Selecting all 8 scopes simultaneously yields the full combined graph
 
 - **🔄 Reset Demo Data Button** (`pages/1_⚙️_Configuration.py` → Data Management tab)
   - One-click wipe + reload of the entire demo dataset to a reproducible state
-  - Loads **both** `demo_data_loader_en.cypher` (SNR) and `demo_tc_dataset.cypher` (TC01-TC07) in sequence
+  - Loads **both** `demo_data_loader_en.cypher` (ODT) and `demo_tc_dataset.cypher` (TC01-TC07) in sequence
   - File availability status shown before the button; button disabled if files are missing
-  - Two separate progress bars (SNR then TC), each vanishing on completion
+  - Two separate progress bars (ODT then TC), each vanishing on completion
   - Before/after node count shown in success message
   - Automatically invalidates the Database tab's cached stats on completion
 
@@ -264,7 +336,7 @@ All notable changes to the Risk Influence Map (RIM) application.
 - `test_datasets/DEMO_Complete.xlsx` — Color-coded Excel demo dataset
 
 **Files Modified:**
-- `schemas/default/schema.yaml` — Added 8 analysis scopes (snr_demo + tc01–tc07)
+- `schemas/default/schema.yaml` — Added 8 analysis scopes (odt_demo + tc01–tc07)
 - `pages/1_⚙️_Configuration.py` — Added `render_demo_reset_section()` and `_execute_demo_reset()`, hoisted DB guard in `render_data_management()`
 - `visualization/colors.py` — None-guard in `get_influence_color()`
 - `visualization/edge_styles.py` — None-guard in `create_influence_edge_config()`
@@ -584,7 +656,7 @@ RETURN count(r);
   - Comprehensive health report generation
 
 - **Example Schemas**
-  - `schemas/default/` - SMR nuclear project (Business/Operational)
+  - `schemas/default/` - ODT New Space project (Business/Operational)
   - `schemas/it_security/` - Cybersecurity example (Enterprise/Tactical, CIA-based TPOs)
 
 **Files Added:**

@@ -151,5 +151,5 @@ All UUIDs are computed as UUID v5 from a fixed namespace + entity name. This mea
 - Schema scopes can reference IDs without an update step
 - The reset button can safely re-create exact same IDs
 
-### Coexistence with SNR Data
-The TC entities are completely isolated from the main SNR demo data by their `[TCxx]` name prefix and distinct UUIDs. Both datasets can coexist in the same database. Use separate scopes or the existing SNR scopes to switch context.
+### Coexistence with ODT Data
+The TC entities are completely isolated from the main ODT demo data by their `[TCxx]` name prefix and distinct UUIDs. Both datasets can coexist in the same database. Use separate scopes or the existing ODT scopes to switch context.

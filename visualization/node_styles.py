@@ -77,7 +77,10 @@ def build_generic_tooltip(node: Dict[str, Any], entity_type, is_highlighted: boo
 def create_node_config(
     node: Dict[str, Any],
     color_by: str = "level",
-    highlighted_node_id: Optional[str] = None
+    highlighted_node_id: Optional[str] = None,
+    exposure_opacity: bool = False,
+    high_exposure_threshold: float = 60.0,
+    lifecycle_ghosting: bool = False
 ) -> Dict[str, Any]:
     """
     Create node configuration for any node type from schema.
@@ -110,19 +113,22 @@ def create_node_config(
                 break
     
     # Special: Color risks by exposure if requested
-    exposure = node.get("exposure", 0)
+    exposure = node.get("exposure")
+    if exposure is None:
+        exposure = node.get("base_exposure", 0)
+
     if node_type_id == "risk" and color_by == "exposure":
         from visualization.colors import get_color_by_exposure
         base_color = get_color_by_exposure(exposure)
     
     # 📐 Size Calculation
-    # Scale size with exposure if it's a risk
-    base_size = 30
-    size = base_size + (exposure * 1.2) if exposure else base_size
+    # Vis.js uses 'value' for its scaling engine.
+    base_value = 10
+    value = base_value + (exposure * 0.5) if exposure else base_value
     
     if is_highlighted:
-        size += 10
-    
+        value += 5
+        
     # 🔲 Border Styling
     border_color = base_color
     border_width = 2
@@ -134,27 +140,59 @@ def create_node_config(
         
     # Check for contingent/proposed status to apply dashes
     status = node.get("status", "").lower()
-    if status in ("contingent", "proposed"):
+    if status in ("contingent", "proposed", "deferred"):
         border_dashes = [8, 4]
         border_width = 3
+        
+    # 💧 Opacity calculations (F20 & F21)
+    # Start fully opaque
+    opacity = 1.0
+    
+    if lifecycle_ghosting and status in ("contingent", "proposed", "deferred"):
+        opacity *= 0.5
+        
+    if exposure_opacity and node_type_id == "risk":
+        # Check against high exposure threshold absolute value
+        if exposure is not None:
+            if exposure >= high_exposure_threshold:
+                # Keep completely opaque if meeting or exceeding threshold
+                pass
+            else:
+                # Scale from 20% min to whatever proportion they are at, capped by threshold
+                if high_exposure_threshold > 0:
+                    opacity *= 0.2 + 0.8 * (exposure / high_exposure_threshold)
+                else:
+                    opacity *= 0.2
+        else:
+            # Null exposure
+            opacity *= 0.2
+            
+    # Apply opacity to colors
+    from visualization.graph_renderer import hex_to_rgba
+    rgba_base = hex_to_rgba(base_color, opacity)
+    rgba_border = hex_to_rgba(border_color, opacity)
+    rgba_highlight_border = hex_to_rgba("#FFFF00", opacity)
     
     # 📝 Label Construction
     label = f"{emoji} " + wrap_label(node.get("name", ""), 18)
     if is_highlighted:
         label = f"★ {label}"
-    
+        
+    font_color = "#FFFFFF" if entity_type.shape == "box" else "#2C3E50"
+    rgba_font = hex_to_rgba(font_color, max(0.4, opacity)) # don't make text completely invisible
+
     # 🏛️ Build Final Config
     config = {
         "label": label,
         "title": build_generic_tooltip(node, entity_type, is_highlighted),
         "shape": shape,
-        "size": size,
+        "value": value,
         "color": {
-            "background": base_color,
-            "border": border_color,
+            "background": rgba_base,
+            "border": rgba_border,
             "highlight": {
-                "background": base_color,
-                "border": "#FFFF00"
+                "background": rgba_base,
+                "border": rgba_highlight_border
             }
         },
         "borderWidth": border_width,
@@ -164,10 +202,9 @@ def create_node_config(
             "borderRadius": 6 if entity_type.shape == "box" else 0
         },
         "font": {
-            "color": "#FFFFFF" if entity_type.shape == "box" else "#2C3E50",
-            "size": 20,
+            "color": rgba_font,
             "face": "Arial",
-            "bold": node_type_id == "risk"
+            "vadjust": -5
         },
         "shadow": {
             "enabled": True,

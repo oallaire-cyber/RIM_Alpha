@@ -76,6 +76,7 @@ streamlit run app.py
 | **Computed Risk Distance** | Dynamic assessment of path length to nearest TPO for hierarchical layout |
 | **Complexity Toggle** | Switch between Simple and Advanced UI modes for different stakeholder technical levels |
 | **Risk Subtypes** | Schema-driven domain-specific extension fields on risks (Cyber, Supply Chain, Financial, etc.) |
+| **Interactive Focus Mode** | Instantly fade out non-connected neighborhoods when clicking specific graph nodes |
 
 ### Visualization
 
@@ -197,16 +198,16 @@ NEO4J_PASSWORD=your_password
 
 RIM ships with a fully integrated demo package combining two datasets:
 
-### SNR Nuclear Program (`demo_data_loader_en.cypher`)
-- 15 Business Risks (RS-01–08) + Operational Risks (RO-01–07)
+### ODT New Space Program (`demo_data_loader_en.cypher`)
+- 12 Business Risks (RC-01–05, RH-01–07, RA-01–05) + Operational Risks
 - Multiple influence chains, mitigation scenarios, and TPO impact mappings
-- Pre-configured `snr_demo` scope in `schemas/default/schema.yaml`
+- Pre-configured `odt_demo` scope in `schemas/default/schema.yaml`
 
 ### TC01-TC07 Test Cases (`demo_tc_dataset.cypher`)
 - **37 risks**, **25 mitigations**, **18 influences**, **2 TPOs**, **3 TPO impacts**
 - 7 scenarios (baseline, propagation, convergence, mitigation effectiveness, etc.)
 - UUID v5 deterministic IDs — stable across reloads, no post-import fix-up needed
-- Entities prefixed `[TCxx]` to coexist with SNR data
+- Entities prefixed `[TCxx]` to coexist with ODT data
 - 7 pre-configured scopes (`tc01_baseline` … `tc07_influence_strengths`)
 
 ### Loading the Demo
@@ -246,4 +247,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.11.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.15.0 | See [CHANGELOG.md](CHANGELOG.md) for history

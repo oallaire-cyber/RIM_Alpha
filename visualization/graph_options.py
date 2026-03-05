@@ -25,15 +25,22 @@ def get_network_options(physics_enabled: bool = True) -> str:
             "font": {{
                 "size": 18,
                 "face": "Arial",
-                "multi": "html",
-                "bold": {{"color": "#333333", "size": 18}},
                 "vadjust": -5
             }},
             "borderWidth": 2,
             "shadow": true,
             "widthConstraint": {{
                 "minimum": 50,
-                "maximum": 180
+                "maximum": 280
+            }},
+            "scaling": {{
+                "min": 30,
+                "max": 150,
+                "label": {{
+                    "enabled": true,
+                    "min": 18,
+                    "max": 55
+                }}
             }}
         }},
         "edges": {{
@@ -353,5 +360,376 @@ def get_fullscreen_js() -> str:
                 toggleFullscreen();
             }
         });
+    </script>
+    """
+
+def get_export_js() -> str:
+    """
+    Get JavaScript and CSS for the export functionality.
+    Includes jspdf library for PDF generation and extracts canvas exactly adjusted to screen resolution.
+    
+    Returns:
+        JavaScript and CSS string to inject
+    """
+    return """
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        .export-dropdown {
+            position: absolute;
+            top: 10px;
+            left: 140px;
+            z-index: 9999;
+            display: inline-block;
+        }
+        .export-btn {
+            padding: 10px 18px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        .export-btn:hover {
+            background-color: #27ae60;
+        }
+        .export-content {
+            display: none;
+            position: absolute;
+            background-color: #ffffff;
+            min-width: 120px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 10000;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        .export-content a {
+            color: #333333;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .export-content a:hover {
+            background-color: #f1f1f1;
+        }
+        .export-dropdown:hover .export-content {
+            display: block;
+        }
+    </style>
+    <div class="export-dropdown">
+        <button class="export-btn">📥 Export</button>
+        <div class="export-content">
+            <a onclick="exportPNG()">↳ As PNG Image</a>
+            <a onclick="exportPDF()">↳ As PDF Document</a>
+        </div>
+    </div>
+    <script>
+        function getCanvasDataURL() {
+            var srcCanvas = document.querySelector('#mynetwork canvas') || document.querySelector('canvas');
+            if(!srcCanvas) return null;
+            
+            // Create a temporary canvas that precisely matches the display resolution
+            var destCanvas = document.createElement('canvas');
+            destCanvas.width = srcCanvas.width;
+            destCanvas.height = srcCanvas.height;
+            var destCtx = destCanvas.getContext('2d');
+            
+            // Ensure white background so transparency translates properly to export
+            destCtx.fillStyle = '#ffffff';
+            destCtx.fillRect(0, 0, destCanvas.width, destCanvas.height);
+            destCtx.drawImage(srcCanvas, 0, 0);
+            
+            return {
+                dataURL: destCanvas.toDataURL('image/png', 1.0),
+                width: srcCanvas.width,
+                height: srcCanvas.height
+            };
+        }
+
+        function exportPNG() {
+            var canvasData = getCanvasDataURL();
+            if(!canvasData) { alert("Canvas not found!"); return; }
+            var a = document.createElement('a');
+            a.href = canvasData.dataURL;
+            a.download = 'rim_graph_export.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function exportPDF() {
+            var canvasData = getCanvasDataURL();
+            if(!canvasData) { alert("Canvas not found!"); return; }
+            
+            if(!window.jspdf || !window.jspdf.jsPDF) {
+                alert("jsPDF library failed to load");
+                return;
+            }
+            
+            var jsPDF = window.jspdf.jsPDF;
+            var orientation = canvasData.width > canvasData.height ? 'l' : 'p';
+            
+            // Create PDF mapped exactly to the high-res canvas pixels (adjusted to screen resolution)
+            var pdf = new jsPDF({
+                orientation: orientation,
+                unit: 'px',
+                format: [canvasData.width, canvasData.height]
+            });
+            
+            pdf.addImage(canvasData.dataURL, 'PNG', 0, 0, canvasData.width, canvasData.height);
+            pdf.save('rim_graph_export.pdf');
+        }
+    </script>
+    """
+
+def get_focus_mode_js() -> str:
+    """
+    Get JavaScript and CSS for the interactive focus mode.
+    Fades out nodes that are not connected to the clicked node.
+    
+    Returns:
+        JavaScript and CSS string to inject
+    """
+    return """
+    <style>
+        .focus-control {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            z-index: 9999;
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            color: #333;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+        }
+        .focus-control input {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        .focus-control label {
+            cursor: pointer;
+            user-select: none;
+        }
+    </style>
+    <div class="focus-control" title="When checking, clicking a node highlights its entire chain. Unchecked highlights only direct neighbors.">
+        <input type="checkbox" id="fullChainToggle">
+        <label for="fullChainToggle">Full Chain Focus</label>
+    </div>
+    <script>
+        // Ensure network is ready
+        setTimeout(function() {
+            if (typeof network === 'undefined' || !network) return;
+            
+            var originalColors = {};
+            var originalNodeOpacities = {};
+            var originalEdgeOpacities = {};
+            var isFocusModeActive = false;
+            
+            // Backup original colors and opacities if we haven't
+            function backupColors() {
+                var nodes = network.body.data.nodes.get();
+                var edges = network.body.data.edges.get();
+                
+                nodes.forEach(function(node) {
+                    if (!originalColors[node.id]) {
+                        originalColors[node.id] = node.color ? JSON.parse(JSON.stringify(node.color)) : null;
+                        originalNodeOpacities[node.id] = node.font ? node.font.color : null;
+                    }
+                });
+                
+                edges.forEach(function(edge) {
+                    if (!originalColors['edge_' + edge.id]) {
+                        originalColors['edge_' + edge.id] = edge.color ? JSON.parse(JSON.stringify(edge.color)) : null;
+                    }
+                });
+            }
+            
+            // Helper to get rgba string with new alpha
+            function setAlpha(colStr, alpha) {
+                if (typeof colStr === 'object' && colStr !== null) {
+                    // Usually color objects have background, border, highlight etc.
+                    var ret = {};
+                    for (var k in colStr) {
+                        ret[k] = setAlpha(colStr[k], alpha);
+                    }
+                    return ret;
+                }
+                
+                if (typeof colStr !== 'string') return colStr;
+                
+                if (colStr.startsWith('rgba')) {
+                    return colStr.replace(/rgba\\(([^,]+),([^,]+),([^,]+),[^)]+\\)/, 'rgba($1,$2,$3,' + alpha + ')');
+                } else if (colStr.startsWith('#')) {
+                    var hex = colStr.replace('#', '');
+                    if (hex.length === 3) {
+                        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+                    }
+                    var r = parseInt(hex.substring(0, 2), 16);
+                    var g = parseInt(hex.substring(2, 4), 16);
+                    var b = parseInt(hex.substring(4, 6), 16);
+                    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+                }
+                // Fallback
+                return colStr;
+            }
+            
+            // Get all connected nodes (1-hop)
+            function getDirectNeighbors(nodeId) {
+                var connected = network.getConnectedNodes(nodeId);
+                var set = new Set(connected);
+                set.add(nodeId);
+                return set;
+            }
+            
+            // Get all reachable nodes (full connected component) - treating edges as undirected for highlighting
+            function getFullChain(startNodeId) {
+                var edges = network.body.data.edges.get();
+                var adj = {};
+                
+                edges.forEach(function(e) {
+                    if (!adj[e.from]) adj[e.from] = [];
+                    if (!adj[e.to]) adj[e.to] = [];
+                    adj[e.from].push(e.to);
+                    adj[e.to].push(e.from);
+                });
+                
+                var visited = new Set();
+                var queue = [startNodeId];
+                visited.add(startNodeId);
+                
+                while (queue.length > 0) {
+                    var cur = queue.shift();
+                    var neighbors = adj[cur] || [];
+                    neighbors.forEach(function(n) {
+                        if (!visited.has(n)) {
+                            visited.add(n);
+                            queue.push(n);
+                        }
+                    });
+                }
+                
+                return visited;
+            }
+            
+            function applyFocusMode(selectedNodeId) {
+                backupColors();
+                isFocusModeActive = true;
+                var isFullChain = document.getElementById('fullChainToggle').checked;
+                
+                var keepNodes = isFullChain ? getFullChain(selectedNodeId) : getDirectNeighbors(selectedNodeId);
+                
+                var nodesToUpdate = [];
+                var edgesToUpdate = [];
+                
+                var allNodes = network.body.data.nodes.get();
+                var allEdges = network.body.data.edges.get();
+                
+                // Fade nodes
+                allNodes.forEach(function(node) {
+                    var origCol = originalColors[node.id];
+                    var origFontCol = originalNodeOpacities[node.id] || '#333333';
+                    
+                    if (keepNodes.has(node.id)) {
+                        nodesToUpdate.push({
+                            id: node.id,
+                            color: origCol,
+                            font: { color: origFontCol }
+                        });
+                    } else {
+                        nodesToUpdate.push({
+                            id: node.id,
+                            color: setAlpha(origCol, 0.1),
+                            font: { color: setAlpha(origFontCol, 0.1) }
+                        });
+                    }
+                });
+                
+                // Fade edges
+                allEdges.forEach(function(edge) {
+                    var origCol = originalColors['edge_' + edge.id];
+                    
+                    if (keepNodes.has(edge.from) && keepNodes.has(edge.to)) {
+                        edgesToUpdate.push({
+                            id: edge.id,
+                            color: origCol
+                        });
+                    } else {
+                        edgesToUpdate.push({
+                            id: edge.id,
+                            color: setAlpha(origCol, 0.1)
+                        });
+                    }
+                });
+                
+                network.body.data.nodes.update(nodesToUpdate);
+                network.body.data.edges.update(edgesToUpdate);
+            }
+            
+            function resetFocusMode() {
+                if (!isFocusModeActive) return;
+                
+                var nodesToUpdate = [];
+                var edgesToUpdate = [];
+                
+                var allNodes = network.body.data.nodes.get();
+                var allEdges = network.body.data.edges.get();
+                
+                allNodes.forEach(function(node) {
+                    if (originalColors[node.id]) {
+                        nodesToUpdate.push({
+                            id: node.id,
+                            color: originalColors[node.id],
+                            font: { color: originalNodeOpacities[node.id] || '#333333' }
+                        });
+                    }
+                });
+                
+                allEdges.forEach(function(edge) {
+                    if (originalColors['edge_' + edge.id]) {
+                        edgesToUpdate.push({
+                            id: edge.id,
+                            color: originalColors['edge_' + edge.id]
+                        });
+                    }
+                });
+                
+                network.body.data.nodes.update(nodesToUpdate);
+                network.body.data.edges.update(edgesToUpdate);
+                isFocusModeActive = false;
+            }
+            
+            network.on("click", function (params) {
+                if (params.nodes.length > 0) {
+                    var clickedNodeId = params.nodes[0];
+                    applyFocusMode(clickedNodeId);
+                } else {
+                    resetFocusMode();
+                }
+            });
+            
+            // Allow re-evaluating focus if toggle is clicked while a node is selected
+            document.getElementById('fullChainToggle').addEventListener('change', function() {
+                if (isFocusModeActive) {
+                    var selectedNodes = network.getSelectedNodes();
+                    if (selectedNodes && selectedNodes.length > 0) {
+                        applyFocusMode(selectedNodes[0]);
+                    }
+                }
+            });
+            
+        }, 1000);
     </script>
     """

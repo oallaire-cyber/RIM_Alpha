@@ -68,7 +68,7 @@ RIM allows users to toggle the interface complexity from the **top of the sideba
 
 ### Loading Demo Data (Quick Start)
 
-RIM includes a complete demo dataset covering the SNR nuclear program and TC01-TC07 test scenarios:
+RIM includes a complete demo dataset covering the ODT New Space program and TC01-TC07 test scenarios:
 
 1. Go to **⚙️ Configuration** → **📊 Data Management** tab
 2. Tick the confirmation checkbox under **🔄 Reset Demo Data**
@@ -376,7 +376,7 @@ When using the bundled demo dataset, 8 scopes are pre-configured in `schemas/def
 
 | Scope ID | Description |
 |---|---|
-| `snr_demo` | Full SNR nuclear program (RS-01–08, RO-01–07) with connected mitigations and TPOs |
+| `odt_demo` | Full ODT New Space program (RC-01–05, RH-01-07...) with connected mitigations and TPOs |
 | `tc01_baseline` | TC01 — Simple 3-risk baseline scenario |
 | `tc02_propagation` | TC02 — Influence propagation chain |
 | `tc03_convergence` | TC03 — Multiple risks converging on one target |
@@ -431,7 +431,7 @@ All TC scopes use deterministic UUIDs that match `demo_tc_dataset.cypher` — no
 
 ### Interactive Features
 
-- **Click node**: View details
+- **Click node**: View details and activate **Interactive Focus Mode**, instantly fading out all unrelated nodes to highlight the selected node's neighborhood. Use the "Full Chain Focus" toggle (top-left of map) to expand highlighting from direct neighbors to the entire connected influence chain. Click the empty canvas space to reset.
 - **Drag node**: Reposition (with physics off)
 - **Scroll**: Zoom in/out
 - **Right-click**: Context menu
@@ -635,4 +635,4 @@ Each multi-select filter has **All** and **None** buttons for quick selection.
 
 ---
 
-*Last updated: February 2026 | Version 2.10.9*
+*Last updated: March 2026 | Version 2.14.0*

@@ -1609,28 +1609,28 @@ def render_demo_reset_section(conn):
     """Render the demo data reset section."""
     st.markdown("### 🔄 Reset Demo Data")
     st.info(
-        "Wipes the **entire database** and reloads both the SNR demo dataset "
+        "Wipes the **entire database** and reloads both the ODT New Space demo dataset "
         "and all 7 TC test cases (TC01-TC07) to a clean, reproducible state."
     )
 
     app_root = Path(__file__).parent.parent
-    snr_path = app_root / "demo_data_loader_en.cypher"
+    odt_path = app_root / "demo_data_loader_en.cypher"
     tc_path  = app_root / "demo_tc_dataset.cypher"
 
     # Show file availability status
     col_a, col_b = st.columns(2)
     with col_a:
-        if snr_path.exists():
-            st.success(f"✅ SNR file found: `{snr_path.name}`")
+        if odt_path.exists():
+            st.success(f"✅ ODT file found: `{odt_path.name}`")
         else:
-            st.error(f"❌ SNR file missing: `demo_data_loader_en.cypher`")
+            st.error(f"❌ ODT file missing: `demo_data_loader_en.cypher`")
     with col_b:
         if tc_path.exists():
             st.success(f"✅ TC file found: `{tc_path.name}`")
         else:
             st.error(f"❌ TC file missing: `demo_tc_dataset.cypher`")
 
-    files_ok = snr_path.exists() and tc_path.exists()
+    files_ok = odt_path.exists() and tc_path.exists()
 
     confirmed = st.checkbox(
         "⚠️ I understand this will delete ALL data in the database and reload the demo",
@@ -1643,11 +1643,11 @@ def render_demo_reset_section(conn):
         disabled=(not confirmed or not files_ok),
         key="reset_demo_btn"
     ):
-        _execute_demo_reset(conn, snr_path, tc_path)
+        _execute_demo_reset(conn, odt_path, tc_path)
 
 
-def _execute_demo_reset(conn, snr_path, tc_path):
-    """Execute the full demo reset: wipe all data, reload SNR + TC datasets."""
+def _execute_demo_reset(conn, odt_path, tc_path):
+    """Execute the full demo reset: wipe all data, reload ODT + TC datasets."""
 
     def _parse_statements(cypher_text, skip_purge=False):
         """
@@ -1659,7 +1659,7 @@ def _execute_demo_reset(conn, snr_path, tc_path):
         - Discard empty statements
         - Discard comment-only statements (lines that are all // comments)
         - If skip_purge=True, discard any statement containing DETACH DELETE
-          (to avoid re-running the SNR file's built-in purge line)
+          (to avoid re-running the ODT file's built-in purge line)
         """
         raw_statements = cypher_text.split(";")
         result = []
@@ -1690,21 +1690,21 @@ def _execute_demo_reset(conn, snr_path, tc_path):
             st.write("🗑️ Wiping database...")
             conn.execute_write("MATCH (n) DETACH DELETE n")
 
-            # Step 3: Load SNR dataset
+            # Step 3: Load ODT dataset
             # skip_purge=True because demo_data_loader_en.cypher has its own
             # MATCH (n) DETACH DELETE n; at line 8 -- skip it since we already wiped.
-            snr_text = snr_path.read_text(encoding="utf-8")
-            snr_statements = _parse_statements(snr_text, skip_purge=True)
+            odt_text = odt_path.read_text(encoding="utf-8")
+            odt_statements = _parse_statements(odt_text, skip_purge=True)
 
-            st.write(f"📥 Loading SNR dataset ({len(snr_statements)} statements)...")
-            snr_progress = st.progress(0.0, text="Loading SNR data...")
-            for i, stmt in enumerate(snr_statements):
+            st.write(f"📥 Loading ODT dataset ({len(odt_statements)} statements)...")
+            odt_progress = st.progress(0.0, text="Loading ODT data...")
+            for i, stmt in enumerate(odt_statements):
                 conn.execute_write(stmt)
-                snr_progress.progress(
-                    (i + 1) / len(snr_statements),
-                    text=f"SNR: {i + 1}/{len(snr_statements)}"
+                odt_progress.progress(
+                    (i + 1) / len(odt_statements),
+                    text=f"ODT (New Space): {i + 1}/{len(odt_statements)}"
                 )
-            snr_progress.empty()
+            odt_progress.empty()
 
             # Step 4: Load TC datasets
             # skip_purge=False: demo_tc_dataset.cypher uses only MERGE, no purge.
@@ -1730,7 +1730,7 @@ def _execute_demo_reset(conn, snr_path, tc_path):
                 f"✅ Reset complete — "
                 f"deleted **{before_count}** nodes, "
                 f"loaded **{after_count}** nodes "
-                f"({len(snr_statements)} SNR + {len(tc_statements)} TC statements executed)."
+                f"({len(odt_statements)} ODT + {len(tc_statements)} TC statements executed)."
             )
 
             # Invalidate cached stats so the Database tab refreshes

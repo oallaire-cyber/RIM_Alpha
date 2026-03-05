@@ -58,6 +58,7 @@ from ui.layouts import (
     generate_category_layout,
     generate_tpo_cluster_layout,
     generate_auto_spread_layout,
+    generate_zone_aware_layout,
 )
 
 
@@ -592,6 +593,40 @@ def render_visualization_filters(manager: RiskGraphManager):
         )
         st.session_state.color_by = color_by
 
+        st.markdown("---")
+        
+        # F20: Exposure-Driven Opacity
+        st.markdown("**🌫️ Exposure-Driven Opacity**")
+        exposure_opacity = st.checkbox(
+            "Enable Opacity by Exposure",
+            value=st.session_state.get("exposure_opacity_enabled", False),
+            help="High exposure risks remain solid, low exposure risks fade into background."
+        )
+        st.session_state.exposure_opacity_enabled = exposure_opacity
+        
+        if exposure_opacity:
+            high_exposure_threshold = st.slider(
+                "High Exposure Threshold",
+                min_value=0,
+                max_value=100,
+                value=st.session_state.get("high_exposure_threshold", 60),
+                step=5,
+                format="%d",
+                help="Risks with an exposure score above this value will be 100% opaque."
+            )
+            st.session_state.high_exposure_threshold = high_exposure_threshold
+
+        st.markdown("---")
+
+        # F21: Lifecycle Ghosting
+        st.markdown("**👻 Lifecycle & Status Ghosting**")
+        lifecycle_ghosting = st.checkbox(
+            "Enable Status Ghosting",
+            value=st.session_state.get("lifecycle_ghosting_enabled", False),
+            help="Contingent risks and Proposed/Deferred mitigations appear semi-transparent."
+        )
+        st.session_state.lifecycle_ghosting_enabled = lifecycle_ghosting
+
     return filter_mgr
 
 
@@ -807,9 +842,19 @@ def render_layout_management(manager: RiskGraphManager):
                 st.session_state.selected_layout_name = auto_name
                 st.rerun()
         
-        col_preset_5, _ = st.columns(2)
+        col_preset_5, col_preset_6 = st.columns(2)
         
         with col_preset_5:
+            if st.button("🌐 Zone-Aware", key="preset_zone_aware", use_container_width=True,
+                        help="4-Layer Zone positioning"):
+                nodes, edges = manager.get_graph_data({"show_tpos": True})
+                positions = generate_zone_aware_layout(nodes, edges)
+                auto_name = f"zone_aware_{datetime.now().strftime('%Y%m%d_%H%M')}"
+                layout_mgr.save_layout(auto_name, positions)
+                st.session_state.selected_layout_name = auto_name
+                st.rerun()
+                
+        with col_preset_6:
             if st.button("🔄 Reset Layout", key="reset_layout", use_container_width=True):
                 if "selected_layout_name" in st.session_state:
                     del st.session_state.selected_layout_name
@@ -938,6 +983,11 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
                 positions = st.session_state.layout_manager.load_layout(layout_name)
                 if positions:
                     st.info(f"📍 Active layout: **{layout_name}**")
+            elif not st.session_state.get("physics_enabled", True):
+                # Auto-apply Zone-Aware layout if physics is disabled to prevent overlapping
+                from ui.layouts import generate_zone_aware_layout
+                positions = generate_zone_aware_layout(nodes, edges)
+                st.info("📍 Auto-applied **Zone-Aware** layout (Physics disabled)")
         # Overlay calculated final exposure if available
         exposure_results = st.session_state.get("exposure_results")
         if exposure_results and "risk_results" in exposure_results:
