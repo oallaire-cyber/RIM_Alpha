@@ -4,6 +4,23 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.16.0] - 2026-03-06
+
+### [U4] Strict Data Validation & [U5] Mitigation Budget Attributes
+
+**New Features:**
+
+- **Strict Data Validation (Pydantic)**: Implemented rigid validation for all incoming graph logic using `pydantic`. Models are now dynamically generated at runtime based on the `schema.yaml` properties definitions, applying strict enforcement over types, constraints, and presence for risks, mitigations, and context nodes.
+- **Mitigation Budget Attributes**: Extended the `mitigation` schema entity across all domains to natively capture **CAPEX** and **OPEX** float attributes. Integrated into the database mutation pathways.
+
+**Files Modified:**
+- `schemas/default/schema.yaml` (and demo/it_security) — Appended CAPEX & OPEX property definitions.
+- `core/validation.py` — [NEW] Handles the compilation of dynamic Pydantic BaseModels using EntityTypeDefinitions.
+- `core/entity.py` — Injected dynamic validation replacing ad-hoc type checks.
+- `database/manager.py` & `database/queries/mitigations.py` — Refactored to catch and commit arbitrary `ext_fields` explicitly.
+- `ui/tabs/mitigations_tab.py` — Exposed CAPEX and OPEX inputs on the manual creation forms.
+- `models/mitigation.py` — Appended dataclass fields to round-trip expenditures properly.
+
 ## [v2.15.0] - 2026-03-04
 
 ### [F20] Exposure-Driven Opacity & [F21] Lifecycle Status Ghosting

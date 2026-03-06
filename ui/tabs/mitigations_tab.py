@@ -61,7 +61,13 @@ def _render_mitigation_form(create_mitigation_fn: Callable[..., bool]):
         
         mit_description = st.text_area("Description", placeholder="Detailed mitigation description...")
         
-        mit_owner = st.text_input("Owner", placeholder="Mitigation owner")
+        col_owner_budget = st.columns(3)
+        with col_owner_budget[0]:
+            mit_owner = st.text_input("Owner", placeholder="Mitigation owner")
+        with col_owner_budget[1]:
+            mit_capex = st.number_input("CAPEX", min_value=0.0, step=1000.0, format="%.2f", help="Capital Expenditure")
+        with col_owner_budget[2]:
+            mit_opex = st.number_input("OPEX", min_value=0.0, step=1000.0, format="%.2f", help="Operational Expenditure")
         
         # Show source entity field for Inherited and Baseline types
         mit_source_entity = ""
@@ -94,7 +100,11 @@ def _render_mitigation_form(create_mitigation_fn: Callable[..., bool]):
                     status=mit_status,
                     description=mit_description,
                     owner=mit_owner,
-                    source_entity=mit_source_entity
+                    source_entity=mit_source_entity,
+                    ext_fields={
+                        "capex": mit_capex if mit_capex > 0 else None,
+                        "opex": mit_opex if mit_opex > 0 else None
+                    }
                 )
                 if result_id:
                     if add_to_scope and filter_mgr:

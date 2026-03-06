@@ -189,6 +189,16 @@ entities:
       required: false
       default: null
       description: Source entity for inherited mitigations
+    - name: capex
+      type: float
+      required: false
+      default: null
+      description: Capital Expenditure (CAPEX)
+    - name: opex
+      type: float
+      required: false
+      default: null
+      description: Operational Expenditure (OPEX)
     custom_attributes: []
 relationships:
   influences:

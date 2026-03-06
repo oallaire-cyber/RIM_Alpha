@@ -32,8 +32,8 @@ The following features have been broken down into independent work streams. **Mu
 ### 🌊 Work Stream B: Schema & Context Data Management (Backend/Fullstack)
 *Requires knowledge of the existing Pydantic/YAML schema loader, CRUD forms, and Streamlit session state.*
 
-*   **[U4] Strict Data Validation (Pydantic)**: Implement rigid validation for all incoming graph logic using `pydantic`. Models must cover both risk nodes and generic context nodes, driven by schema YAML property definitions.
-*   **[U5] Mitigation Budget Attributes**: Extend the Mitigation schema with **CAPEX** and **OPEX** attributes in the YAML and update the UI forms to capture them.
+*   ~~**[U4] Strict Data Validation (Pydantic)**~~ ✅ _(v2.16.0)_: Implement rigid validation for all incoming graph logic using `pydantic`. Models must cover both risk nodes and generic context nodes, driven by schema YAML property definitions.
+*   ~~**[U5] Mitigation Budget Attributes**~~ ✅ _(v2.16.0)_: Extend the Mitigation schema with **CAPEX** and **OPEX** attributes in the YAML and update the UI forms to capture them.
 *   ~~**[U11] Risk Subtypes**~~ ✅ _(v2.11.0)_: Schema-driven subtype system with 9 built-in subtypes. Each subtype defines `applies_to` levels and optional `extension_fields` stored as `ext_*` properties on `:Risk` nodes. Zero impact on exposure engine.
 *   **[F12] Generic Context Node and Context Edge CRUD UI**: A schema-driven UI to manage custom context nodes/edges exactly how risks/influences are managed. Driven entirely by property definitions in YAML. Must be scope-aware.
 *   **[F18] Extend Data Management for Context Data**: Extend the existing Excel import/export and JSON backup/restore capabilities (`import_export.py`) to fully handle ContextNode and ContextEdge data.

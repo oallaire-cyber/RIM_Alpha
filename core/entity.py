@@ -71,7 +71,7 @@ class EntityTypeDefinition:
     
     def validate(self, data: Dict[str, Any]) -> tuple[bool, List[str]]:
         """
-        Validate entity data.
+        Validate entity data using dynamic Pydantic models.
         
         Args:
             data: Entity data dictionary
@@ -79,9 +79,8 @@ class EntityTypeDefinition:
         Returns:
             Tuple of (is_valid, error messages)
         """
-        if self._validator is None:
-            self._validator = AttributeValidator(self.attributes)
-        return self._validator.validate_all(data)
+        from core.validation import validate_entity_data_pydantic
+        return validate_entity_data_pydantic(self, data)
     
     def prepare_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """

@@ -208,6 +208,16 @@ entities:
         type: "string"
         required: false
         description: "Framework reference (e.g., NIST CSF, ISO 27001)"
+      - name: "capex"
+        type: "float"
+        required: false
+        default: null
+        description: "Capital Expenditure (CAPEX)"
+      - name: "opex"
+        type: "float"
+        required: false
+        default: null
+        description: "Operational Expenditure (OPEX)"
 
   # Custom entity types for IT Security domain
   custom_entities:

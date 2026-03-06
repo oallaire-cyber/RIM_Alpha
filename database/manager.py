@@ -342,12 +342,13 @@ class RiskGraphManager:
         status: str,
         description: str = "",
         owner: str = "",
-        source_entity: str = ""
+        source_entity: str = "",
+        ext_fields: Optional[Dict[str, Any]] = None
     ) -> Optional[str]:
         """Create a new mitigation node. Returns the created node ID or None."""
         result = mitigations.create_mitigation(
             self._connection, name, mitigation_type, status,
-            description, owner, source_entity
+            description, owner, source_entity, ext_fields
         )
         return result
     
