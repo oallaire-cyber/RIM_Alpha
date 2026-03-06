@@ -17,3 +17,11 @@ This document contains critical rules regarding:
 4. **Virtual Environment Execution**: All Python and pytest commands must be prefixed with `.\venv\Scripts\activate;`.
 
 Do not attempt to write code, modify the schema, or run commands without adhering to the rules specified in `AGENT_RULES_AND_CONTEXT.md`.
+
+## Standard Development Finalization Steps
+At the end of any development task or feature implementation, you **MUST** implicitly complete the following sequence:
+
+1. **Automated Testing**: Execute the automated test suite. If the feature warrants it, write new pytest functions covering the changes before running them.
+2. **Manual Validation**: Document the specific actions a human should perform to manually validate your updates within the `walkthrough.md` artifact.
+3. **Update Documentation**: Identify and update all necessary documentation files including `CHANGELOG.md`, `README.md`, `ROADMAPv2.md`, and any relevant markdown files in the `docs/` folder.
+4. **Git Commit Text**: Finally, generate and provide the user with the recommended text for the git commit.

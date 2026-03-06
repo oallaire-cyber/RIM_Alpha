@@ -65,6 +65,7 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+tmp_*.py
 
 # Docker
 .docker/
@@ -80,6 +81,8 @@ neo4j/plugins/
 .coverage
 htmlcov/
 .tox/
+*_out.txt
+test_output.txt
 
 # Documentation builds
 docs/_build/
@@ -89,3 +92,4 @@ risk_network.html
 demo_output/
 Archive/
 mnt/
+.rim_schema

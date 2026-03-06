@@ -4,6 +4,19 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.16.1] - 2026-03-06
+
+### Chore: `.gitignore` Update & Untracked Files Cleanup
+
+**Changes:**
+- Cleaned up the Git tracking state by removing several temporary execution, output, and configuration files that were inadvertently tracked.
+- Added strict ignore rules to `.gitignore` to prevent future tracking of:
+  - Automation output logs (`*_out.txt`, `test_output.txt`)
+  - Temporary scripts (`tmp_*.py`)
+  - The local active schema state file (`.rim_schema`)
+
+---
+
 ## [v2.16.0] - 2026-03-06
 
 ### [U4] Strict Data Validation & [U5] Mitigation Budget Attributes
