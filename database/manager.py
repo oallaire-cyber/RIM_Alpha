@@ -7,7 +7,7 @@ maintaining backward compatibility with the existing application.
 
 from typing import List, Dict, Any, Optional
 from database.connection import Neo4jConnection
-from database.queries import risks, tpos, mitigations, influences, analysis
+from database.queries import risks, tpos, mitigations, influences, analysis, generic_entity, generic_relationship
 
 
 class RiskGraphManager:
@@ -457,6 +457,57 @@ class RiskGraphManager:
         """Get mitigation summary for all risks."""
         return mitigations.get_risk_mitigation_summary(self._connection)
     
+    # =========================================================================
+    # GENERIC ENTITY OPERATIONS (Context Nodes / Additional Entities)
+    # =========================================================================
+    
+    def create_generic_entity(self, entity_type, data: dict) -> dict:
+        """Create a generic entity."""
+        return generic_entity.create_entity(self.driver, entity_type, data)
+        
+    def get_generic_entities(self, entity_type, filters: dict = None) -> list:
+        """Get generic entities of a specific type."""
+        return generic_entity.get_all_entities(self.driver, entity_type, filters)
+        
+    def get_generic_entity_by_id(self, entity_type, entity_id: str) -> Optional[dict]:
+        """Get a generic entity by ID."""
+        return generic_entity.get_entity_by_id(self.driver, entity_type, entity_id)
+        
+    def update_generic_entity(self, entity_type, entity_id: str, data: dict) -> Optional[dict]:
+        """Update a generic entity."""
+        return generic_entity.update_entity(self.driver, entity_type, entity_id, data)
+        
+    def delete_generic_entity(self, entity_type, entity_id: str, cascade: bool = True) -> bool:
+        """Delete a generic entity."""
+        return generic_entity.delete_entity(self.driver, entity_type, entity_id, cascade)
+
+    # =========================================================================
+    # GENERIC RELATIONSHIP OPERATIONS (Context Edges)
+    # =========================================================================
+    
+    def create_generic_relationship(self, rel_type, source_id: str, target_id: str, 
+                                    source_type, target_type, data: dict = None) -> dict:
+        """Create a generic relationship."""
+        return generic_relationship.create_relationship(
+            self.driver, rel_type, source_id, target_id, source_type, target_type, data
+        )
+        
+    def get_generic_relationships(self, rel_type, filters: dict = None) -> list:
+        """Get generic relationships of a specific type."""
+        return generic_relationship.get_all_relationships(self.driver, rel_type, filters)
+        
+    def get_generic_relationship_by_id(self, rel_type, rel_id: str) -> Optional[dict]:
+        """Get a generic relationship by ID."""
+        return generic_relationship.get_relationship_by_id(self.driver, rel_type, rel_id)
+        
+    def update_generic_relationship(self, rel_type, rel_id: str, data: dict) -> Optional[dict]:
+        """Update a generic relationship."""
+        return generic_relationship.update_relationship(self.driver, rel_type, rel_id, data)
+        
+    def delete_generic_relationship(self, rel_type, rel_id: str) -> bool:
+        """Delete a generic relationship."""
+        return generic_relationship.delete_relationship(self.driver, rel_type, rel_id)
+
     # =========================================================================
     # STATISTICS & ANALYSIS
     # =========================================================================

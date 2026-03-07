@@ -327,6 +327,10 @@ ui:
     label: Import/Export
     icon: 📥
     enabled: true
+  - id: context_data
+    label: Context Data
+    icon: 🧩
+    enabled: true
   presets:
   - id: all_elements
     name: 🔍 All Elements

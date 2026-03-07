@@ -45,6 +45,7 @@ from ui.tabs import (
     render_mitigations_tab,
     render_influences_tab,
     render_import_export_tab,
+    render_context_data_tab,
 )
 
 # Visualization
@@ -1249,6 +1250,7 @@ def render_main_content(manager: RiskGraphManager):
         ),
         "analysis": render_analysis_tab,
         "import_export": lambda m, c: render_import_export_tab(m.export_to_excel, m.import_from_excel),
+        "context_data": lambda m, c: render_context_data_tab(m),
     }
     
     # Render main tabs dynamically from schema
