@@ -1,6 +1,6 @@
 version: '2.0'
 name: Default
-description: Default RIM schema based on SMR nuclear project configuration
+description: Default RIM schema for the ODT New Space Program (Orbital Dynamics Technologies)
 entities:
   risk:
     neo4j_label: Risk

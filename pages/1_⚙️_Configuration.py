@@ -312,10 +312,9 @@ def render_schema_management():
         return
     
     # Sub-tabs for different schema sections
-    subtab1, subtab2, subtab3, subtab4, subtab5, subtab6, subtab7, subtab8 = st.tabs([
+    subtab1, subtab2, subtab3, subtab4, subtab5, subtab6, subtab7 = st.tabs([
         "⚙️ General",
         "🎯 Risk Config",
-        "🏆 TPO Config", 
         "🛡️ Mitigation Config",
         "🔗 Relationships",
         "🧩 Context Nodes",
@@ -330,21 +329,18 @@ def render_schema_management():
         render_risk_config(schema)
     
     with subtab3:
-        render_tpo_config(schema)
-    
-    with subtab4:
         render_mitigation_config(schema)
     
-    with subtab5:
+    with subtab4:
         render_relationship_config(schema)
     
-    with subtab6:
+    with subtab5:
         render_context_nodes_config(schema)
     
-    with subtab7:
+    with subtab6:
         render_context_edges_config(schema)
     
-    with subtab8:
+    with subtab7:
         render_yaml_preview(schema)
 
 
