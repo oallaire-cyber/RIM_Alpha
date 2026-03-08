@@ -4,6 +4,26 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.17.0] - 2026-03-08
+
+### [F12] Generic Context Node and Context Edge CRUD UI
+
+**New Features:**
+
+- **Unified Dynamic CRUD UI**: Deprecated all independent static CRUD tabs in favor of a single `unified_crud_tab.py` component that dynamically builds data grids, creation forms, and update forms directly from the active `schema.yaml` properties definitions.
+- **Data Management Hub**: Created a new dedicated `pages/2_💾_Data_Management.py` page. This fully uncouples data mutation activities from the main dashboard, allowing the main app to strictly focus on Visualizations and Analysis.
+- **TPO Migration**: TPOs (Top Program Objectives) and their respective impacts have been entirely rebuilt natively using the new Context Node framework, removing over a hundred lines of legacy hardcoded engine pathways.
+- **Scope-Awareness Enhancements**: When creating an entity while an Analysis Scope is active, the unified UI will seamlessly insert that new entity directly into the active subgraph without requiring manual association.
+
+**Files Modified:**
+- `pages/2_💾_Data_Management.py` — [NEW] Dedicated data management Streamlit page.
+- `ui/tabs/unified_crud_tab.py` — [NEW] Highly sophisticated schema-to-UI data grid and form generator.
+- `database/manager.py` — Created `create_unified_entity` and generic route wrappers to eliminate frontend type handling.
+- `ui/home.py` — Purged all legacy CRUD routing.
+- `ui/tabs/risks_tab.py`, `mitigations_tab.py`, `influences_tab.py`, `context_data_tab.py` — [DELETED] Replaced by the unified schema-driven UI.
+
+---
+
 ## [v2.16.1] - 2026-03-06
 
 ### Chore: `.gitignore` Update & Untracked Files Cleanup
