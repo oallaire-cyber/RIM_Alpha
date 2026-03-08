@@ -1251,16 +1251,24 @@ class RiskGraphManager:
     
     def export_to_excel(self, filepath: str) -> bool:
         """
-        Export all data to an Excel file.
-        
+        Export all data (core + context) to an Excel file.
+
+        Sheets produced:
+          Core:    Risks, Influences, TPOs, TPO_Impacts, Mitigations, Mitigates
+          Context: CN_{type_id} per ContextNode type, CE_{rel_id} per ContextEdge type
+
         Args:
             filepath: Path to save the Excel file
-        
+
         Returns:
             True if export successful
         """
         from services.export_service import export_to_excel
-        
+        from core import get_registry
+
+        registry = get_registry()
+        context_nodes_data, context_edges_data = self._collect_context_data(registry)
+
         return export_to_excel(
             filepath=filepath,
             risks=self.get_all_risks(),
@@ -1268,39 +1276,50 @@ class RiskGraphManager:
             tpos=self.get_all_tpos(),
             tpo_impacts=self.get_all_tpo_impacts(),
             mitigations=self.get_all_mitigations(),
-            mitigates_relationships=self.get_all_mitigates_relationships()
+            mitigates_relationships=self.get_all_mitigates_relationships(),
+            context_nodes_data=context_nodes_data,
+            context_edges_data=context_edges_data,
         )
-    
+
     def export_to_excel_bytes(self) -> bytes:
         """
-        Export all data to Excel and return as bytes.
-        
+        Export all data (core + context) to Excel and return as bytes.
+
         Returns:
             Excel file content as bytes
         """
         from services.export_service import export_to_excel_bytes
-        
+        from core import get_registry
+
+        registry = get_registry()
+        context_nodes_data, context_edges_data = self._collect_context_data(registry)
+
         return export_to_excel_bytes(
             risks=self.get_all_risks(),
             influences=self.get_semantic_influences(),
             tpos=self.get_all_tpos(),
             tpo_impacts=self.get_all_tpo_impacts(),
             mitigations=self.get_all_mitigations(),
-            mitigates_relationships=self.get_all_mitigates_relationships()
+            mitigates_relationships=self.get_all_mitigates_relationships(),
+            context_nodes_data=context_nodes_data,
+            context_edges_data=context_edges_data,
         )
-    
+
     def import_from_excel(self, filepath: str) -> dict:
         """
-        Import data from an Excel file.
-        
+        Import data from an Excel file (core + context sheets).
+
         Args:
             filepath: Path to the Excel file
-        
+
         Returns:
-            ImportResult as dictionary with created counts and errors
+            ImportResult as dictionary with created/skipped counts and errors
         """
         from services.import_service import ExcelImporter
-        
+        from core import get_registry
+
+        registry = get_registry()
+
         importer = ExcelImporter(
             create_risk_fn=self.create_risk,
             create_tpo_fn=self.create_tpo,
@@ -1310,11 +1329,75 @@ class RiskGraphManager:
             create_mitigates_fn=self.create_mitigates_relationship,
             get_all_risks_fn=self.get_all_risks,
             get_all_tpos_fn=self.get_all_tpos,
-            get_all_mitigations_fn=self.get_all_mitigations
+            get_all_mitigations_fn=self.get_all_mitigations,
+            # Context data callbacks
+            create_generic_entity_fn=self.create_entity,
+            get_generic_entities_fn=self.get_entities,
+            create_generic_relationship_fn=self.create_relationship,
+            registry=registry,
         )
-        
+
         result = importer.import_from_excel(filepath)
         return result.to_dict()
+
+    def export_to_json(self) -> Dict[str, Any]:
+        """
+        Export the full graph as a JSON-serialisable dict (backup).
+
+        Returns:
+            Dict with schema_version, exported_at, and all entity collections.
+        """
+        from services.backup_service import export_graph_to_json
+        from core import get_registry
+
+        return export_graph_to_json(manager=self, registry=get_registry())
+
+    def import_from_json(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Restore the graph from a JSON backup dict (upserts by name).
+
+        Args:
+            data: Backup dict as produced by export_to_json().
+
+        Returns:
+            Summary dict with created/skipped counts and error list.
+        """
+        from services.backup_service import import_graph_from_json
+        from core import get_registry
+
+        return import_graph_from_json(manager=self, data=data, registry=get_registry())
+
+    def _collect_context_data(
+        self, registry
+    ) -> tuple:
+        """
+        Collect all ContextNode and ContextEdge data keyed by type_id.
+
+        Returns:
+            Tuple of (context_nodes_data, context_edges_data) dicts.
+        """
+        kernel_rel_ids = {"influences", "mitigates"}
+        core_entity_ids = {"risk", "mitigation"}
+
+        context_nodes_data: Dict[str, list] = {}
+        for entity_type in registry.entity_types.values():
+            type_id = entity_type.type_id
+            if type_id in core_entity_ids:
+                continue
+            entities = self.get_entities(type_id) or []
+            if entities:
+                context_nodes_data[type_id] = entities
+
+        context_edges_data: Dict[str, list] = {}
+        for rel_type in registry.relationship_types.values():
+            rel_id = getattr(rel_type, "type_id", None) or getattr(rel_type, "id", None)
+            if not rel_id or rel_id in kernel_rel_ids:
+                continue
+            edges = self.get_relationships(rel_id) or []
+            if edges:
+                context_edges_data[rel_id] = edges
+
+        return context_nodes_data, context_edges_data
     
     # =========================================================================
     # EXPOSURE CALCULATION

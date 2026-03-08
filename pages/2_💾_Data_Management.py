@@ -107,8 +107,15 @@ def render_data_management_page():
                     
     # 5. Import / Export
     with tabs[4]:
-        st.markdown("Bulk manage graph definitions via Excel.")
-        render_import_export_tab(manager.export_to_excel, manager.import_from_excel)
+        st.markdown("Bulk manage graph definitions via Excel or JSON backup.")
+        render_import_export_tab(
+            export_fn=manager.export_to_excel,
+            import_fn=manager.import_from_excel,
+            export_bytes_fn=manager.export_to_excel_bytes,
+            export_json_fn=manager.export_to_json,
+            import_json_fn=manager.import_from_json,
+        )
+
 
 
 def main():
