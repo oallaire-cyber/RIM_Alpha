@@ -120,6 +120,18 @@ def get_all_relationships(
     """
     neo4j_type = rel_type.neo4j_type
     
+    # Fast existence guard — avoid Neo4j 01N51 warning for schema-defined types
+    # that have not yet been persisted to the database.
+    with driver.session() as session:
+        result = session.run(
+            "CALL db.relationshipTypes() YIELD relationshipType RETURN collect(relationshipType) AS types"
+        )
+        record = result.single()
+        existing_types = record["types"] if record else []
+    
+    if neo4j_type not in existing_types:
+        return []
+
     where_clauses = []
     params = {}
     
@@ -159,6 +171,7 @@ def get_all_relationships(
             relationships.append(rel)
     
     return relationships
+
 
 
 def get_relationship_by_id(
