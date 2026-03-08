@@ -41,7 +41,6 @@ from ui.dynamic_forms import build_entity_form
 # CRUD Tabs
 from ui.tabs import (
     render_risks_tab,
-    render_tpos_tab,
     render_mitigations_tab,
     render_influences_tab,
     render_import_export_tab,
@@ -1219,10 +1218,17 @@ def render_main_content(manager: RiskGraphManager):
         # Add connected mitigations
         _all_mitigates = manager.get_all_mitigates_relationships()
         _connected_mit_ids = {mr["mitigation_id"] for mr in _all_mitigates if mr.get("risk_id") in _expanded}
-        # Add connected TPOs
-        _all_tpo_impacts = manager.get_all_tpo_impacts()
-        _connected_tpo_ids = {i["tpo_id"] for i in _all_tpo_impacts if i.get("risk_id") in _expanded}
-        _expanded_crud_ids = list(_expanded | _connected_mit_ids | _connected_tpo_ids)
+        
+        # Add connected generic context nodes (e.g. TPOs, business units) that have edges to risks
+        _all_context_edges = manager.get_generic_relationships("ContextEdge")
+        _connected_context_ids = set()
+        for e in _all_context_edges:
+            if e.get("source_id") in _expanded:
+                _connected_context_ids.add(e.get("target_id"))
+            if e.get("target_id") in _expanded:
+                _connected_context_ids.add(e.get("source_id"))
+                
+        _expanded_crud_ids = list(_expanded | _connected_mit_ids | _connected_context_ids)
 
     tab_renderers = {
         "visualization": render_visualization_tab,
@@ -1230,11 +1236,6 @@ def render_main_content(manager: RiskGraphManager):
             get_all_risks_fn=_scoped_getter(m.get_all_risks, _expanded_crud_ids),
             create_risk_fn=m.create_risk,
             delete_risk_fn=m.delete_risk,
-        ),
-        "tpos": lambda m, c: render_tpos_tab(
-            get_all_tpos_fn=_scoped_getter(m.get_all_tpos, _expanded_crud_ids),
-            create_tpo_fn=m.create_tpo,
-            delete_tpo_fn=m.delete_tpo,
         ),
         "mitigations": lambda m, c: render_mitigations_tab(
             get_all_mitigations_fn=_scoped_getter(m.get_all_mitigations, _expanded_crud_ids),

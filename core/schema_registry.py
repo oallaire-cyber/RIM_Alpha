@@ -73,6 +73,7 @@ class SchemaRegistry:
         # Load extensible parts
         self._load_additional_entities(data)
         self._load_additional_relationships(data)
+        self._load_context_edges(data)
         
         # Load configuration
         self._ui_config = data.get("ui", {})
@@ -175,6 +176,35 @@ class SchemaRegistry:
                 if cid and cid not in self._entity_types:
                     self._entity_types[cid] = EntityTypeDefinition.from_context_node_schema(
                         cid, custom
+                    )
+    
+    def _load_context_edges(self, data: Dict[str, Any]) -> None:
+        """
+        Load context edge types from the context_edges section.
+        
+        Args:
+            data: Full schema data
+        """
+        kernel_ids = {"influences", "mitigates"}
+        
+        # New format: context_edges map
+        context_edges = data.get("context_edges", {})
+        if isinstance(context_edges, list):
+            # Fallback if list
+            for rel_data in context_edges:
+                rel_id = rel_data.get("id")
+                if rel_id and rel_id not in kernel_ids and rel_id not in self._relationship_types:
+                    self._relationship_types[rel_id] = RelationshipTypeDefinition.from_context_edge_schema(
+                        rel_data
+                    )
+        else:
+            for rel_id, rel_data in context_edges.items():
+                if rel_id and rel_id not in kernel_ids and rel_id not in self._relationship_types:
+                    # Inject ID if missing
+                    if "id" not in rel_data:
+                        rel_data["id"] = rel_id
+                    self._relationship_types[rel_id] = RelationshipTypeDefinition.from_context_edge_schema(
+                        rel_data
                     )
     
     def _load_additional_entities(self, data: Dict[str, Any]) -> None:

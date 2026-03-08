@@ -32,6 +32,7 @@ def get_tab_config(registry: Optional[SchemaRegistry] = None) -> List[Dict[str, 
             {"id": "risks", "label": "Risks", "entity_type": "risk", "icon": "🎯"},
             {"id": "mitigations", "label": "Mitigations", "entity_type": "mitigation", "icon": "🛡️"},
             {"id": "influences", "label": "Influences", "relationship_type": "influences", "icon": "🔗"},
+            {"id": "context_data", "label": "Context Data", "icon": "🧩"},
         ]
         
     # Filter tabs based on Complexity mode
@@ -218,8 +219,6 @@ def _render_entity_tab_content(
                 entities = manager.get_all_risks()
             elif entity_type_id == "mitigation":
                 entities = manager.get_all_mitigations()
-            elif entity_type_id == "tpo":
-                entities = manager.get_all_tpos()
             else:
                 entities = []
         

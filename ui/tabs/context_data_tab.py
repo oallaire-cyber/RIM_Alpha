@@ -11,6 +11,8 @@ from core import get_registry, EntityTypeDefinition, RelationshipTypeDefinition
 from database import RiskGraphManager
 from ui.dynamic_forms import build_entity_form, build_relationship_form
 from ui.components import render_pagination
+from config.settings import get_active_schema, get_active_schema_name
+from config.schema_loader import save_schema
 
 
 def render_context_data_tab(manager: RiskGraphManager):
@@ -105,11 +107,15 @@ def _render_context_node_manager(manager: RiskGraphManager, node_def: EntityType
                         
                         # Add to scope logic
                         if active_scopes and add_to_scope and new_node:
-                            # Modify scope config
-                            scope_config = active_scopes[0]  # Take first for now
+                            # Modify scope config in the true schema object
                             if "id" in new_node:
-                                scope_config.node_ids.append(new_node["id"])
-                                filter_mgr.save_scope(scope_config)
+                                scope_id = active_scopes[0].id
+                                schema = get_active_schema()
+                                for s in schema.scopes:
+                                    if s.id == scope_id and new_node["id"] not in s.node_ids:
+                                        s.node_ids.append(new_node["id"])
+                                        break
+                                save_schema(schema, get_active_schema_name())
                                 
                         st.success(f"{node_def.label} created!")
                         st.session_state[f"show_add_cn_{node_def.id}"] = False
@@ -200,10 +206,15 @@ def _render_context_node_card(manager: RiskGraphManager, node: Dict, node_def: E
                 if active_scopes:
                     if st.button("📤 Remove from Scope", key=f"btn_rem_scope_{node_id}"):
                         fm = st.session_state.get("filter_manager")
-                        scope = active_scopes[0]
-                        if node_id in scope.node_ids:
-                            scope.node_ids.remove(node_id)
-                            fm.save_scope(scope)
+                        scope_id = active_scopes[0].id
+                        if node_id in active_scopes[0].node_ids:
+                            active_scopes[0].node_ids.remove(node_id)
+                            schema = get_active_schema()
+                            for s in schema.scopes:
+                                if s.id == scope_id and node_id in s.node_ids:
+                                    s.node_ids.remove(node_id)
+                                    break
+                            save_schema(schema, get_active_schema_name())
                             st.success("Removed from scope.")
                             st.rerun()
                 else:

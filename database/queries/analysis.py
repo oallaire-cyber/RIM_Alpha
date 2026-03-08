@@ -6,7 +6,7 @@ Contains queries for statistics, graph data retrieval, and analysis support.
 
 from typing import List, Dict, Any, Optional
 from database.connection import Neo4jConnection
-from database.queries import risks, tpos, mitigations, influences
+from database.queries import risks, mitigations, influences
 
 # Schema-driven configuration
 from config import RISK_LEVELS
@@ -55,18 +55,7 @@ def get_graph_data(
     nodes = list(risk_nodes) if risk_nodes else []
     risk_ids = [n["id"] for n in nodes]
     
-    # Get TPO nodes if enabled
-    show_tpos = filters.get("show_tpos", True)
-    tpo_nodes = []
-    tpo_ids = []
-    
-    if show_tpos:
-        tpo_nodes = tpos.get_tpos_for_graph(
-            conn,
-            cluster_filter=filters.get("tpo_clusters")
-        )
-        nodes.extend(tpo_nodes)
-        tpo_ids = [n["id"] for n in tpo_nodes]
+
     
     # Get mitigation nodes if enabled
     show_mitigations = filters.get("show_mitigations", False)
@@ -81,6 +70,31 @@ def get_graph_data(
         )
         nodes.extend(mitigation_nodes)
         mitigation_ids = [n["id"] for n in mitigation_nodes]
+
+    # Get generic context nodes
+    from database.queries import generic_entity, generic_relationship
+    from core import get_registry
+    registry = get_registry()
+    
+    context_node_ids = set()
+    for entity_id, entity_type in registry.get_additional_entity_types().items():
+        if entity_id == "tpo":
+            continue
+        if filters.get(f"show_{entity_id}", True):
+            entity_filters = {"node_type": entity_id}
+            for group_name in entity_type.categorical_groups:
+                if f"{entity_id}_{group_name}" in filters:
+                    entity_filters[group_name] = filters[f"{entity_id}_{group_name}"]
+            
+            entities = generic_entity.get_all_entities(conn._driver, entity_type, entity_filters)
+            
+            for node in entities:
+                node["node_type"] = entity_id
+                node["is_context_node"] = entity_type.is_context_node
+                node["zone"] = getattr(entity_type, "zone", "lower")
+                nodes.append(node)
+                context_node_ids.add(node["id"])
+            print(f"DEBUG: Fetched {len(entities)} context nodes of type {entity_id}. Total context IDs: {context_node_ids}")
     
     # Get edges (respecting relationship filters)
     edges = []
@@ -99,19 +113,7 @@ def get_graph_data(
             ]
         edges.extend(influence_edges)
     
-    # TPO impact edges (only if show_tpo_impacts is True)
-    show_tpo_impacts = filters.get("show_tpo_impacts", True)
-    if show_tpos and show_tpo_impacts and risk_ids and tpo_ids:
-        tpo_edges = tpos.get_tpo_impact_edges(conn, risk_ids, tpo_ids)
-        # Filter by impact level if specified
-        impact_level_filter = filters.get("tpo_impact_levels")
-        if impact_level_filter:
-            tpo_edges = [
-                e for e in tpo_edges
-                if e.get("impact_level", "") in impact_level_filter
-                or not e.get("impact_level")  # keep edges without impact_level set
-            ]
-        edges.extend(tpo_edges)
+
     
     # Mitigates edges (only if show_mitigates is True)
     show_mitigates = filters.get("show_mitigates", True)
@@ -126,6 +128,24 @@ def get_graph_data(
                 or not e.get("effectiveness")  # keep edges without effectiveness set
             ]
         edges.extend(mitigates_edges)
+
+    # Generic context edges
+    for rel_id, rel_type in registry.get_additional_relationship_types().items():
+        if rel_id == "impacts_tpo":
+            continue
+        if filters.get(f"show_{rel_id}", True):
+            rel_filters = {}
+            for group_name in rel_type.categorical_groups:
+                if f"{rel_id}_{group_name}" in filters:
+                    rel_filters[group_name] = filters[f"{rel_id}_{group_name}"]
+            
+            rels = generic_relationship.get_all_relationships(conn._driver, rel_type, rel_filters)
+            for r in rels:
+                edge = dict(r)
+                edge["source"] = r["source_id"]
+                edge["target"] = r["target_id"]
+                edge["edge_type"] = rel_type.neo4j_type
+                edges.append(edge)
     
     # Apply scope filtering — smart expansion from explicit active scopes
     active_scopes = filters.get("active_scopes")
@@ -146,21 +166,28 @@ def get_graph_data(
         
         # Step 1: Collect in-scope risk IDs
         scoped_risk_ids = scope_set & set(risk_ids)
+        scoped_context_ids = scope_set & context_node_ids
         
-        # Step 2: Optionally expand to 1-hop risk neighbors
+        # Step 2: Optionally expand to 1-hop neighbors
         if scope_include_neighbors:
             neighbor_risk_ids = set()
+            neighbor_context_ids = set()
             for e in edges:
                 src, tgt = e.get("source"), e.get("target")
-                if src in scoped_risk_ids and tgt in set(risk_ids):
+                if src in (scoped_risk_ids | scoped_context_ids) and tgt in set(risk_ids):
                     neighbor_risk_ids.add(tgt)
-                if tgt in scoped_risk_ids and src in set(risk_ids):
+                if tgt in (scoped_risk_ids | scoped_context_ids) and src in set(risk_ids):
                     neighbor_risk_ids.add(src)
+                if src in (scoped_risk_ids | scoped_context_ids) and tgt in context_node_ids:
+                    neighbor_context_ids.add(tgt)
+                if tgt in (scoped_risk_ids | scoped_context_ids) and src in context_node_ids:
+                    neighbor_context_ids.add(src)
             scoped_risk_ids |= neighbor_risk_ids
+            scoped_context_ids |= neighbor_context_ids
         
-        # Step 3: Keep mitigations/TPOs/ContextNodes connected to scoped risks
+        # Step 3: Keep mitigations/ContextNodes connected to scoped risks
         connected_mit_ids = set()
-        connected_tpo_ids = set()
+        connected_context_ids = set()
         for e in edges:
             src, tgt = e.get("source"), e.get("target")
             # Mitigations connect via MITIGATES edges (mitigation → risk)
@@ -168,17 +195,14 @@ def get_graph_data(
                 connected_mit_ids.add(src)
             if src in scoped_risk_ids and tgt in set(mitigation_ids):
                 connected_mit_ids.add(tgt)
-            # TPOs connect via IMPACTS_TPO edges (risk → tpo)
-            if src in scoped_risk_ids and tgt in set(tpo_ids):
-                connected_tpo_ids.add(tgt)
-            if tgt in scoped_risk_ids and src in set(tpo_ids):
-                connected_tpo_ids.add(src)
-        
-        # NOTE: U6 context nodes expansion not yet fully implemented as they are not returned by core node getters yet.
-        # But we prepare the set operation.
+            # Context nodes connect via custom edges
+            if tgt in scoped_risk_ids and src in context_node_ids:
+                connected_context_ids.add(src)
+            if src in scoped_risk_ids and tgt in context_node_ids:
+                connected_context_ids.add(tgt)
         
         # Step 4: Build expanded node set
-        expanded_set = scoped_risk_ids | connected_mit_ids | connected_tpo_ids
+        expanded_set = scoped_risk_ids | connected_mit_ids | scoped_context_ids | connected_context_ids
         
         nodes = [n for n in nodes if n.get("id") in expanded_set]
         edges = [
@@ -186,6 +210,7 @@ def get_graph_data(
             if e.get("source") in expanded_set and e.get("target") in expanded_set
         ]
     
+    print(f"DEBUG: Returning {len(nodes)} nodes. Context IDs in final list: {[n['id'] for n in nodes if n.get('node_type') not in ('Risk', 'Mitigation', 'TPO')]}")
     return nodes, edges
 
 
@@ -280,14 +305,27 @@ def get_statistics(conn: Neo4jConnection, active_scopes: list = None) -> Dict[st
     
     # Risk counts
     all_risks = risks.get_all_risks(conn)
-    all_tpos = tpos.get_all_tpos(conn)
     all_mitigations = mitigations.get_all_mitigations(conn)
     
     # Influence counts
     all_influences = influences.get_all_influences(conn)
     
-    # TPO counts
-    all_tpo_impacts = tpos.get_all_tpo_impacts(conn)
+    # Generic context data (TPOs)
+    from database.queries import generic_entity, generic_relationship
+    from core import get_registry
+    registry = get_registry()
+    tpo_type = registry.get_entity_type("tpo")
+    if tpo_type:
+        all_tpos = generic_entity.get_all_entities(conn._driver, tpo_type)
+        impacts_tpo_type = registry.get_relationship_type("impacts_tpo")
+        all_tpo_impacts = generic_relationship.get_all_relationships(conn._driver, impacts_tpo_type) if impacts_tpo_type else []
+        # Rename field maps to match old `tpo_id` usage for internal arrays
+        for imp in all_tpo_impacts:
+            imp["risk_id"] = imp.get("source_id")
+            imp["tpo_id"] = imp.get("target_id")
+    else:
+        all_tpos = []
+        all_tpo_impacts = []
     
     # Mitigation counts
     all_mitigates = mitigations.get_all_mitigates_relationships(conn)
@@ -409,8 +447,18 @@ def get_all_nodes_for_selection(conn: Neo4jConnection, active_scopes: list = Non
     
     # Get risks
     all_risks = risks.get_all_risks(conn)
-    # Get TPOs
-    all_tpos = tpos.get_all_tpos(conn)
+    # Get generic context data (TPOs)
+    from database.queries import generic_entity, generic_relationship
+    from core import get_registry
+    registry = get_registry()
+    tpo_type = registry.get_entity_type("tpo")
+    if tpo_type:
+        all_tpos = generic_entity.get_all_entities(conn._driver, tpo_type)
+        impacts_tpo_type = registry.get_relationship_type("impacts_tpo")
+        all_tpo_impacts = generic_relationship.get_all_relationships(conn._driver, impacts_tpo_type) if impacts_tpo_type else []
+    else:
+        all_tpos = []
+        all_tpo_impacts = []
     
     if active_scopes:
         scope_node_ids = set()
@@ -440,12 +488,11 @@ def get_all_nodes_for_selection(conn: Neo4jConnection, active_scopes: list = Non
         all_risks = filtered_risks
         
         # Keep TPOs connected to scoped risks
-        all_tpo_impacts = tpos.get_all_tpo_impacts(conn)
         all_tpo_impacts = [
             imp for imp in all_tpo_impacts
-            if imp["risk_id"] in filtered_risk_ids
+            if imp.get("source_id") in filtered_risk_ids
         ]
-        connected_tpo_ids = {imp["tpo_id"] for imp in all_tpo_impacts}
+        connected_tpo_ids = {imp.get("target_id") for imp in all_tpo_impacts}
         all_tpos = [t for t in all_tpos if t["id"] in connected_tpo_ids]
     
     for r in all_risks:
@@ -460,7 +507,7 @@ def get_all_nodes_for_selection(conn: Neo4jConnection, active_scopes: list = Non
     for t in all_tpos:
         result.append({
             "id": t["id"],
-            "label": f"[TPO] {t['reference']}: {t['name']}",
+            "label": f"[TPO] {t.get('reference', t.get('name'))}: {t['name']}",
             "name": t["name"],
             "type": "TPO"
         })

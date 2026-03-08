@@ -106,11 +106,12 @@ def render_graph(
         
         for n in nodes:
             node_type = n.get("node_type", "Risk").lower()
-            if node_type == "tpo" or n.get("id") == highlighted_node_id:
-                continue # Objectives and highlighted node always opaque
+            # Context nodes and TPOs always stay opaque
+            if node_type == "tpo" or n.get("is_context_node") or node_type not in ("risk", "mitigation", "tpo", "undefined", "") or n.get("id") == highlighted_node_id:
+                continue # Objectives, context nodes, and highlighted node always opaque
             if node_type in ("risk", "undefined", "") and n["id"] in top_risk_ids:
                 continue # Top risks always opaque
-            # All other nodes are transparent
+            # All other nodes (including mitigations) are transparent
             transparent_node_ids.add(n["id"])
     
     # Create network

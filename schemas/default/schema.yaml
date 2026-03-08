@@ -101,47 +101,47 @@ entities:
       - operational
       extension_fields: []
     - id: cyber_entry_point
-      label: "Cyber \u2014 Entry Point-Oriented"
+      label: Cyber — Entry Point-Oriented
       applies_to:
       - operational
       extension_fields:
       - name: entry_point_type
         type: enum
+        required: false
+        description: Type of entry point being exploited
         values:
         - Network
         - Physical
         - Human
         - Supply Chain
         - Cloud
-        required: false
-        description: Type of entry point being exploited
       - name: exploitation_technique
         type: string
         required: false
         description: Technique or vector used
       - name: detection_difficulty
         type: enum
+        required: false
+        description: How difficult this attack vector is to detect
         values:
         - Low
         - Medium
         - High
         - Very High
-        required: false
-        description: How difficult this attack vector is to detect
     - id: cyber_target_oriented
-      label: "Cyber \u2014 Target-Oriented"
+      label: Cyber — Target-Oriented
       applies_to:
       - operational
       extension_fields:
       - name: target_type
         type: enum
+        required: false
+        description: Nature of the targeted asset
         values:
         - Functional Target
         - Technical Target
         - Data Asset
         - Personnel
-        required: false
-        description: Nature of the targeted asset
       - name: threat_actor_category
         type: string
         required: false
@@ -149,7 +149,7 @@ entities:
       - name: attack_objective
         type: string
         required: false
-        description: "Attacker's primary objective"
+        description: Attacker's primary objective
     - id: supply_chain
       label: Supply Chain / Industrial
       applies_to:
@@ -157,21 +157,21 @@ entities:
       extension_fields:
       - name: supplier_tier
         type: enum
+        required: false
+        description: Supplier tier in the supply chain
         values:
         - Tier 1
         - Tier 2
         - Tier 3
         - Internal
-        required: false
-        description: Supplier tier in the supply chain
       - name: criticality_class
         type: enum
+        required: false
+        description: Criticality classification of the supplier
         values:
         - Critical
         - Important
         - Standard
-        required: false
-        description: Criticality classification of the supplier
       - name: single_source
         type: boolean
         required: false
@@ -187,14 +187,14 @@ entities:
         description: Subsystem or component affected
       - name: qualification_stage
         type: enum
+        required: false
+        description: Programme stage at which the risk materialises
         values:
         - Design
         - Prototype
         - Test
         - Qualification
         - Production
-        required: false
-        description: Programme stage at which the risk materialises
       - name: failure_mode
         type: string
         required: false
@@ -243,13 +243,13 @@ entities:
       extension_fields:
       - name: contract_type
         type: enum
-        values:
-        - Fixed Price
-        - "T&M"
-        - Framework
-        - Joint Venture
         required: false
         description: Type of contract involved
+        values:
+        - Fixed Price
+        - T&M
+        - Framework
+        - Joint Venture
       - name: penalty_clause
         type: boolean
         required: false
@@ -257,7 +257,7 @@ entities:
       - name: financial_ceiling_meur
         type: float
         required: false
-        description: "Financial ceiling in M\u20AC"
+        description: Financial ceiling in M€
     - id: strategic
       label: Strategic
       applies_to:
@@ -265,12 +265,12 @@ entities:
       extension_fields:
       - name: strategic_horizon
         type: enum
-        values:
-        - "Short-term (<1yr)"
-        - "Medium-term (1-3yr)"
-        - "Long-term (>3yr)"
         required: false
         description: Time horizon of the strategic risk
+        values:
+        - Short-term (<1yr)
+        - Medium-term (1-3yr)
+        - Long-term (>3yr)
       - name: competitive_dimension
         type: string
         required: false
@@ -423,29 +423,7 @@ relationships:
       value: 1.0
       description: Direct, inevitable causation
       color: '#e74c3c'
-  impacts_tpo:
-    neo4j_type: IMPACTS_TPO
-    impact_levels:
-    - id: low
-      label: Low
-      value: 1
-      description: Minor impact on objective
-      color: '#27ae60'
-    - id: medium
-      label: Medium
-      value: 2
-      description: Moderate impact on objective
-      color: '#f39c12'
-    - id: high
-      label: High
-      value: 3
-      description: Significant impact on objective
-      color: '#e67e22'
-    - id: critical
-      label: Critical
-      value: 4
-      description: Severe impact on objective
-      color: '#e74c3c'
+
   mitigates:
     neo4j_type: MITIGATES
     effectiveness_levels:
@@ -696,8 +674,27 @@ context_nodes:
     - name: capability_level
       type: int
       required: false
-      default: null
       description: Capability level (1-10)
+  tpo:
+    label: Target Performance Objective
+    description: 'Business objective impacted by risk'
+    color: '#f1c40f'
+    shape: hexagon
+    emoji: 🟡
+    size: 35
+    zone: upper
+    border: solid
+    properties:
+    - name: name
+      type: string
+      required: true
+      default: null
+      description: TPO Name
+    - name: cluster
+      type: string
+      required: false
+      default: null
+      description: Cluster grouping
 context_edges:
   exploits:
     label: Exploits
@@ -724,6 +721,37 @@ context_edges:
     line_style: solid
     bidirectional: false
     properties: []
+  impacts_tpo:
+    label: Impacts TPO
+    neo4j_type: IMPACTS_TPO
+    description: ''
+    from_node: risk
+    to_node: tpo
+    color: '#3498db'
+    line_style: dash-dot
+    bidirectional: false
+    properties: []
+    impact_levels:
+    - id: low
+      label: Low
+      value: 1
+      description: Minor impact on objective
+      color: '#27ae60'
+    - id: medium
+      label: Medium
+      value: 2
+      description: Moderate impact on objective
+      color: '#f39c12'
+    - id: high
+      label: High
+      value: 3
+      description: Significant impact on objective
+      color: '#e67e22'
+    - id: critical
+      label: Critical
+      value: 4
+      description: Severe impact on objective
+      color: '#e74c3c'
 scopes:
 - id: odt_demo
   name: 🚀 ODT Demo - Full Example
@@ -789,6 +817,7 @@ scopes:
   - c1002844-5da5-5fcc-8fef-26c72e11efc3
   - a3fca39e-52d0-577d-be2d-065c0a3ffe3b
   - 3cd50776-6b8e-516c-b584-045a230744a7
+  - b8223662-3e03-40b8-a898-b3d161bbc51c
   include_connected_edges: true
   show_boundary_edges: false
   color: '#AED6F1'

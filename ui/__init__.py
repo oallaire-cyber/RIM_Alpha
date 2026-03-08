@@ -62,12 +62,10 @@ from ui.panels import (
 
 from ui.tabs import (
     render_risks_tab,
-    render_tpos_tab,
     render_mitigations_tab,
     render_influences_tab,
-    render_tpo_impacts_tab,
-    render_risk_mitigations_tab,
     render_import_export_tab,
+    render_context_data_tab,
 )
 
 from ui.legend import (
@@ -142,12 +140,10 @@ __all__ = [
     "get_level_icon",
     # Tabs
     "render_risks_tab",
-    "render_tpos_tab",
     "render_mitigations_tab",
     "render_influences_tab",
-    "render_tpo_impacts_tab",
-    "render_risk_mitigations_tab",
     "render_import_export_tab",
+    "render_context_data_tab",
     # Legend
     "render_graph_legend",
     "render_compact_legend",

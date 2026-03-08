@@ -7,7 +7,7 @@ maintaining backward compatibility with the existing application.
 
 from typing import List, Dict, Any, Optional
 from database.connection import Neo4jConnection
-from database.queries import risks, tpos, mitigations, influences, analysis, generic_entity, generic_relationship
+from database.queries import risks, mitigations, influences, analysis, generic_entity, generic_relationship
 
 
 class RiskGraphManager:
@@ -237,99 +237,6 @@ class RiskGraphManager:
     def delete_influence(self, influence_id: str) -> bool:
         """Delete an influence relationship."""
         return influences.delete_influence(self._connection, influence_id)
-    
-    # =========================================================================
-    # TPO OPERATIONS
-    # =========================================================================
-    
-    def create_tpo(
-        self,
-        reference: str,
-        name: str,
-        cluster: str,
-        description: str = ""
-    ) -> Optional[str]:
-        """Create a new TPO node. Returns the created node ID or None."""
-        result = tpos.create_tpo(self._connection, reference, name, cluster, description)
-        return result
-    
-    def get_all_tpos(self, cluster_filter: list = None) -> list:
-        """Retrieve all TPOs with optional cluster filter."""
-        return tpos.get_all_tpos(self._connection, cluster_filter)
-    
-    def get_tpo_by_id(self, tpo_id: str) -> Optional[Dict]:
-        """Retrieve a TPO by its ID."""
-        return tpos.get_tpo_by_id(self._connection, tpo_id)
-    
-    def get_tpo_by_reference(self, reference: str) -> Optional[Dict]:
-        """Retrieve a TPO by its reference code."""
-        return tpos.get_tpo_by_reference(self._connection, reference)
-    
-    def update_tpo(
-        self,
-        tpo_id: str,
-        reference: str,
-        name: str,
-        cluster: str,
-        description: str
-    ) -> bool:
-        """Update an existing TPO."""
-        return tpos.update_tpo(
-            self._connection, tpo_id, reference, name, cluster, description
-        )
-    
-    def delete_tpo(self, tpo_id: str) -> bool:
-        """Delete a TPO and all its relationships."""
-        return tpos.delete_tpo(self._connection, tpo_id)
-    
-    # =========================================================================
-    # TPO IMPACT OPERATIONS
-    # =========================================================================
-    
-    def create_tpo_impact(
-        self,
-        risk_id: str,
-        tpo_id: str,
-        impact_level: str,
-        description: str = ""
-    ) -> bool:
-        """Create an impact relationship from a Business Risk to a TPO."""
-        try:
-            result = tpos.create_tpo_impact(
-                self._connection, risk_id, tpo_id, impact_level, description
-            )
-            return result is not None
-        except ValueError as e:
-            import streamlit as st
-            st.error(str(e))
-            return False
-    
-    def get_all_tpo_impacts(self) -> list:
-        """Retrieve all TPO impact relationships."""
-        return tpos.get_all_tpo_impacts(self._connection)
-    
-    def get_tpo_impacts_for_risk(self, risk_id: str) -> list:
-        """Get all TPO impacts for a specific risk."""
-        return tpos.get_tpo_impacts_for_risk(self._connection, risk_id)
-    
-    def get_risks_impacting_tpo(self, tpo_id: str) -> list:
-        """Get all risks that impact a specific TPO."""
-        return tpos.get_risks_impacting_tpo(self._connection, tpo_id)
-    
-    def update_tpo_impact(
-        self,
-        impact_id: str,
-        impact_level: str,
-        description: str
-    ) -> bool:
-        """Update a TPO impact relationship."""
-        return tpos.update_tpo_impact(
-            self._connection, impact_id, impact_level, description
-        )
-    
-    def delete_tpo_impact(self, impact_id: str) -> bool:
-        """Delete a TPO impact relationship."""
-        return tpos.delete_tpo_impact(self._connection, impact_id)
     
     # =========================================================================
     # MITIGATION OPERATIONS
