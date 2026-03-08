@@ -40,11 +40,7 @@ from ui.dynamic_forms import build_entity_form
 
 # CRUD Tabs
 from ui.tabs import (
-    render_risks_tab,
-    render_mitigations_tab,
-    render_influences_tab,
     render_import_export_tab,
-    render_context_data_tab,
 )
 
 # Visualization
@@ -1165,94 +1161,33 @@ def render_main_content(manager: RiskGraphManager):
                 if _t in _expanded_scope:
                     _expanded_scope.add(_s)
             _scope_ids = list(_expanded_scope)
+            
         render_influence_analysis_panel(
             get_analysis_fn=lambda: manager_inst.get_influence_analysis(active_scopes=filter_mgr.active_scopes if filter_mgr else None),
             on_node_select=lambda node_id, direction: None
         )
         render_mitigation_analysis_panel(
             get_analysis_fn=lambda: manager_inst.get_mitigation_analysis(active_scopes=filter_mgr.active_scopes if filter_mgr else None),
+            # Pass lambda functions without the complex generic _scoped_getters since analysis panels do their own scoping calculations
             get_coverage_gaps_fn=manager_inst.get_coverage_gap_analysis,
-            get_all_risks_fn=_scoped_getter(manager_inst.get_all_risks, _scope_ids if _scope_ids is None else _expanded_crud_ids),
-            get_all_mitigations_fn=_scoped_getter(manager_inst.get_all_mitigations, _scope_ids if _scope_ids is None else _expanded_crud_ids),
+            get_all_risks_fn=manager_inst.get_all_risks,
+            get_all_mitigations_fn=manager_inst.get_all_mitigations,
             get_risk_details_fn=manager_inst.get_risk_mitigation_details,
             get_mitigation_details_fn=manager_inst.get_mitigation_impact_details,
             get_mitigation_by_id_fn=manager_inst.get_mitigation_by_id,
             get_risks_for_mitigation_fn=manager_inst.get_risks_for_mitigation,
         )
+
+    # ── Tabs Configuration ───────────────────────────────────────────────────
+    # The home page now only contains Visualization and Analysis. Data Management
+    # has been moved to a separate page.
+    tab_names = ["📊 Visualization", "🧮 Analysis Tools"]
+    tabs = st.tabs(tab_names)
     
-    # ── Scope-aware CRUD helpers ──────────────────────────────────────────
-    def _scoped_getter(getter_fn, scope_ids, id_field="id"):
-        """Wrap a getter to filter results by scope."""
-        def wrapped(*args, **kwargs):
-            results = getter_fn(*args, **kwargs)
-            if scope_ids is None:
-                return results
-            _scope_set = set(scope_ids)
-            return [r for r in results if r.get(id_field) in _scope_set]
-        return wrapped
-
-    def _scoped_edge_getter(getter_fn, scope_ids, src_field, tgt_field):
-        """Wrap an edge getter to filter by scope."""
-        def wrapped(*args, **kwargs):
-            results = getter_fn(*args, **kwargs)
-            if scope_ids is None:
-                return results
-            _scope_set = set(scope_ids)
-            return [r for r in results if r.get(src_field) in _scope_set or r.get(tgt_field) in _scope_set]
-        return wrapped
-
-    # Build the expanded scope set (risks + connected mits/tpos) for CRUD
-    _crud_scope_ids = filter_mgr.get_scope_node_ids()
-    _expanded_crud_ids = None
-    if _crud_scope_ids is not None:
-        _expanded = set(_crud_scope_ids)
-        # Optionally expand 1-hop risk neighbors
-        if _global_include_neighbors:
-            _all_influences = manager.get_all_influences()
-            for inf in _all_influences:
-                src, tgt = inf.get("source_id"), inf.get("target_id")
-                if src in _expanded:
-                    _expanded.add(tgt)
-                if tgt in _expanded:
-                    _expanded.add(src)
-        # Add connected mitigations
-        _all_mitigates = manager.get_all_mitigates_relationships()
-        _connected_mit_ids = {mr["mitigation_id"] for mr in _all_mitigates if mr.get("risk_id") in _expanded}
+    # 1. Visualization Tab
+    with tabs[0]:
+        render_visualization_tab(manager)
         
-        # Add connected generic context nodes (e.g. TPOs, business units) that have edges to risks
-        _all_context_edges = manager.get_generic_relationships("ContextEdge")
-        _connected_context_ids = set()
-        for e in _all_context_edges:
-            if e.get("source_id") in _expanded:
-                _connected_context_ids.add(e.get("target_id"))
-            if e.get("target_id") in _expanded:
-                _connected_context_ids.add(e.get("source_id"))
-                
-        _expanded_crud_ids = list(_expanded | _connected_mit_ids | _connected_context_ids)
-
-    tab_renderers = {
-        "visualization": render_visualization_tab,
-        "risks": lambda m, c: render_risks_tab(
-            get_all_risks_fn=_scoped_getter(m.get_all_risks, _expanded_crud_ids),
-            create_risk_fn=m.create_risk,
-            delete_risk_fn=m.delete_risk,
-        ),
-        "mitigations": lambda m, c: render_mitigations_tab(
-            get_all_mitigations_fn=_scoped_getter(m.get_all_mitigations, _expanded_crud_ids),
-            create_mitigation_fn=m.create_mitigation,
-            delete_mitigation_fn=m.delete_mitigation,
-            get_risks_for_mitigation_fn=m.get_risks_for_mitigation,
-        ),
-        "influences": lambda m, c: render_influences_tab(
-            get_all_risks_fn=_scoped_getter(m.get_all_risks, _expanded_crud_ids),
-            get_all_influences_fn=_scoped_edge_getter(m.get_all_influences, _expanded_crud_ids, "source_id", "target_id"),
-            create_influence_fn=m.create_influence,
-            delete_influence_fn=m.delete_influence,
-        ),
-        "analysis": render_analysis_tab,
-        "import_export": lambda m, c: render_import_export_tab(m.export_to_excel, m.import_from_excel),
-        "context_data": lambda m, c: render_context_data_tab(m),
-    }
-    
-    # Render main tabs dynamically from schema
-    render_dynamic_tabs(manager, tab_renderers)
+    # 2. Analysis Tools Tab
+    with tabs[1]:
+        render_analysis_tab(manager, config=None)

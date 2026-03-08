@@ -1632,3 +1632,176 @@ class RiskGraphManager:
         
         return delete_relationship(self._connection._driver, rel_type, rel_id)
 
+    # =========================================================================
+    # UNIFIED UI ROUTERS (Schema-Agnostic CRUD)
+    # =========================================================================
+
+    def create_unified_entity(self, entity_type_id: str, data: Dict[str, Any]) -> Optional[Dict]:
+        """
+        Universal entity creator that routes to specific handlers (Risks)
+        or generic ones (Context Nodes).
+        """
+        from core import get_registry
+        
+        if entity_type_id == "risk":
+            # Extract risk-specific fields from flat data dictionary
+            return self.create_risk(
+                name=data.get("name", "New Risk"),
+                level=data.get("level", "Operational"),
+                categories=data.get("categories", []),
+                description=data.get("description", ""),
+                status=data.get("status", "Active"),
+                activation_condition=data.get("activation_condition"),
+                activation_decision_date=data.get("activation_decision_date"),
+                owner=data.get("owner", ""),
+                probability=data.get("probability"),
+                impact=data.get("impact"),
+                origin=data.get("origin", "New"),
+                subtype=data.get("subtype"),
+                ext_fields=data.get("ext_fields", {})
+            )
+        elif entity_type_id == "mitigation":
+            return self.create_mitigation(
+                name=data.get("name", "New Mitigation"),
+                mitigation_type=data.get("type", "Preventive"),
+                status=data.get("status", "Active"),
+                description=data.get("description", ""),
+                owner=data.get("owner", ""),
+                source_entity=data.get("source_entity", ""),
+                ext_fields=data.get("ext_fields")
+            )
+        else:
+            registry = get_registry()
+            type_def = registry.get_entity_type(entity_type_id)
+            if not type_def:
+                raise ValueError(f"Unknown entity type: {entity_type_id}")
+            return self.create_generic_entity(type_def, data)
+
+    def get_unified_entities(self, entity_type_id: str) -> List[Dict]:
+        """Universal entity fetcher."""
+        from core import get_registry
+        
+        if entity_type_id == "risk":
+            return self.get_all_risks()
+        elif entity_type_id == "mitigation":
+            return self.get_all_mitigations()
+        else:
+            registry = get_registry()
+            type_def = registry.get_entity_type(entity_type_id)
+            if not type_def:
+                return []
+            return self.get_generic_entities(type_def)
+
+    def update_unified_entity(self, entity_type_id: str, id: str, data: Dict[str, Any]) -> Optional[Dict]:
+        """Universal entity updater."""
+        from core import get_registry
+        
+        if entity_type_id == "risk":
+            # Update specific
+            success = self.update_risk(
+                risk_id=id,
+                name=data.get("name", "Unknown Risk"),
+                level=data.get("level", "Operational"),
+                categories=data.get("categories", []),
+                description=data.get("description", ""),
+                status=data.get("status", "Active"),
+                activation_condition=data.get("activation_condition"),
+                activation_decision_date=data.get("activation_decision_date"),
+                owner=data.get("owner", ""),
+                probability=data.get("probability"),
+                impact=data.get("impact"),
+                origin=data.get("origin", "New"),
+                subtype=data.get("subtype"),
+                ext_fields=data.get("ext_fields", {})
+            )
+            return self.get_risk_by_id(id) if success else None
+        elif entity_type_id == "mitigation":
+            success = self.update_mitigation(
+                mitigation_id=id,
+                name=data.get("name", "Unknown Mitigation"),
+                mitigation_type=data.get("type", "Preventive"),
+                status=data.get("status", "Active"),
+                description=data.get("description", ""),
+                owner=data.get("owner", ""),
+                source_entity=data.get("source_entity", "")
+            )
+            return self.get_mitigation_by_id(id) if success else None
+        else:
+            return self.update_generic_entity(entity_type_id, id, data)
+
+    def delete_unified_entity(self, entity_type_id: str, id: str) -> bool:
+        """Universal entity deleter."""
+        if entity_type_id == "risk":
+            return self.delete_risk(id)
+        elif entity_type_id == "mitigation":
+            return self.delete_mitigation(id)
+        else:
+            return self.delete_entity(entity_type_id, id)
+
+    def create_unified_relationship(self, rel_type_id: str, source_id: str, target_id: str, source_type_id: str, target_type_id: str, data: Dict[str, Any]) -> Optional[bool]:
+        """Universal relationship creator."""
+        if rel_type_id == "influences":
+            return self.create_influence(
+                source_id=source_id,
+                target_id=target_id,
+                influence_type="INFLUENCES",
+                strength=data.get("strength", "Moderate"),
+                description=data.get("description", ""),
+                confidence=float(data.get("confidence", 0.8))
+            )
+        elif rel_type_id == "mitigates":
+            return self.create_mitigates_link(
+                mitigation_id=source_id,
+                risk_id=target_id,
+                effectiveness=data.get("effectiveness", "Minor"),
+                description=data.get("description", "")
+            )
+            
+        # Context edges
+        res = self.create_relationship(
+            rel_type_id=rel_type_id,
+            source_id=source_id,
+            target_id=target_id,
+            source_entity_type_id=source_type_id,
+            target_entity_type_id=target_type_id,
+            data=data
+        )
+        return res is not None
+
+    def get_unified_relationships(self, rel_type_id: str) -> List[Dict]:
+        """Universal relationship getter."""
+        if rel_type_id == "influences":
+            return self.get_all_influences()
+        elif rel_type_id == "mitigates":
+            return self.get_all_mitigates_relationships()
+        else:
+            return self.get_relationships(rel_type_id=rel_type_id)
+
+    def update_unified_relationship(self, rel_type_id: str, id: str, data: Dict[str, Any]) -> bool:
+        """Universal relationship updater."""
+        if rel_type_id == "influences":
+            return self.update_influence(
+                influence_id=id,
+                strength=data.get("strength", "Moderate"),
+                description=data.get("description", ""),
+                confidence=float(data.get("confidence", 0.8))
+            )
+        elif rel_type_id == "mitigates":
+            return self.update_mitigates_link(
+                relationship_id=id,
+                effectiveness=data.get("effectiveness", "Minor"),
+                description=data.get("description", "")
+            )
+        else:
+            self.update_generic_relationship(rel_type_id, id, data)
+            return True
+
+    def delete_unified_relationship(self, rel_type_id: str, id: str) -> bool:
+        """Universal relationship deleter."""
+        if rel_type_id == "influences":
+            return self.delete_influence(id)
+        elif rel_type_id == "mitigates":
+            return self.delete_mitigates_link(id)
+        else:
+            return self.delete_relationship(rel_type_id, id)
+
