@@ -87,6 +87,18 @@ def get_all_entities(
     """
     label = entity_type.neo4j_label
     
+    # Fast existence guard — avoids Neo4j warnings when querying a label
+    # that exists in the schema but has no data in the database yet.
+    with driver.session() as session:
+        result = session.run(
+            "CALL db.labels() YIELD label RETURN collect(label) AS labels"
+        )
+        record = result.single()
+        existing_labels = record["labels"] if record else []
+    
+    if label not in existing_labels:
+        return []
+
     where_clauses = []
     params = {}
     
@@ -125,6 +137,7 @@ def get_all_entities(
             entities.append(entity)
     
     return entities
+
 
 
 def get_entity_by_id(
