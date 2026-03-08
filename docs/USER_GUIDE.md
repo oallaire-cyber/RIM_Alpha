@@ -43,7 +43,7 @@ The application has three main areas:
 | Area | Location | Purpose |
 |------|----------|---------|
 | **Sidebar** | Left panel | UI Complexity Toggle, Connection, filters, legend, settings |
-| **Tab Bar** | Top center | Navigate between management tabs |
+| **Data Management** | Sidebar Link | Navigate to the Data Management page to manage all graph entities |
 | **Main Content** | Center | Forms, tables, visualization |
 
 ### UI Complexity Modes
@@ -53,18 +53,18 @@ RIM allows users to toggle the interface complexity from the **top of the sideba
 - **Advanced Mode**: The full experience. Shows all tabs, advanced filters, and renders every node/edge in the graph regardless of exposure. Intended for Risk Managers and Analysts.
 - **Simple Mode**: A streamlined experience for non-technical stakeholders. Hides advanced tabs (Mitigations, Influences, Config, etc.), collapses complex filters, and brings focus to the graph by "ghosting" (making transparent) all nodes except the Top risks and TPOs.
 
-### Navigation Tabs
+### Navigation
 
-| Tab | Purpose |
+The application uses a multi-page routing structure with data strictly managed in the `Data Management` page:
+
+| Area | Purpose |
 |-----|---------|
-| 📊 Visualization | Interactive risk network graph |
-| ⚠️ Risks | Create and edit risks |
-| 🎯 TPOs | Define program objectives |
-| 🛡️ Mitigations | Manage mitigation actions |
-| 🔗 Influences | Map risk relationships |
-| 📌 TPO Impacts | Link risks to objectives |
-| 🛡️↔⚠️ Risk Mitigations | Assign mitigations to risks |
-| 📥📤 Import/Export | Data exchange |
+| 📊 Home Page | Interactive risk visualization and analysis dashboard |
+| 🗃️ Core Nodes | Manage standard framework entities like Risks and Mitigations (Data Management) |
+| 🔌 Core Edges | Map relationships like Influences and Mitigates (Data Management) |
+| 🏷️ Context Nodes | Manage dynamic nodes like TPOs (Top Program Objectives) and Actors (Data Management) |
+| 🔗 Context Edges | Link custom edges such as TPO impacts (Data Management) |
+| 📥📤 Import/Export | Data exchange via Excel (Data Management) |
 
 ### Loading Demo Data (Quick Start)
 
@@ -99,7 +99,7 @@ RIM includes a complete demo dataset covering the ODT New Space program and TC01
 
 ### Creating a Risk
 
-1. Go to **⚠️ Risks** tab
+1. Go to **Data Management** page → **Core Nodes** tab → Select **Risk**
 2. Fill the form:
    - **Reference**: Unique identifier (e.g., SR-001, OR-015)
    - **Name**: Short descriptive name
@@ -160,7 +160,7 @@ Rate your confidence in the influence relationship (0.0 - 1.0):
 
 ### Creating an Influence
 
-1. Go to **🔗 Influences** tab
+1. Go to **Data Management** page → **Core Edges** tab → Select **Influence**
 2. Select **Source Risk** (the risk that creates the influence)
 3. Select **Target Risk** (the risk that is influenced)
 4. Choose **Influence Type** (Level 1/2/3)
@@ -200,7 +200,7 @@ Rate your confidence in the influence relationship (0.0 - 1.0):
 
 ### Creating a Mitigation
 
-1. Go to **🛡️ Mitigations** tab
+1. Go to **Data Management** page → **Core Nodes** tab → Select **Mitigation**
 2. Fill the form:
    - **Reference**: Unique identifier (e.g., MIT-001)
    - **Name**: Short descriptive name
@@ -212,8 +212,8 @@ Rate your confidence in the influence relationship (0.0 - 1.0):
 
 ### Assigning Mitigations to Risks
 
-1. Go to **🛡️↔⚠️ Risk Mitigations** tab
-2. Select the **Mitigation**
+1. Go to **Data Management** page → **Core Edges** tab → Select **Mitigates**
+2. Select the source **Mitigation**
 3. Select the target **Risk**
 4. Set **Effectiveness** level
 5. Add optional description
@@ -237,7 +237,7 @@ Top Program Objectives (TPOs) represent the key goals that risks may threaten:
 
 ### Creating a TPO
 
-1. Go to **🎯 TPOs** tab
+1. Go to **Data Management** page → **Context Nodes** tab → Select **TPO**
 2. Fill the form:
    - **Reference**: Unique identifier (e.g., TPO-01)
    - **Name**: Objective description
@@ -246,7 +246,7 @@ Top Program Objectives (TPOs) represent the key goals that risks may threaten:
 
 ### Linking Risks to TPOs
 
-1. Go to **📌 TPO Impacts** tab
+1. Go to **Data Management** page → **Context Edges** tab → Select **impacts_tpo**
 2. Select the **Risk** (typically Business)
 3. Select the **TPO** it threatens
 4. Set **Impact Level** (Low/Medium/High/Critical)
@@ -357,7 +357,7 @@ This ensures you see the complete context for your scoped risks without manually
 | **Exposure Calculation** | Only considers risks, mitigations, and influences within scope |
 | **Influence Analysis** | Top propagators, convergence points, etc. computed on scoped data |
 | **Mitigation Analysis** | Coverage gaps and effectiveness limited to scoped risks |
-| **CRUD Tabs** (Risks, TPOs, Mitigations, Influences) | List only entities within the expanded scope |
+| **Data Management** (Risks, TPOs, Mitigations) | Lists only entities within the expanded scope |
 | **Influence Explorer** | Node selector shows only scoped nodes |
 
 ### Scoped Exposure Calculation

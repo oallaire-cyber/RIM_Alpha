@@ -37,7 +37,7 @@ When a scope is active, the system automatically includes:
 | ⚡ Exposure | Risks + connected mitigations only |
 | 🔍 Influence Analysis | Scoped propagators, convergence, paths |
 | 🛡️ Mitigation Analysis | Coverage gaps within scope |
-| CRUD Tabs | List only scoped entities |
+| Data Management UI | List only scoped entities |
 | Influence Explorer | Node picker shows scoped nodes |
 
 > **Tip:** Scoped metrics may differ from Full Graph — this is

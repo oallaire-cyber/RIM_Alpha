@@ -121,9 +121,9 @@ class RiskGraphManager:
     def create_mitigation(self, **kwargs) -> str
     def create_mitigates_relationship(self, mit_ref, risk_ref, **kwargs)
     
-    # TPO operations
-    def create_tpo(self, **kwargs) -> str
-    def create_tpo_impact(self, risk_ref, tpo_ref, **kwargs)
+    # Generic Entity operations
+    def create_unified_entity(self, type_id: str, id: str, ...)
+    def create_unified_relationship(self, type_id: str, id: str, ...)
     
     # Analysis
     def get_graph_for_visualization(self) -> Tuple[nodes, edges]
@@ -272,13 +272,9 @@ ui/
 │   └── mitigation_panel.py  # Mitigation analysis UI
 └── tabs/
     ├── __init__.py
-    ├── risks_tab.py
-    ├── tpos_tab.py
-    ├── mitigations_tab.py
-    ├── influences_tab.py
-    ├── tpo_impacts_tab.py
-    ├── risk_mitigations_tab.py
-    └── import_export_tab.py
+    ├── unified_crud_tab.py  # Generic data grids/forms for any entity
+    ├── risk_mitigations_tab.py # Specialized drag-and-drop links
+    └── import_export_tab.py # Excel export/import logic
 ```
 
 **Home Page** (`home.py`):
@@ -405,13 +401,16 @@ def style_tpo_impact_edge(impact: dict) -> dict:
 ### Creating a Risk
 
 ```
-User Input (Streamlit form)
+User Input (Data Management form)
     │
     ▼
-render_risks_tab() [ui/tabs/risks_tab.py]
+render_unified_crud_tab() [ui/tabs/unified_crud_tab.py]
     │
     ▼
-RiskGraphManager.create_risk() [database/manager.py]
+RiskGraphManager.create_unified_entity("risk", ...) [database/manager.py]
+    │
+    ▼
+RiskGraphManager.create_risk() (internal route)
     │
     ▼
 RiskQueries.create() [database/queries/risks.py]
@@ -509,7 +508,7 @@ get_graph_data(filters) [database/queries/analysis.py]
     │
     ├──► Visualization shows scoped subgraph
     ├──► _compute_stats_from_graph() [ui/home.py] → Scoped statistics dashboard
-    ├──► CRUD tabs filtered via _scoped_getter() wrappers [ui/home.py]
+    ├──► Data Management UI filters scope dropdowns and restricts edits
     ├──► get_influence_analysis(scope_node_ids) → Scoped influence analysis
     ├──► get_mitigation_analysis(scope_node_ids) → Scoped mitigation analysis
     └──► calculate_exposure(scope_node_ids, include_neighbors) → Scoped exposure
