@@ -37,8 +37,8 @@ The following features have been broken down into independent work streams. **Mu
 *   ~~**[U11] Risk Subtypes**~~ ✅ _(v2.11.0)_: Schema-driven subtype system with 9 built-in subtypes. Each subtype defines `applies_to` levels and optional `extension_fields` stored as `ext_*` properties on `:Risk` nodes. Zero impact on exposure engine.
 *   ~~**[F12] Generic Context Node and Context Edge CRUD UI**~~ ✅ _(v2.17.0)_: A schema-driven UI to manage custom context nodes/edges exactly how risks/influences are managed. Driven entirely by property definitions in YAML. Must be scope-aware.
 *   ~~**[F18] Extend Data Management for Context Data**~~ ✅ _(v2.18.0)_: Extend the existing Excel import/export and JSON backup/restore capabilities (`import_export.py`) to fully handle ContextNode and ContextEdge data.
-*   **[F22] Scope Node Management UI**: Dedicated CRUD for Scopes allowing users to quickly add or suppress (remove) nodes within them.
-*   **[F23] Enhanced Node and Edge Editor**: Improved CRUD specifically focused on seamlessly modifying existing nodes and edges across the application.
+*   ~~**[F22] Scope Node Management UI**~~ ✅ _(v2.19.0)_: Dedicated CRUD for Scopes allowing users to quickly add or suppress (remove) nodes within them.
+*   ~~**[F23] Enhanced Node and Edge Editor**~~ ✅ _(v2.19.0)_: Improved CRUD specifically focused on seamlessly modifying existing nodes and edges across the application.
 
 ### 🌊 Work Stream C: Analytical & Simulation Tools (Algorithmic)
 *Requires deep understanding of the `exposure_calculator.py` engine, graph mathematics, and scope logic.*

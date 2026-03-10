@@ -248,7 +248,14 @@ def get_all_edges_scored(conn: Neo4jConnection) -> List[Dict[str, Any]]:
         })
     
     # Get TPO impact edges
-    all_tpo_impacts = tpos.get_all_tpo_impacts(conn)
+    from database.queries import generic_relationship
+    from core import get_registry
+    impacts_tpo_type = get_registry().get_relationship_type("impacts_tpo")
+    all_tpo_impacts = generic_relationship.get_all_relationships(conn._driver, impacts_tpo_type) if impacts_tpo_type else []
+    # Map generic generic relation ids to specific ones expected here
+    for impact in all_tpo_impacts:
+        impact["risk_id"] = impact.get("source_id")
+        impact["tpo_id"] = impact.get("target_id")
     for impact in all_tpo_impacts:
         impact_score = impact_values.get(impact["impact_level"], 2)
         # TPO impacts get a boost since they're the final targets
@@ -546,7 +553,13 @@ def get_influence_network(
     
     # Check if node is a risk or TPO
     risk_data = risks.get_risk_by_id(conn, node_id)
-    tpo_data = tpos.get_tpo_by_id(conn, node_id) if not risk_data else None
+    tpo_data = None
+    if not risk_data:
+        from database.queries import generic_entity
+        from core import get_registry
+        tpo_type = get_registry().get_entity_type("tpo")
+        if tpo_type:
+            tpo_data = generic_entity.get_entity_by_id(conn._driver, tpo_type, node_id)
     
     if risk_data:
         selected_node_info = {
@@ -610,11 +623,27 @@ def get_influence_network(
         risk_node_ids = [nid for nid, n in nodes_set.items() if n.get("node_type") == "Risk"]
         if risk_node_ids:
             # Get all TPOs impacted by these risks
-            all_tpo_list = tpos.get_all_tpos(conn)
+            from database.queries import generic_entity, generic_relationship
+            from core import get_registry
+            registry = get_registry()
+            tpo_type = registry.get_entity_type("tpo")
+            all_tpo_list = []
+            if tpo_type:
+                all_tpo_list = generic_entity.get_all_entities(conn._driver, tpo_type)
             tpo_ids = [t["id"] for t in all_tpo_list]
             
             if tpo_ids:
-                tpo_edges = tpos.get_tpo_impact_edges(conn, risk_node_ids, tpo_ids)
+                impacts_tpo_type = registry.get_relationship_type("impacts_tpo")
+                if impacts_tpo_type:
+                    all_rels = generic_relationship.get_all_relationships(conn._driver, impacts_tpo_type)
+                    for rel in all_rels:
+                        if rel["source_id"] in risk_node_ids and rel["target_id"] in tpo_ids:
+                            tpo_edges.append({
+                                "source": rel["source_id"],
+                                "target": rel["target_id"],
+                                "edge_type": impacts_tpo_type.neo4j_type,
+                                "impact_level": rel.get("impact_level", "Medium")
+                            })
                 
                 # Only include TPOs that have connections
                 connected_tpo_ids = set(e["target"] for e in tpo_edges)

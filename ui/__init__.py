@@ -57,6 +57,7 @@ from ui.sidebar import (
 from ui.panels import (
     render_influence_analysis_panel,
     render_mitigation_analysis_panel,
+    render_inline_editor,
     get_level_icon,
 )
 
@@ -134,6 +135,7 @@ __all__ = [
     # Panels
     "render_influence_analysis_panel",
     "render_mitigation_analysis_panel",
+    "render_inline_editor",
     "get_level_icon",
     # Tabs
     "render_import_export_tab",

@@ -4,6 +4,25 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.19.0] - 2026-03-10
+
+### [F22] Scope Node Management UI & [F23] Enhanced Node and Edge Editor
+
+**New Features:**
+
+- **Scope Node Management**: Added a dedicated interactive interface in the Configuration page to seamlessly add or remove nodes from existing Analysis Scopes directly from the UI.
+- **Inline Entity Editor**: Implemented a reusable Entity Editor component that replaces legacy property views. Users can now select any node in the visualization tab to open a unified, schema-driven edit form directly below the main graph to modify properties on the fly.
+- **Influence Explorer Focus Mode**: Upgraded the Influence Explorer to visually replicate interactive pyvis clicking. Selecting a node from the explorer now renders the full graph but dynamically applies opacity to all non-connected nodes to highlight the selected influence chain.
+
+**Files Modified:**
+- `pages/1_⚙️_Configuration.py` — Refactored `render_scopes_tab` for F22.
+- `ui/panels/editor_panel.py` — [NEW] Created the reusable inline editor component for F23.
+- `ui/home.py` — Integrated the inline editor and programmatic `focus_node_ids` for PyVis.
+- `visualization/graph_renderer.py` — Modified to support programmatic transparency via `focus_node_ids` and fixed hex-to-rgba processing for existing rgba strings.
+- `database/queries/analysis.py` — Fixed a legacy `tpos` NameError by migrating to the generic entity architecture.
+
+---
+
 ## [v2.17.0] - 2026-03-08
 
 ### [F12] Generic Context Node and Context Edge CRUD UI

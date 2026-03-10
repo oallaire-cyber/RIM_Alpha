@@ -26,6 +26,7 @@ from ui import (
     LayoutManager,
     render_influence_analysis_panel,
     render_mitigation_analysis_panel,
+    render_inline_editor,
 )
 
 # Legend
@@ -891,6 +892,7 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
         if show_filters:
             filter_mgr = render_visualization_filters(manager)
             render_influence_explorer(manager)
+            
             render_graph_options()
             render_layout_management(manager)
             if mode == "Simple":
@@ -912,6 +914,11 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
             st.session_state.influence_direction = direction
         
         # Prepare graph data
+        filters = filter_mgr.get_filters_for_query()
+        nodes, edges = manager.get_graph_data(filters)
+        highlighted_node_id = None
+        focus_node_ids = None
+
         if (st.session_state.influence_explorer_enabled and 
             st.session_state.selected_node_id):
             # Influence explorer mode
@@ -919,7 +926,7 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
             max_depth = None if st.session_state.get("unlimited_depth") else st.session_state.get("influence_depth", 5)
             include_tpos = st.session_state.get("influence_include_tpos", True)
             
-            nodes, edges, selected_info = manager.get_influence_network(
+            inf_nodes, _, selected_info = manager.get_influence_network(
                 node_id=st.session_state.selected_node_id,
                 direction=direction,
                 max_depth=max_depth,
@@ -933,57 +940,52 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
                 else:
                     st.success(f"🔍 **Exploring:** {selected_info.get('name')} ({selected_info.get('level')} Risk)")
             
-            positions = None
             highlighted_node_id = st.session_state.selected_node_id
-        else:
-            # Normal mode
-            filters = filter_mgr.get_filters_for_query()
-            nodes, edges = manager.get_graph_data(filters)
-            highlighted_node_id = None
+            focus_node_ids = [n["id"] for n in inf_nodes]
             
-            # ── Apply subtype filter ──────────────────────────────────────
-            selected_st_labels = st.session_state.get("filter_risk_subtypes")
-            if selected_st_labels is not None:
-                from config.settings import get_active_schema
-                schema = get_active_schema()
-                if schema and schema.risk.subtypes:
-                    all_labels = [s.label for s in schema.risk.subtypes]
-                    # Only filter if the user has deselected something
-                    if set(selected_st_labels) != set(all_labels):
-                        # Build label→id map
-                        label_to_id = {s.label: s.id for s in schema.risk.subtypes}
-                        allowed_ids = {label_to_id[lbl] for lbl in selected_st_labels if lbl in label_to_id}
-                        # Filter risk nodes
-                        filtered_nodes = []
-                        removed_ids = set()
-                        for n in nodes:
-                            if n.get("node_type") == "Risk":
-                                node_st = n.get("subtype") or "generic"
-                                if node_st not in allowed_ids:
-                                    removed_ids.add(n.get("id"))
-                                    continue
-                            filtered_nodes.append(n)
-                        if removed_ids:
-                            nodes = filtered_nodes
-                            # Remove edges referencing removed nodes
-                            edges = [
-                                e for e in edges
-                                if e.get("source") not in removed_ids
-                                and e.get("target") not in removed_ids
-                            ]
-            
-            # Load positions if layout selected
-            positions = None
-            if "selected_layout_name" in st.session_state:
-                layout_name = st.session_state.selected_layout_name
-                positions = st.session_state.layout_manager.load_layout(layout_name)
-                if positions:
-                    st.info(f"📍 Active layout: **{layout_name}**")
-            elif not st.session_state.get("physics_enabled", True):
-                # Auto-apply Zone-Aware layout if physics is disabled to prevent overlapping
-                from ui.layouts import generate_zone_aware_layout
-                positions = generate_zone_aware_layout(nodes, edges)
-                st.info("📍 Auto-applied **Zone-Aware** layout (Physics disabled)")
+        # ── Apply subtype filter ──────────────────────────────────────
+        selected_st_labels = st.session_state.get("filter_risk_subtypes")
+        if selected_st_labels is not None:
+            from config.settings import get_active_schema
+            schema = get_active_schema()
+            if schema and schema.risk.subtypes:
+                all_labels = [s.label for s in schema.risk.subtypes]
+                # Only filter if the user has deselected something
+                if set(selected_st_labels) != set(all_labels):
+                    # Build label→id map
+                    label_to_id = {s.label: s.id for s in schema.risk.subtypes}
+                    allowed_ids = {label_to_id[lbl] for lbl in selected_st_labels if lbl in label_to_id}
+                    # Filter risk nodes
+                    filtered_nodes = []
+                    removed_ids = set()
+                    for n in nodes:
+                        if n.get("node_type") == "Risk":
+                            node_st = n.get("subtype") or "generic"
+                            if node_st not in allowed_ids:
+                                removed_ids.add(n.get("id"))
+                                continue
+                        filtered_nodes.append(n)
+                    if removed_ids:
+                        nodes = filtered_nodes
+                        # Remove edges referencing removed nodes
+                        edges = [
+                            e for e in edges
+                            if e.get("source") not in removed_ids
+                            and e.get("target") not in removed_ids
+                        ]
+        
+        # Load positions if layout selected
+        positions = None
+        if "selected_layout_name" in st.session_state:
+            layout_name = st.session_state.selected_layout_name
+            positions = st.session_state.layout_manager.load_layout(layout_name)
+            if positions:
+                st.info(f"📍 Active layout: **{layout_name}**")
+        elif not st.session_state.get("physics_enabled", True):
+            # Auto-apply Zone-Aware layout if physics is disabled to prevent overlapping
+            from ui.layouts import generate_zone_aware_layout
+            positions = generate_zone_aware_layout(nodes, edges)
+            st.info("📍 Auto-applied **Zone-Aware** layout (Physics disabled)")
         # Overlay calculated final exposure if available
         exposure_results = st.session_state.get("exposure_results")
         if exposure_results and "risk_results" in exposure_results:
@@ -1019,8 +1021,14 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
             highlighted_node_id=highlighted_node_id,
             max_edges=max_edges,
             edge_scores=edge_scores,
-            complexity_mode=st.session_state.get("complexity_mode", "Simple")
+            complexity_mode=st.session_state.get("complexity_mode", "Simple"),
+            focus_node_ids=focus_node_ids
         )
+        
+        # Render details panel at the bottom of the graph
+        if st.session_state.get("selected_node_id"):
+            st.markdown("---")
+            render_inline_editor(manager, st.session_state.selected_node_id)
 
 
 def render_scope_selector():
