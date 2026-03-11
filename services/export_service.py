@@ -110,8 +110,6 @@ def export_to_excel(
     filepath: str,
     risks: List[Dict[str, Any]],
     influences: List[Dict[str, Any]],
-    tpos: List[Dict[str, Any]],
-    tpo_impacts: List[Dict[str, Any]],
     mitigations: List[Dict[str, Any]],
     mitigates_relationships: List[Dict[str, Any]],
     context_nodes_data: Optional[Dict[str, List[Dict[str, Any]]]] = None,
@@ -121,7 +119,7 @@ def export_to_excel(
     Export all RIM data to an Excel file.
 
     Core sheets (always present when data exists):
-      Risks, Influences, TPOs, TPO_Impacts, Mitigations, Mitigates
+      Risks, Influences, Mitigations, Mitigates
 
     Context sheets (schema-driven, one per type):
       CN_{type_id}  — one sheet per ContextNode type
@@ -131,8 +129,6 @@ def export_to_excel(
         filepath: Path to save the Excel file
         risks: List of risk dictionaries
         influences: List of influence relationship dictionaries
-        tpos: List of TPO dictionaries
-        tpo_impacts: List of TPO impact relationship dictionaries
         mitigations: List of mitigation dictionaries
         mitigates_relationships: List of MITIGATES relationship dictionaries
         context_nodes_data: Optional mapping of type_id → entity list
@@ -147,8 +143,6 @@ def export_to_excel(
         # Convert core data to DataFrames
         df_risks = pd.DataFrame([dict(r) for r in risks]) if risks else pd.DataFrame()
         df_influences = pd.DataFrame([dict(i) for i in influences]) if influences else pd.DataFrame()
-        df_tpos = pd.DataFrame([dict(t) for t in tpos]) if tpos else pd.DataFrame()
-        df_tpo_impacts = pd.DataFrame([dict(i) for i in tpo_impacts]) if tpo_impacts else pd.DataFrame()
         df_mitigations = pd.DataFrame([dict(m) for m in mitigations]) if mitigations else pd.DataFrame()
         df_mitigates = pd.DataFrame([dict(rel) for rel in mitigates_relationships]) if mitigates_relationships else pd.DataFrame()
 
@@ -163,10 +157,6 @@ def export_to_excel(
                 df_risks.to_excel(writer, sheet_name='Risks', index=False)
             if not df_influences.empty:
                 df_influences.to_excel(writer, sheet_name='Influences', index=False)
-            if not df_tpos.empty:
-                df_tpos.to_excel(writer, sheet_name='TPOs', index=False)
-            if not df_tpo_impacts.empty:
-                df_tpo_impacts.to_excel(writer, sheet_name='TPO_Impacts', index=False)
             if not df_mitigations.empty:
                 df_mitigations.to_excel(writer, sheet_name='Mitigations', index=False)
             if not df_mitigates.empty:
@@ -186,8 +176,6 @@ def export_to_excel(
 def export_to_excel_bytes(
     risks: List[Dict[str, Any]],
     influences: List[Dict[str, Any]],
-    tpos: List[Dict[str, Any]],
-    tpo_impacts: List[Dict[str, Any]],
     mitigations: List[Dict[str, Any]],
     mitigates_relationships: List[Dict[str, Any]],
     context_nodes_data: Optional[Dict[str, List[Dict[str, Any]]]] = None,
@@ -202,8 +190,6 @@ def export_to_excel_bytes(
     Args:
         risks: List of risk dictionaries
         influences: List of influence relationship dictionaries
-        tpos: List of TPO dictionaries
-        tpo_impacts: List of TPO impact relationship dictionaries
         mitigations: List of mitigation dictionaries
         mitigates_relationships: List of MITIGATES relationship dictionaries
         context_nodes_data: Optional mapping of type_id → entity list
@@ -218,8 +204,6 @@ def export_to_excel_bytes(
         # Convert core data to DataFrames
         df_risks = pd.DataFrame([dict(r) for r in risks]) if risks else pd.DataFrame()
         df_influences = pd.DataFrame([dict(i) for i in influences]) if influences else pd.DataFrame()
-        df_tpos = pd.DataFrame([dict(t) for t in tpos]) if tpos else pd.DataFrame()
-        df_tpo_impacts = pd.DataFrame([dict(i) for i in tpo_impacts]) if tpo_impacts else pd.DataFrame()
         df_mitigations = pd.DataFrame([dict(m) for m in mitigations]) if mitigations else pd.DataFrame()
         df_mitigates = pd.DataFrame([dict(rel) for rel in mitigates_relationships]) if mitigates_relationships else pd.DataFrame()
 
@@ -235,10 +219,6 @@ def export_to_excel_bytes(
                 df_risks.to_excel(writer, sheet_name='Risks', index=False)
             if not df_influences.empty:
                 df_influences.to_excel(writer, sheet_name='Influences', index=False)
-            if not df_tpos.empty:
-                df_tpos.to_excel(writer, sheet_name='TPOs', index=False)
-            if not df_tpo_impacts.empty:
-                df_tpo_impacts.to_excel(writer, sheet_name='TPO_Impacts', index=False)
             if not df_mitigations.empty:
                 df_mitigations.to_excel(writer, sheet_name='Mitigations', index=False)
             if not df_mitigates.empty:

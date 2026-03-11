@@ -79,13 +79,10 @@ class ExcelImporter:
     def __init__(
         self,
         create_risk_fn: Callable,
-        create_tpo_fn: Callable,
         create_influence_fn: Callable,
-        create_tpo_impact_fn: Callable,
         create_mitigation_fn: Callable,
         create_mitigates_fn: Callable,
         get_all_risks_fn: Callable,
-        get_all_tpos_fn: Callable,
         get_all_mitigations_fn: Callable,
         create_generic_entity_fn: Optional[Callable] = None,
         get_generic_entities_fn: Optional[Callable] = None,
@@ -97,13 +94,10 @@ class ExcelImporter:
         
         Args:
             create_risk_fn: Function to create a risk
-            create_tpo_fn: Function to create a TPO
             create_influence_fn: Function to create an influence
-            create_tpo_impact_fn: Function to create a TPO impact
             create_mitigation_fn: Function to create a mitigation
             create_mitigates_fn: Function to create a mitigates relationship
             get_all_risks_fn: Function to get all risks
-            get_all_tpos_fn: Function to get all TPOs
             get_all_mitigations_fn: Function to get all mitigations
             create_generic_entity_fn: Function to create a ContextNode (type_id, data) -> dict
             get_generic_entities_fn: Function to get ContextNodes (type_id) -> list
@@ -111,13 +105,10 @@ class ExcelImporter:
             registry: SchemaRegistry instance for ContextNode/ContextEdge type lookup
         """
         self.create_risk = create_risk_fn
-        self.create_tpo = create_tpo_fn
         self.create_influence = create_influence_fn
-        self.create_tpo_impact = create_tpo_impact_fn
         self.create_mitigation = create_mitigation_fn
         self.create_mitigates = create_mitigates_fn
         self.get_all_risks = get_all_risks_fn
-        self.get_all_tpos = get_all_tpos_fn
         self.get_all_mitigations = get_all_mitigations_fn
         self.create_generic_entity = create_generic_entity_fn
         self.get_generic_entities = get_generic_entities_fn

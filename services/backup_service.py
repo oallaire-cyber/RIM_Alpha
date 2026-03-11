@@ -72,11 +72,9 @@ def export_graph_to_json(
         "exported_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
         # Core nodes
         "risks": [dict(r) for r in manager.get_all_risks()],
-        "tpos": [dict(t) for t in manager.get_all_tpos()],
         "mitigations": [dict(m) for m in manager.get_all_mitigations()],
         # Core edges
         "influences": [dict(i) for i in manager.get_semantic_influences()],
-        "tpo_impacts": [dict(i) for i in manager.get_all_tpo_impacts()],
         "mitigates": [dict(r) for r in manager.get_all_mitigates_relationships()],
         # Context data - populated below
         "context_nodes": {},
@@ -121,8 +119,8 @@ def import_graph_from_json(
     Restore a graph from a JSON backup dict produced by export_graph_to_json().
 
     Insertion order (topological):
-        1. Core nodes:  Risks → TPOs → Mitigations
-        2. Core edges:  Influences → TPO Impacts → Mitigates
+        1. Core nodes:  Risks → Mitigations
+        2. Core edges:  Influences → Mitigates
         3. Context nodes (in schema order)
         4. Context edges (in schema order)
 
@@ -148,10 +146,8 @@ def import_graph_from_json(
     summary: Dict[str, Any] = {
         "errors": [],
         "risks_created": 0, "risks_skipped": 0,
-        "tpos_created": 0, "tpos_skipped": 0,
         "mitigations_created": 0, "mitigations_skipped": 0,
         "influences_created": 0, "influences_skipped": 0,
-        "tpo_impacts_created": 0, "tpo_impacts_skipped": 0,
         "mitigates_created": 0, "mitigates_skipped": 0,
         "context_nodes_created": 0, "context_nodes_skipped": 0,
         "context_edges_created": 0, "context_edges_skipped": 0,
@@ -161,7 +157,6 @@ def import_graph_from_json(
     # Build name → id maps from existing DB state before inserting
     # ------------------------------------------------------------------
     existing_risks = {r["name"]: r["id"] for r in manager.get_all_risks()}
-    existing_tpos = {t["reference"]: t["id"] for t in manager.get_all_tpos()}
     existing_mits = {m["name"]: m["id"] for m in manager.get_all_mitigations()}
 
     # ------------------------------------------------------------------
@@ -186,24 +181,6 @@ def import_graph_from_json(
         except Exception as e:
             summary["risks_skipped"] += 1
             summary["errors"].append(f"Risk '{name}': {e}")
-
-    # TPOs
-    for tpo_data in data.get("tpos", []):
-        ref = tpo_data.get("reference", "")
-        if ref in existing_tpos:
-            summary["tpos_skipped"] += 1
-            continue
-        try:
-            row = {k: v for k, v in tpo_data.items() if k not in ("id", "element_id")}
-            result = manager.create_tpo(**_tpo_kwargs(row))
-            if result:
-                existing_tpos[ref] = result.get("id", "")
-                summary["tpos_created"] += 1
-            else:
-                summary["tpos_skipped"] += 1
-        except Exception as e:
-            summary["tpos_skipped"] += 1
-            summary["errors"].append(f"TPO '{ref}': {e}")
 
     # Mitigations
     for mit_data in data.get("mitigations", []):
@@ -251,28 +228,6 @@ def import_graph_from_json(
             summary["influences_skipped"] += 1
             summary["errors"].append(f"Influence {inf.get('source_name')} → {inf.get('target_name')}: {e}")
 
-    # TPO Impacts (Risk → TPO)
-    for imp in data.get("tpo_impacts", []):
-        risk_id = existing_risks.get(imp.get("risk_name", ""))
-        tpo_id = existing_tpos.get(imp.get("tpo_reference", "") or imp.get("tpo_ref", ""))
-        if not risk_id or not tpo_id:
-            summary["tpo_impacts_skipped"] += 1
-            continue
-        try:
-            result = manager.create_tpo_impact(
-                risk_id=risk_id,
-                tpo_id=tpo_id,
-                impact_level=imp.get("impact_level", "Medium"),
-                description=imp.get("description", ""),
-            )
-            if result:
-                summary["tpo_impacts_created"] += 1
-            else:
-                summary["tpo_impacts_skipped"] += 1
-        except Exception as e:
-            summary["tpo_impacts_skipped"] += 1
-            summary["errors"].append(f"TPO Impact: {e}")
-
     # Mitigates (Mitigation → Risk)
     for rel in data.get("mitigates", []):
         mit_id = existing_mits.get(rel.get("mitigation_name", ""))
@@ -302,7 +257,6 @@ def import_graph_from_json(
     # Build unified name → id map for edge resolution later
     node_name_to_id: Dict[str, str] = {}
     node_name_to_id.update(existing_risks)
-    node_name_to_id.update({k: v for k, v in existing_tpos.items()})
 
     if registry:
         for type_id, entities in data.get("context_nodes", {}).items():
@@ -410,16 +364,6 @@ def _risk_kwargs(d: Dict[str, Any]) -> Dict[str, Any]:
         "activation_decision_date": d.get("activation_decision_date"),
         "subtype": d.get("subtype"),
         "current_score_type": d.get("current_score_type"),
-    }
-
-
-def _tpo_kwargs(d: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract create_tpo keyword arguments from a flat dict."""
-    return {
-        "reference": d.get("reference", ""),
-        "name": d.get("name", ""),
-        "cluster": d.get("cluster", ""),
-        "description": d.get("description", ""),
     }
 
 

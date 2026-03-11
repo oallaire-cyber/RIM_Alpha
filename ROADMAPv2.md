@@ -28,6 +28,9 @@ The following features have been broken down into independent work streams. **Mu
 *   ~~**[F19] Interactive Focus Mode (Neighborhood Highlight)**~~ ✅ _(v2.14.0)_: When clicking a specific risk, mitigation, or TPO, automatically fade all nodes that are not connected to it to instantly highlight its root causes and consequences.
 *   ~~**[F20] Exposure-Driven Opacity**~~ ✅ _(v2.15.0)_: Combine the exposure color gradient with opacity. Low-exposure or acceptable risks naturally fade into the background, while high-exposure critical risks remain 100% opaque.
 *   ~~**[F21] Lifecycle & Status Ghosting**~~ ✅ _(v2.15.0)_: Use transparency as a metaphor for things that are "not fully realized yet" (e.g., Contingent Risks, or "Proposed" / "Deferred" mitigations appear at 50% opacity, while "Implemented" mitigations are fully solid).
+*   **[F25] Dashboard Simplification**: Remove TPOs related information in the dashboard panel to reduce cognitive load.
+*   **[F26] Contextual Property Panel**: Display the properties of the selected object in the graph within an appropriate zone below the graph. Includes dynamic properties (critical path status, mitigated state, relevant risk management info) structured for easy future modification.
+*   **[F27] Graph Canvas Search**: Add a dedicated search text area for fast and direct graph node or edge selection in the graph UI.
 
 ### 🌊 Work Stream B: Schema & Context Data Management (Backend/Fullstack)
 *Requires knowledge of the existing Pydantic/YAML schema loader, CRUD forms, and Streamlit session state.*
@@ -39,6 +42,8 @@ The following features have been broken down into independent work streams. **Mu
 *   ~~**[F18] Extend Data Management for Context Data**~~ ✅ _(v2.18.0)_: Extend the existing Excel import/export and JSON backup/restore capabilities (`import_export.py`) to fully handle ContextNode and ContextEdge data.
 *   ~~**[F22] Scope Node Management UI**~~ ✅ _(v2.19.0)_: Dedicated CRUD for Scopes allowing users to quickly add or suppress (remove) nodes within them.
 *   ~~**[F23] Enhanced Node and Edge Editor**~~ ✅ _(v2.19.0)_: Improved CRUD specifically focused on seamlessly modifying existing nodes and edges across the application.
+*   **[F28] Advanced Scope Definition Filters**: Implement an improved and user-friendly way to find and select nodes for scope definition, leveraging the dynamic filter system.
+*   **[F29] Interactive Scope Sandbox**: Provide a mechanism to temporarily create or modify a scope by interacting directly with the graph during a risk analysis session.
 
 ### 🌊 Work Stream C: Analytical & Simulation Tools (Algorithmic)
 *Requires deep understanding of the `exposure_calculator.py` engine, graph mathematics, and scope logic.*
@@ -46,6 +51,8 @@ The following features have been broken down into independent work streams. **Mu
 *   **[F5] Automated Risk Threshold Alerts**: Visual flags in the UI when computed exposure exceeds predefined thresholds. Must be scope-aware.
 *   **[F6] Mitigation Exposure View (Business Focus)**: Dedicated view showing mitigations contributing to exposure reduction for selected Business Risks, filterable by lifecycle status. Must be scope-aware.
 *   **[F7] "What-If" Analysis Sandbox**: Toggle mitigations ON/OFF to live-preview downstream exposure changes without committing to the DB. **Critical Constraint**: Must operate fully within the active scope — Sandbox must never produce results including out-of-scope nodes.
+*   **[F30] Retroaction Loop Detection**: Implement a check control to reliably detect any retroaction loops (cyclical dependencies) prior to running exposure calculations.
+*   **[F31] Scope-Driven Simulation & Results Storage**: Update Simulation/Calibration pages to utilize the *current active scope* rather than randomly generated graphs. Introduce a storage system to record simulation results for future exploitation and comparison.
 
 ---
 

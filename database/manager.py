@@ -510,9 +510,7 @@ class RiskGraphManager:
         
         # Get all nodes and edges for analysis
         all_risks = self.get_all_risks()
-        all_tpos = self.get_all_tpos()
         all_influences = self.get_semantic_influences()
-        all_tpo_impacts = self.get_all_tpo_impacts()
         
         # Pre-filter by scope if provided
         if active_scopes:
@@ -543,20 +541,12 @@ class RiskGraphManager:
                 i for i in all_influences
                 if i["source_id"] in filtered_risk_ids and i["target_id"] in filtered_risk_ids
             ]
-            all_tpo_impacts = [
-                i for i in all_tpo_impacts
-                if i["risk_id"] in filtered_risk_ids
-            ]
-            # Keep TPOs that are reached by scoped risks
-            reached_tpo_ids = {i["tpo_id"] for i in all_tpo_impacts}
-            all_tpos = [t for t in all_tpos if t["id"] in reached_tpo_ids]
         
         if not all_risks:
             return analysis
         
         # Build adjacency structures
         risk_dict = {r["id"]: dict(r) for r in all_risks}
-        tpo_dict = {t["id"]: dict(t) for t in all_tpos}
         
         # Outgoing edges (for propagation analysis)
         outgoing = {}  # node_id -> [(target_id, strength, edge_type)]
@@ -578,27 +568,12 @@ class RiskGraphManager:
                 incoming[target] = []
             incoming[target].append((source, score, "INFLUENCES"))
         
-        for impact in all_tpo_impacts:
-            source = impact["risk_id"]
-            target = impact["tpo_id"]
-            impact_score = impact_values.get(impact.get("impact_level", "Medium"), 2)
-            
-            if source not in outgoing:
-                outgoing[source] = []
-            outgoing[source].append((target, impact_score * 1.5, "IMPACTS_TPO"))  # Boost TPO impacts
-            
-            if target not in incoming:
-                incoming[target] = []
-            incoming[target].append((source, impact_score * 1.5, "IMPACTS_TPO"))
-        
         # === 1. TOP PROPAGATORS ===
         propagation_scores = {}
         
         for risk_id, risk_data in risk_dict.items():
             score = 0
-            tpos_reached = set()
             risks_reached = set()
-            paths_to_tpo = []
             
             # BFS with score accumulation
             visited = set()
@@ -614,12 +589,7 @@ class RiskGraphManager:
                 if current != risk_id:
                     decay = 0.85 ** depth
                     
-                    if current in tpo_dict:
-                        tpos_reached.add(current)
-                        node_value = 10
-                        score += node_value * cum_strength * decay
-                        paths_to_tpo.append({"path": path, "score": cum_strength * decay})
-                    elif current in risk_dict:
+                    if current in risk_dict:
                         risks_reached.add(current)
                         node_value = 5 if risk_dict[current]["level"] == "Business" else 2
                         score += node_value * cum_strength * decay
@@ -635,10 +605,7 @@ class RiskGraphManager:
                 "name": risk_data["name"],
                 "level": risk_data["level"],
                 "score": round(score, 1),
-                "tpos_reached": len(tpos_reached),
                 "risks_reached": len(risks_reached),
-                "tpo_ids": list(tpos_reached),
-                "paths_to_tpo": sorted(paths_to_tpo, key=lambda x: -x["score"])[:3]
             }
         
         sorted_propagators = sorted(propagation_scores.values(), key=lambda x: -x["score"])
@@ -646,7 +613,7 @@ class RiskGraphManager:
         
         # === 2. CONVERGENCE POINTS ===
         convergence_scores = {}
-        convergence_candidates = list(risk_dict.keys()) + list(tpo_dict.keys())
+        convergence_candidates = list(risk_dict.keys())
         
         for node_id in convergence_candidates:
             if node_id not in incoming:
@@ -683,14 +650,13 @@ class RiskGraphManager:
                 convergence_multiplier = 1 + (path_count / len(unique_sources)) * 0.2
                 score *= convergence_multiplier
             
-            is_tpo = node_id in tpo_dict
-            node_data = tpo_dict[node_id] if is_tpo else risk_dict.get(node_id, {})
+            node_data = risk_dict.get(node_id, {})
             
             convergence_scores[node_id] = {
                 "id": node_id,
-                "name": node_data.get("reference", "") + ": " + node_data.get("name", "") if is_tpo else node_data.get("name", ""),
-                "level": "TPO" if is_tpo else node_data.get("level", ""),
-                "node_type": "TPO" if is_tpo else "Risk",
+                "name": node_data.get("name", ""),
+                "level": node_data.get("level", ""),
+                "node_type": "Risk",
                 "score": round(score, 1),
                 "source_count": len(unique_sources),
                 "path_count": path_count,
@@ -1254,7 +1220,7 @@ class RiskGraphManager:
         Export all data (core + context) to an Excel file.
 
         Sheets produced:
-          Core:    Risks, Influences, TPOs, TPO_Impacts, Mitigations, Mitigates
+          Core:    Risks, Influences, Mitigations, Mitigates
           Context: CN_{type_id} per ContextNode type, CE_{rel_id} per ContextEdge type
 
         Args:
@@ -1273,8 +1239,6 @@ class RiskGraphManager:
             filepath=filepath,
             risks=self.get_all_risks(),
             influences=self.get_semantic_influences(),
-            tpos=self.get_all_tpos(),
-            tpo_impacts=self.get_all_tpo_impacts(),
             mitigations=self.get_all_mitigations(),
             mitigates_relationships=self.get_all_mitigates_relationships(),
             context_nodes_data=context_nodes_data,
@@ -1297,8 +1261,6 @@ class RiskGraphManager:
         return export_to_excel_bytes(
             risks=self.get_all_risks(),
             influences=self.get_semantic_influences(),
-            tpos=self.get_all_tpos(),
-            tpo_impacts=self.get_all_tpo_impacts(),
             mitigations=self.get_all_mitigations(),
             mitigates_relationships=self.get_all_mitigates_relationships(),
             context_nodes_data=context_nodes_data,
@@ -1322,13 +1284,10 @@ class RiskGraphManager:
 
         importer = ExcelImporter(
             create_risk_fn=self.create_risk,
-            create_tpo_fn=self.create_tpo,
             create_influence_fn=self.create_influence,
-            create_tpo_impact_fn=self.create_tpo_impact,
             create_mitigation_fn=self.create_mitigation,
             create_mitigates_fn=self.create_mitigates_relationship,
             get_all_risks_fn=self.get_all_risks,
-            get_all_tpos_fn=self.get_all_tpos,
             get_all_mitigations_fn=self.get_all_mitigations,
             # Context data callbacks
             create_generic_entity_fn=self.create_entity,

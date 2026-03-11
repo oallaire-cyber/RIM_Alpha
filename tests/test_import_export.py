@@ -103,8 +103,6 @@ class TestExportService:
         result = export_to_excel_bytes(
             risks=[],
             influences=[],
-            tpos=[],
-            tpo_impacts=[],
             mitigations=[],
             mitigates_relationships=[],
             context_nodes_data={"scenario": [{"name": "S1", "description": "D"}]},
@@ -121,8 +119,6 @@ class TestExportService:
         result = export_to_excel_bytes(
             risks=[],
             influences=[],
-            tpos=[],
-            tpo_impacts=[],
             mitigations=[],
             mitigates_relationships=[],
         )
@@ -195,13 +191,10 @@ class TestImportContextNodes:
 
         importer = ExcelImporter(
             create_risk_fn=MagicMock(),
-            create_tpo_fn=MagicMock(),
             create_influence_fn=MagicMock(),
-            create_tpo_impact_fn=MagicMock(),
             create_mitigation_fn=MagicMock(),
             create_mitigates_fn=MagicMock(),
             get_all_risks_fn=MagicMock(return_value=[]),
-            get_all_tpos_fn=MagicMock(return_value=[]),
             get_all_mitigations_fn=MagicMock(return_value=[]),
             create_generic_entity_fn=MagicMock(),
             registry=registry,
@@ -233,13 +226,10 @@ class TestImportContextNodes:
         create_fn = MagicMock(return_value={"id": "x"})
         importer = ExcelImporter(
             create_risk_fn=MagicMock(),
-            create_tpo_fn=MagicMock(),
             create_influence_fn=MagicMock(),
-            create_tpo_impact_fn=MagicMock(),
             create_mitigation_fn=MagicMock(),
             create_mitigates_fn=MagicMock(),
             get_all_risks_fn=MagicMock(return_value=[]),
-            get_all_tpos_fn=MagicMock(return_value=[]),
             get_all_mitigations_fn=MagicMock(return_value=[]),
             create_generic_entity_fn=create_fn,
             registry=registry,
@@ -268,13 +258,10 @@ class TestImportContextNodes:
 
         importer = ExcelImporter(
             create_risk_fn=MagicMock(),
-            create_tpo_fn=MagicMock(),
             create_influence_fn=MagicMock(),
-            create_tpo_impact_fn=MagicMock(),
             create_mitigation_fn=MagicMock(),
             create_mitigates_fn=MagicMock(),
             get_all_risks_fn=MagicMock(return_value=[]),
-            get_all_tpos_fn=MagicMock(return_value=[]),
             get_all_mitigations_fn=MagicMock(return_value=[]),
             create_generic_entity_fn=create_fn,
             registry=registry,
@@ -308,10 +295,8 @@ class TestBackupService:
     def _make_manager(self):
         m = MagicMock()
         m.get_all_risks.return_value = [{"id": "r1", "name": "Risk A", "level": "Business"}]
-        m.get_all_tpos.return_value = []
         m.get_all_mitigations.return_value = []
         m.get_semantic_influences.return_value = []
-        m.get_all_tpo_impacts.return_value = []
         m.get_all_mitigates_relationships.return_value = []
         m.get_entities.return_value = []
         m.get_relationships.return_value = []
@@ -326,8 +311,8 @@ class TestBackupService:
 
         data = export_graph_to_json(mgr, registry)
 
-        for key in ("schema_version", "exported_at", "risks", "tpos", "mitigations",
-                    "influences", "tpo_impacts", "mitigates",
+        for key in ("schema_version", "exported_at", "risks", "mitigations",
+                    "influences", "mitigates",
                     "context_nodes", "context_edges"):
             assert key in data, f"Missing key: {key}"
 
