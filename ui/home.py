@@ -1170,9 +1170,14 @@ def render_main_content(manager: RiskGraphManager):
                     _expanded_scope.add(_s)
             _scope_ids = list(_expanded_scope)
             
+        def handle_node_select(node_id: str, direction: str):
+            st.session_state.influence_explorer_enabled = True
+            st.session_state.selected_node_id = node_id
+            st.session_state.influence_direction = direction
+            
         render_influence_analysis_panel(
             get_analysis_fn=lambda: manager_inst.get_influence_analysis(active_scopes=filter_mgr.active_scopes if filter_mgr else None),
-            on_node_select=lambda node_id, direction: None
+            on_node_select=handle_node_select
         )
         render_mitigation_analysis_panel(
             get_analysis_fn=lambda: manager_inst.get_mitigation_analysis(active_scopes=filter_mgr.active_scopes if filter_mgr else None),

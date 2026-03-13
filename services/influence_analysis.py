@@ -24,10 +24,7 @@ class PropagationResult:
     name: str
     level: str
     score: float
-    tpos_reached: int
     risks_reached: int
-    tpo_ids: List[str] = field(default_factory=list)
-    paths_to_tpo: List[Dict] = field(default_factory=list)
 
 
 @dataclass
@@ -86,27 +83,20 @@ class InfluenceAnalyzer:
     def __init__(
         self,
         risks: List[Dict[str, Any]],
-        tpos: List[Dict[str, Any]],
-        influences: List[Dict[str, Any]],
-        tpo_impacts: List[Dict[str, Any]]
+        influences: List[Dict[str, Any]]
     ):
         """
         Initialize the analyzer with network data.
         
         Args:
             risks: List of risk dictionaries
-            tpos: List of TPO dictionaries
             influences: List of influence relationship dictionaries
-            tpo_impacts: List of TPO impact relationship dictionaries
         """
         self.risks = risks
-        self.tpos = tpos
         self.influences = influences
-        self.tpo_impacts = tpo_impacts
         
         # Build indexed dictionaries
         self.risk_dict = {r["id"]: dict(r) for r in risks}
-        self.tpo_dict = {t["id"]: dict(t) for t in tpos}
         
         # Build adjacency structures
         self.outgoing: Dict[str, List[Tuple[str, float, str]]] = {}
@@ -131,20 +121,7 @@ class InfluenceAnalyzer:
                 self.incoming[target] = []
             self.incoming[target].append((source, score, "INFLUENCES"))
         
-        # Process TPO impact edges (with boost)
-        for impact in self.tpo_impacts:
-            source = impact["risk_id"]
-            target = impact["tpo_id"]
-            impact_score = IMPACT_VALUES.get(impact.get("impact_level", "Medium"), 2)
-            boosted_score = impact_score * 1.5  # TPO impacts get a boost
-            
-            if source not in self.outgoing:
-                self.outgoing[source] = []
-            self.outgoing[source].append((target, boosted_score, "IMPACTS_TPO"))
-            
-            if target not in self.incoming:
-                self.incoming[target] = []
-            self.incoming[target].append((source, boosted_score, "IMPACTS_TPO"))
+        pass
     
     def analyze(self) -> Dict[str, Any]:
         """
@@ -178,9 +155,7 @@ class InfluenceAnalyzer:
         
         for risk_id, risk_data in self.risk_dict.items():
             score = 0
-            tpos_reached: Set[str] = set()
             risks_reached: Set[str] = set()
-            paths_to_tpo = []
             
             # BFS with score accumulation
             visited: Set[str] = set()
@@ -196,15 +171,7 @@ class InfluenceAnalyzer:
                 if current != risk_id:
                     decay = PROPAGATION_DECAY ** depth
                     
-                    if current in self.tpo_dict:
-                        tpos_reached.add(current)
-                        node_value = 10  # TPOs are highest value
-                        score += node_value * cum_strength * decay
-                        paths_to_tpo.append({
-                            "path": path,
-                            "score": cum_strength * decay
-                        })
-                    elif current in self.risk_dict:
+                    if current in self.risk_dict:
                         risks_reached.add(current)
                         node_value = 5 if self.risk_dict[current]["level"] == "Strategic" else 2
                         score += node_value * cum_strength * decay
@@ -221,10 +188,7 @@ class InfluenceAnalyzer:
                 "name": risk_data["name"],
                 "level": risk_data["level"],
                 "score": round(score, 1),
-                "tpos_reached": len(tpos_reached),
-                "risks_reached": len(risks_reached),
-                "tpo_ids": list(tpos_reached),
-                "paths_to_tpo": sorted(paths_to_tpo, key=lambda x: -x["score"])[:3]
+                "risks_reached": len(risks_reached)
             }
         
         # Sort and return top propagators
@@ -248,8 +212,8 @@ class InfluenceAnalyzer:
         """
         convergence_scores = {}
         
-        # Analyze both risks and TPOs as potential convergence points
-        convergence_candidates = list(self.risk_dict.keys()) + list(self.tpo_dict.keys())
+        # Analyze risks as potential convergence points
+        convergence_candidates = list(self.risk_dict.keys())
         
         for node_id in convergence_candidates:
             if node_id not in self.incoming:
@@ -289,14 +253,13 @@ class InfluenceAnalyzer:
                 convergence_multiplier = 1 + (path_count / len(unique_sources)) * CONVERGENCE_MULTIPLIER_FACTOR
                 score *= convergence_multiplier
             
-            is_tpo = node_id in self.tpo_dict
-            node_data = self.tpo_dict[node_id] if is_tpo else self.risk_dict.get(node_id, {})
+            node_data = self.risk_dict.get(node_id, {})
             
             convergence_scores[node_id] = {
                 "id": node_id,
-                "name": (node_data.get("reference", "") + ": " + node_data.get("name", "")) if is_tpo else node_data.get("name", ""),
-                "level": "TPO" if is_tpo else node_data.get("level", ""),
-                "node_type": "TPO" if is_tpo else "Risk",
+                "name": node_data.get("name", ""),
+                "level": node_data.get("level", ""),
+                "node_type": "Risk",
                 "score": round(score, 1),
                 "source_count": len(unique_sources),
                 "path_count": path_count,
@@ -342,29 +305,13 @@ class InfluenceAnalyzer:
                     continue
                 visited.add(current)
                 
-                # Check if we reached a TPO
-                if current in self.tpo_dict and len(path_nodes) > 1:
-                    critical_paths.append({
-                        "path": path_nodes,
-                        "edges": path_edges,
-                        "strength": round(cum_strength, 3),
-                        "length": len(path_nodes) - 1
-                    })
-                    continue
-                
                 # Continue traversal
                 if current in self.outgoing and len(path_nodes) < 6:
                     for target, edge_score, edge_type in self.outgoing[current]:
                         if target not in visited:
                             new_strength = cum_strength * (edge_score / 4)
                             
-                            if target in self.tpo_dict:
-                                target_info = {
-                                    "id": target,
-                                    "name": self.tpo_dict[target]["reference"],
-                                    "type": "TPO"
-                                }
-                            elif target in self.risk_dict:
+                            if target in self.risk_dict:
                                 target_info = {
                                     "id": target,
                                     "name": self.risk_dict[target]["name"],
@@ -379,6 +326,15 @@ class InfluenceAnalyzer:
                                 path_nodes + [target_info],
                                 path_edges + [{"type": edge_type, "score": edge_score}]
                             ))
+                            
+                            # Add path if we reached a Business risk
+                            if self.risk_dict[target]["level"] == "Business":
+                                critical_paths.append({
+                                    "path": path_nodes + [target_info],
+                                    "edges": path_edges + [{"type": edge_type, "score": edge_score}],
+                                    "strength": round(new_strength, 3),
+                                    "length": len(path_nodes)
+                                })
         
         # Sort by strength and return top paths
         critical_paths.sort(key=lambda x: -x["strength"])
@@ -386,7 +342,7 @@ class InfluenceAnalyzer:
     
     def get_bottlenecks(self, limit: int = 5) -> List[Dict[str, Any]]:
         """
-        Identify bottleneck nodes - nodes appearing in many paths to TPOs.
+        Identify bottleneck nodes - nodes appearing in many paths to Business risks.
         
         These are potential single points of failure in the influence network.
         
@@ -397,10 +353,10 @@ class InfluenceAnalyzer:
             List of bottleneck dictionaries
         """
         node_path_count: Dict[str, int] = {}
-        total_paths_to_tpo = 0
+        total_paths = 0
         
         for risk_id, risk_data in self.risk_dict.items():
-            # Find all paths to TPOs
+            # Find all paths to Business risks
             visited_paths: Set[tuple] = set()
             queue = [(risk_id, [risk_id])]
             
@@ -412,8 +368,8 @@ class InfluenceAnalyzer:
                     continue
                 visited_paths.add(path_key)
                 
-                if current in self.tpo_dict and len(path) > 1:
-                    total_paths_to_tpo += 1
+                if current in self.risk_dict and self.risk_dict[current]["level"] == "Business" and len(path) > 1:
+                    total_paths += 1
                     for node in path[1:-1]:  # Exclude start and end
                         if node in self.risk_dict:
                             if node not in node_path_count:
@@ -435,8 +391,8 @@ class InfluenceAnalyzer:
                     "name": self.risk_dict[node_id]["name"],
                     "level": self.risk_dict[node_id]["level"],
                     "path_count": count,
-                    "total_paths": total_paths_to_tpo,
-                    "percentage": round(count / max(total_paths_to_tpo, 1) * 100, 1)
+                    "total_paths": total_paths,
+                    "percentage": round(count / max(total_paths, 1) * 100, 1)
                 })
         
         bottlenecks.sort(key=lambda x: -x["path_count"])
@@ -547,21 +503,17 @@ class InfluenceAnalyzer:
 
 def analyze_influence_network(
     risks: List[Dict[str, Any]],
-    tpos: List[Dict[str, Any]],
-    influences: List[Dict[str, Any]],
-    tpo_impacts: List[Dict[str, Any]]
+    influences: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
     """
     Convenience function to perform complete influence analysis.
     
     Args:
         risks: List of risk dictionaries
-        tpos: List of TPO dictionaries
         influences: List of influence relationship dictionaries
-        tpo_impacts: List of TPO impact relationship dictionaries
     
     Returns:
         Dictionary containing all analysis results
     """
-    analyzer = InfluenceAnalyzer(risks, tpos, influences, tpo_impacts)
+    analyzer = InfluenceAnalyzer(risks, influences)
     return analyzer.analyze()

@@ -683,35 +683,33 @@ class RiskGraphManager:
                     continue
                 visited.add(current)
                 
-                if current in tpo_dict and len(path_nodes) > 1:
-                    critical_paths.append({
-                        "path": path_nodes,
-                        "edges": path_edges,
-                        "strength": round(cum_strength, 3),
-                        "length": len(path_nodes) - 1
-                    })
-                    continue
-                
                 if current in outgoing and len(path_nodes) < 6:
                     for target, edge_score, edge_type in outgoing[current]:
                         if target not in visited:
                             new_strength = cum_strength * (edge_score / 4)
                             
-                            if target in tpo_dict:
-                                target_info = {"id": target, "name": tpo_dict[target]["reference"], "type": "TPO"}
-                            elif target in risk_dict:
+                            if target in risk_dict:
                                 target_info = {"id": target, "name": risk_dict[target]["name"], "type": risk_dict[target]["level"]}
                             else:
                                 continue
                             
                             queue.append((target, new_strength, path_nodes + [target_info], path_edges + [{"type": edge_type, "score": edge_score}]))
+                            
+                            # Add path if we reached a Business risk
+                            if risk_dict[target]["level"] == "Business":
+                                critical_paths.append({
+                                    "path": path_nodes + [target_info],
+                                    "edges": path_edges + [{"type": edge_type, "score": edge_score}],
+                                    "strength": round(new_strength, 3),
+                                    "length": len(path_nodes)
+                                })
         
         critical_paths.sort(key=lambda x: -x["strength"])
         analysis["critical_paths"] = critical_paths[:5]
         
         # === 4. BOTTLENECKS ===
         node_path_count = {}
-        total_paths_to_tpo = 0
+        total_paths = 0
         
         for risk_id, risk_data in risk_dict.items():
             visited_paths = set()
@@ -725,8 +723,8 @@ class RiskGraphManager:
                     continue
                 visited_paths.add(path_key)
                 
-                if current in tpo_dict and len(path) > 1:
-                    total_paths_to_tpo += 1
+                if current in risk_dict and risk_dict[current]["level"] == "Business" and len(path) > 1:
+                    total_paths += 1
                     for node in path[1:-1]:
                         if node in risk_dict:
                             if node not in node_path_count:
@@ -747,8 +745,8 @@ class RiskGraphManager:
                     "name": risk_dict[node_id]["name"],
                     "level": risk_dict[node_id]["level"],
                     "path_count": count,
-                    "total_paths": total_paths_to_tpo,
-                    "percentage": round(count / max(total_paths_to_tpo, 1) * 100, 1)
+                    "total_paths": total_paths,
+                    "percentage": round(count / max(total_paths, 1) * 100, 1)
                 })
         
         bottlenecks.sort(key=lambda x: -x["path_count"])
