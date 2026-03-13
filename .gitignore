@@ -93,3 +93,8 @@ demo_output/
 Archive/
 mnt/
 .rim_schema
+
+# AI Agents & Roadmaps
+_agents/
+AGENT_RULES_AND_CONTEXT.md
+CLAUDE.md
