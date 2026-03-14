@@ -1006,6 +1006,13 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
         
         # ── F27: Graph canvas search ───────────────────────────────────────
         explorer_active = st.session_state.influence_explorer_enabled
+
+        # Callback for the clear button — must mutate widget key BEFORE the
+        # widget is instantiated (i.e. in on_click, not in the button's if-body).
+        def _clear_graph_search_cb():
+            st.session_state["graph_search_input"] = ""
+            st.session_state["selected_node_id"] = None
+
         _search_col, _clear_col = st.columns([5, 1])
         with _search_col:
             _search_query = st.text_input(
@@ -1018,16 +1025,14 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
                      "Disabled while Influence Explorer is active.",
             )
         with _clear_col:
-            if st.button(
+            st.button(
                 "✕",
                 key="clear_graph_search",
                 use_container_width=True,
                 help="Clear search",
                 disabled=not st.session_state.get("graph_search_input"),
-            ):
-                st.session_state["graph_search_input"] = ""
-                st.session_state.selected_node_id = None
-                st.rerun()
+                on_click=_clear_graph_search_cb,
+            )
 
         # Apply search results when explorer is not active
         if _search_query and not explorer_active:
