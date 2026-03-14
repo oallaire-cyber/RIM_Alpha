@@ -4,6 +4,28 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.20.1] - 2026-03-14
+
+### Bug Fixes — Scope & Cycle Detection Regressions (5 issues)
+
+- **[Bug 1] New node not added to active scope**: When creating an entity while a scope is active with "Add to active scope" checked, the node was written to YAML but the in-memory `FilterManager.active_scopes` list was not updated. Fixed in `unified_crud_tab.py` by routing through `filter_mgr.add_node_to_scope()` (which updates both in-memory state and persists to YAML) instead of the bare `_add_node_to_scope()` helper.
+
+- **[Bug 2] Cycle warnings showed raw UUIDs**: The retroaction loop detection banner displayed raw node UUIDs (e.g. `36f55100-bb32-4c45-afde-639ac0c74ce9`) which are not human-readable. Fixed in `exposure_calculator.py` by adding an optional `risk_names: Dict[str, str]` parameter to `detect_cycles()` and building a `{id: name}` map from `self.risks` in `calculate_all()` before the detection call. Cycle warnings now show actual node names.
+
+- **[Bug 3] Scope shows correct count in sidebar but 0 nodes in graph/dashboard**: When a scope was active, `get_risks_with_filters()` applied the level/status/origin pre-filters before the scope intersection. If a scoped risk node didn't match the current visualization filter (e.g. wrong level), it was dropped before scope filtering could include it. Fixed in `database/queries/analysis.py` by detecting when a scope is active (`scope_node_ids` or `active_scopes` present in filters) and bypassing all pre-filters in that case, falling through to the scope intersection only.
+
+- **[Bug 4] Influence edges in Data Management ignored active scope**: The edge list branch in `unified_crud_tab.py` had no scope filtering, while the node list branch did. Fixed by adding a scope-membership filter for edges: only edges where at least one endpoint (`source_id` or `target_id`) belongs to the active scope node set are shown.
+
+- **[Bug 5] No option to auto-include linked mitigations in scope**: When building a scope from risk nodes, their linked mitigation nodes were never included, causing the Exposure dashboard to show risks without mitigations. Fixed in `ui/home.py` by adding a `🛡️ Include linked mitigations` checkbox in `render_scope_selector()`. When enabled, `show_mitigations=True` is injected into `scoped_filters` in `render_main_content()` so `get_graph_data()` loads mitigation nodes. The flag is also cleared when resetting to Full Graph.
+
+**Files Modified:**
+- `services/exposure_calculator.py` — Added `risk_names` parameter and `_label()` helper to `detect_cycles()`; builds name map in `calculate_all()`.
+- `database/queries/analysis.py` — Added `_scope_active` bypass to skip pre-filters when a scope is set.
+- `ui/tabs/unified_crud_tab.py` — Bug 1 (use `filter_mgr.add_node_to_scope()`); Bug 4 (scope filter on edge list).
+- `ui/home.py` — Bug 5 (`scope_include_mitigations` checkbox, `show_mitigations` injection, reset cleanup).
+
+---
+
 ## [v2.20.0] - 2026-03-13
 
 ### Iteration 1 — Foundation Safety & Quick UX Wins (F25, F30, F27)

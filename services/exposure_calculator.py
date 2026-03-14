@@ -59,6 +59,7 @@ class GraphValidationResult:
 def detect_cycles(
     risk_ids: List[str],
     influences: List[Dict[str, Any]],
+    risk_names: Optional[Dict[str, str]] = None,
 ) -> GraphValidationResult:
     """Detect retroaction loops (cycles) in the influence graph.
 
@@ -120,6 +121,12 @@ def detect_cycles(
                 color[node] = BLACK
                 stack.pop()
 
+    def _label(node_id: str) -> str:
+        """Return human-readable name if available, otherwise the raw ID."""
+        if risk_names:
+            return risk_names.get(node_id, node_id)
+        return node_id
+
     warnings: List[str] = []
     if cycles:
         n = len(cycles)
@@ -130,7 +137,8 @@ def detect_cycles(
             "imprecise. Please review and break the cycle(s) below."
         )
         for i, cycle in enumerate(cycles[:5]):
-            warnings.append(f"- Loop {i + 1}: `{' → '.join(cycle)} → {cycle[0]}`")
+            named = [_label(node_id) for node_id in cycle]
+            warnings.append(f"- Loop {i + 1}: `{' → '.join(named)} → {named[0]}`")
         if len(cycles) > 5:
             warnings.append(f"- … and **{len(cycles) - 5}** more loop(s).")
 
@@ -607,8 +615,9 @@ class ExposureCalculator:
         self.risk_results = {}
 
         # ── F30: Detect retroaction loops ──────────────────────────────────
+        _risk_names = {rid: r.get("name", rid) for rid, r in self.risks.items()}
         self._cycle_validation: GraphValidationResult = detect_cycles(
-            list(self.risks.keys()), self.influences
+            list(self.risks.keys()), self.influences, risk_names=_risk_names
         )
 
         # Get calculation order (topological sort with cycle fallback)

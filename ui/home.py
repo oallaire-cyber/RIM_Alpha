@@ -1095,10 +1095,9 @@ def render_scope_selector():
         
         if st.button("🌐 Full Graph", use_container_width=True, key="clear_scopes_btn"):
             filter_mgr.clear_scopes()
-            if "scope_include_neighbors" in st.session_state:
-                del st.session_state["scope_include_neighbors"]
-            if "scope_selector" in st.session_state:
-                del st.session_state["scope_selector"]
+            for _key in ("scope_include_neighbors", "scope_include_mitigations", "scope_selector"):
+                if _key in st.session_state:
+                    del st.session_state[_key]
             st.rerun()
             
         # Build options: list of scope names
@@ -1136,6 +1135,18 @@ def render_scope_selector():
                 value=st.session_state.get("scope_include_neighbors", False),
                 key="scope_include_neighbors",
                 help="Also display risks directly connected to the scoped nodes.",
+            )
+
+            # Mitigation auto-include toggle
+            st.checkbox(
+                "🛡️ Include linked mitigations",
+                value=st.session_state.get("scope_include_mitigations", False),
+                key="scope_include_mitigations",
+                help=(
+                    "Automatically show and count mitigation nodes that are linked "
+                    "to any risk in the active scope, even if mitigations are not "
+                    "explicitly listed in the scope definition."
+                ),
             )
 
 
@@ -1185,6 +1196,10 @@ def render_main_content(manager: RiskGraphManager):
         # Build scoped filters and compute stats from filtered graph data
         scoped_filters = filter_mgr.get_filters_for_query()
         scoped_filters["scope_include_neighbors"] = _global_include_neighbors
+        # Bug 5: when the user opts-in, force mitigation nodes to be loaded so
+        # that mitigations linked to scoped risks appear in the graph and stats.
+        if st.session_state.get("scope_include_mitigations", False):
+            scoped_filters["show_mitigations"] = True
         scoped_nodes, scoped_edges = manager.get_graph_data(scoped_filters)
         scoped_stats = _compute_stats_from_graph(scoped_nodes, scoped_edges)
         render_statistics_dashboard(scoped_stats)

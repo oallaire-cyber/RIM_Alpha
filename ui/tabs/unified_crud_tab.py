@@ -71,9 +71,15 @@ def render_unified_crud_tab(manager: RiskGraphManager, definition: Union[EntityT
                             if is_node:
                                 new_item = manager.create_unified_entity(type_id, form_data)
                                 
-                                # Add to scope logic
+                                # Add to scope logic — use FilterManager so both the
+                                # in-memory active_scopes AND the YAML file are updated.
                                 if active_scopes and add_to_scope and new_item and "id" in new_item:
-                                    _add_node_to_scope(new_item["id"], active_scopes[0].id)
+                                    if filter_mgr:
+                                        filter_mgr.add_node_to_scope(
+                                            active_scopes[0].id, new_item["id"]
+                                        )
+                                    else:
+                                        _add_node_to_scope(new_item["id"], active_scopes[0].id)
                             else:
                                 sid = form_data.pop("source_id", None)
                                 tid = form_data.pop("target_id", None)
@@ -114,6 +120,18 @@ def render_unified_crud_tab(manager: RiskGraphManager, definition: Union[EntityT
                 items = [n for n in items if n.get("id") in scope_ids]
         else:
             items = manager.get_unified_relationships(type_id)
+
+            # Apply scope filtering for edges: only show edges where at least one
+            # endpoint belongs to the active scope node set.
+            if active_scopes:
+                _scope_ids = set()
+                for _s in active_scopes:
+                    _scope_ids.update(_s.node_ids)
+                items = [
+                    i for i in items
+                    if i.get("source_id") in _scope_ids or i.get("target_id") in _scope_ids
+                ]
+
             # Fetch resolving dictionaries for display names
             source_entities = _get_entities_by_types(manager, registry, definition.from_entity_types)
             target_entities = _get_entities_by_types(manager, registry, definition.to_entity_types)

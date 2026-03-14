@@ -423,7 +423,9 @@ relationships:
       value: 1.0
       description: Direct, inevitable causation
       color: '#e74c3c'
-
+  impacts_tpo:
+    neo4j_type: IMPACTS_TPO
+    impact_levels: []
   mitigates:
     neo4j_type: MITIGATES
     effectiveness_levels:
@@ -674,10 +676,11 @@ context_nodes:
     - name: capability_level
       type: int
       required: false
+      default: null
       description: Capability level (1-10)
   tpo:
     label: Target Performance Objective
-    description: 'Business objective impacted by risk'
+    description: Business objective impacted by risk
     color: '#f1c40f'
     shape: hexagon
     emoji: 🟡
@@ -728,30 +731,9 @@ context_edges:
     from_node: risk
     to_node: tpo
     color: '#3498db'
-    line_style: dash-dot
+    line_style: solid
     bidirectional: false
     properties: []
-    impact_levels:
-    - id: low
-      label: Low
-      value: 1
-      description: Minor impact on objective
-      color: '#27ae60'
-    - id: medium
-      label: Medium
-      value: 2
-      description: Moderate impact on objective
-      color: '#f39c12'
-    - id: high
-      label: High
-      value: 3
-      description: Significant impact on objective
-      color: '#e67e22'
-    - id: critical
-      label: Critical
-      value: 4
-      description: Severe impact on objective
-      color: '#e74c3c'
 scopes:
 - id: odt_demo
   name: 🚀 ODT Demo - Full Example
@@ -896,3 +878,12 @@ scopes:
   include_connected_edges: true
   show_boundary_edges: false
   color: '#F0A500'
+- id: test_loopback
+  name: Test Loopback
+  description: Test Loopback
+  node_ids:
+  - 36f55100-bb32-4c45-afde-639ac0c74ce9
+  - d899e8d3-b3ef-4877-9c7c-ac099aa14c0b
+  include_connected_edges: false
+  show_boundary_edges: false
+  color: '#808080'
