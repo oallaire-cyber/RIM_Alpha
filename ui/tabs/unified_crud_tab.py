@@ -70,16 +70,26 @@ def render_unified_crud_tab(manager: RiskGraphManager, definition: Union[EntityT
                         try:
                             if is_node:
                                 new_item = manager.create_unified_entity(type_id, form_data)
-                                
+
                                 # Add to scope logic — use FilterManager so both the
                                 # in-memory active_scopes AND the YAML file are updated.
-                                if active_scopes and add_to_scope and new_item and "id" in new_item:
-                                    if filter_mgr:
-                                        filter_mgr.add_node_to_scope(
-                                            active_scopes[0].id, new_item["id"]
-                                        )
+                                # NOTE: create_unified_entity returns a raw str (UUID) for
+                                # risk/mitigation, but a dict with an "id" key for context
+                                # nodes — handle both.
+                                if active_scopes and add_to_scope and new_item:
+                                    if isinstance(new_item, str):
+                                        _new_node_id = new_item
+                                    elif isinstance(new_item, dict):
+                                        _new_node_id = new_item.get("id")
                                     else:
-                                        _add_node_to_scope(new_item["id"], active_scopes[0].id)
+                                        _new_node_id = None
+                                    if _new_node_id:
+                                        if filter_mgr:
+                                            filter_mgr.add_node_to_scope(
+                                                active_scopes[0].id, _new_node_id
+                                            )
+                                        else:
+                                            _add_node_to_scope(_new_node_id, active_scopes[0].id)
                             else:
                                 sid = form_data.pop("source_id", None)
                                 tid = form_data.pop("target_id", None)
