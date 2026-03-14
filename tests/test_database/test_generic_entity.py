@@ -83,7 +83,10 @@ class TestGenericEntityCRUD:
             {"n": {"id": "1", "name": "A"}, "nodeId": "id1"},
             {"n": {"id": "2", "name": "B"}, "nodeId": "id2"}
         ]
-        session.run.return_value = mock_records
+        mock_result = MagicMock()
+        mock_result.single.return_value = {"labels": ["TestNode"]}
+        mock_result.__iter__.return_value = iter(mock_records)
+        session.run.return_value = mock_result
         
         results = get_all_entities(driver, entity_type, filters={"name": "A"})
         

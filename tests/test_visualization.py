@@ -9,9 +9,10 @@ def ensure_registry_loaded():
     """Ensure the schema registry is loaded before tests run."""
     registry = get_registry()
     if not registry.entity_types:
-        from config.schema_loader import SchemaLoader
-        loader = SchemaLoader()
-        loader.load_schema("default")
+        import os
+        from pathlib import Path
+        schema_path = Path(os.path.dirname(__file__)).parent / "schemas" / "default" / "schema.yaml"
+        registry.load_from_yaml(str(schema_path))
     yield
 
 def test_opacity_lifecycle_ghosting():

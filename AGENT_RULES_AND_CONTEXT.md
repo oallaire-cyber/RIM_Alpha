@@ -54,3 +54,8 @@ Agents must never collapse this hierarchy by treating causes and consequences in
 3. **Validate Scope**: If your feature touches the graph, write a test ensuring it respects isolation boundaries.
 4. **Pydantic First**: Any new data inflow must pass through strict Pydantic models.
 5. **Verify and Walkthrough**: Generate a `walkthrough.md` with proof of testing upon completion.
+
+## 6. Virtual Environment Execution
+- **Rule**: All Python and pytest shell commands MUST be executed within the project's virtual environment.
+- **Enforcement**: Before running any Python-related shell commands, always prefix them with the activation script or execute them in a single string like so:
+  `.\venv\Scripts\activate; py -m pytest tests/` Or equivalent depending on the shell environment.

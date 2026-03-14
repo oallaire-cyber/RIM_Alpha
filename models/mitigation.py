@@ -36,6 +36,8 @@ class Mitigation:
     source_entity: str = ""
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    capex: Optional[float] = None
+    opex: Optional[float] = None
     
     def __post_init__(self):
         """Post-initialization processing."""
@@ -92,6 +94,8 @@ class Mitigation:
             "description": self.description,
             "owner": self.owner,
             "source_entity": self.source_entity,
+            "capex": self.capex,
+            "opex": self.opex,
         }
     
     @classmethod
@@ -105,6 +109,8 @@ class Mitigation:
             description=data.get("description", ""),
             owner=data.get("owner", ""),
             source_entity=data.get("source_entity", ""),
+            capex=data.get("capex"),
+            opex=data.get("opex"),
         )
     
     @classmethod

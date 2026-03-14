@@ -22,7 +22,16 @@ from visualization.graph_options import (
 
 def hex_to_rgba(hex_str: str, alpha: float) -> str:
     """Convert hex color to rgba string with given alpha."""
-    if not isinstance(hex_str, str) or not hex_str.startswith('#'):
+    if not isinstance(hex_str, str):
+        return hex_str
+        
+    # Handle existing rgba strings by replacing their alpha
+    if hex_str.startswith('rgba('):
+        parts = hex_str.split(',')
+        if len(parts) >= 4:
+            return f"{parts[0]},{parts[1]},{parts[2]},{alpha})"
+            
+    if not hex_str.startswith('#'):
         return hex_str
     hex_str = hex_str.lstrip('#')
     if len(hex_str) not in (3, 6):
@@ -52,7 +61,8 @@ def render_graph(
     complexity_mode: str = "Advanced",
     exposure_opacity: bool = False,
     high_exposure_threshold: float = 60.0,
-    lifecycle_ghosting: bool = False
+    lifecycle_ghosting: bool = False,
+    focus_node_ids: Optional[List[str]] = None
 ) -> Optional[str]:
     """
     Render the RIM graph using PyVis.
@@ -106,12 +116,20 @@ def render_graph(
         
         for n in nodes:
             node_type = n.get("node_type", "Risk").lower()
-            if node_type == "tpo" or n.get("id") == highlighted_node_id:
-                continue # Objectives and highlighted node always opaque
+            # Context nodes and TPOs always stay opaque
+            if node_type == "tpo" or n.get("is_context_node") or node_type not in ("risk", "mitigation", "tpo", "undefined", "") or n.get("id") == highlighted_node_id:
+                continue # Objectives, context nodes, and highlighted node always opaque
             if node_type in ("risk", "undefined", "") and n["id"] in top_risk_ids:
                 continue # Top risks always opaque
-            # All other nodes are transparent
+            # All other nodes (including mitigations) are transparent
             transparent_node_ids.add(n["id"])
+            
+    # Apply focus_node_ids if provided (from Streamlit interaction)
+    if focus_node_ids is not None:
+        focus_set = set(focus_node_ids)
+        for n in nodes:
+            if n["id"] not in focus_set:
+                transparent_node_ids.add(n["id"])
     
     # Create network
     try:
@@ -224,7 +242,8 @@ def render_graph_streamlit(
     max_edges: Optional[int] = None,
     edge_scores: Optional[Dict[Tuple[str, str], float]] = None,
     height: int = 720,
-    complexity_mode: str = "Advanced"
+    complexity_mode: str = "Advanced",
+    focus_node_ids: Optional[List[str]] = None
 ):
     """
     Render the RIM graph directly in Streamlit.
@@ -252,7 +271,8 @@ def render_graph_streamlit(
         complexity_mode=complexity_mode,
         exposure_opacity=st.session_state.get("exposure_opacity_enabled", False),
         high_exposure_threshold=st.session_state.get("high_exposure_threshold", 60),
-        lifecycle_ghosting=st.session_state.get("lifecycle_ghosting_enabled", False)
+        lifecycle_ghosting=st.session_state.get("lifecycle_ghosting_enabled", False),
+        focus_node_ids=focus_node_ids
     )
     
     if html_content:

@@ -38,7 +38,7 @@ and which program objectives are at stake.
 **📐 Analysis Scopes**
 - Define named subsets of the risk graph for **focused analysis**
 - Smart expansion: auto-includes connected mitigations, TPOs, and optional risk neighbors
-- All features adapt: statistics, exposure, influence/mitigation analysis, CRUD tabs
+- All features adapt: statistics, exposure, influence/mitigation analysis, Data Management UI
 - Multi-scope union for cross-area comparison
 
 > *Scopes let you prepare focused briefings per stakeholder, domain, or risk cluster

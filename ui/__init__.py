@@ -57,17 +57,13 @@ from ui.sidebar import (
 from ui.panels import (
     render_influence_analysis_panel,
     render_mitigation_analysis_panel,
+    render_inline_editor,
     get_level_icon,
 )
 
 from ui.tabs import (
-    render_risks_tab,
-    render_tpos_tab,
-    render_mitigations_tab,
-    render_influences_tab,
-    render_tpo_impacts_tab,
-    render_risk_mitigations_tab,
     render_import_export_tab,
+    render_unified_crud_tab,
 )
 
 from ui.legend import (
@@ -139,15 +135,11 @@ __all__ = [
     # Panels
     "render_influence_analysis_panel",
     "render_mitigation_analysis_panel",
+    "render_inline_editor",
     "get_level_icon",
     # Tabs
-    "render_risks_tab",
-    "render_tpos_tab",
-    "render_mitigations_tab",
-    "render_influences_tab",
-    "render_tpo_impacts_tab",
-    "render_risk_mitigations_tab",
     "render_import_export_tab",
+    "render_unified_crud_tab",
     # Legend
     "render_graph_legend",
     "render_compact_legend",

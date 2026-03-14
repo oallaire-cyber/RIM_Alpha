@@ -4,6 +4,75 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.19.0] - 2026-03-10
+
+### [F22] Scope Node Management UI & [F23] Enhanced Node and Edge Editor
+
+**New Features:**
+
+- **Scope Node Management**: Added a dedicated interactive interface in the Configuration page to seamlessly add or remove nodes from existing Analysis Scopes directly from the UI.
+- **Inline Entity Editor**: Implemented a reusable Entity Editor component that replaces legacy property views. Users can now select any node in the visualization tab to open a unified, schema-driven edit form directly below the main graph to modify properties on the fly.
+- **Influence Explorer Focus Mode**: Upgraded the Influence Explorer to visually replicate interactive pyvis clicking. Selecting a node from the explorer now renders the full graph but dynamically applies opacity to all non-connected nodes to highlight the selected influence chain.
+
+**Files Modified:**
+- `pages/1_⚙️_Configuration.py` — Refactored `render_scopes_tab` for F22.
+- `ui/panels/editor_panel.py` — [NEW] Created the reusable inline editor component for F23.
+- `ui/home.py` — Integrated the inline editor and programmatic `focus_node_ids` for PyVis.
+- `visualization/graph_renderer.py` — Modified to support programmatic transparency via `focus_node_ids` and fixed hex-to-rgba processing for existing rgba strings.
+- `database/queries/analysis.py` — Fixed a legacy `tpos` NameError by migrating to the generic entity architecture.
+
+---
+
+## [v2.17.0] - 2026-03-08
+
+### [F12] Generic Context Node and Context Edge CRUD UI
+
+**New Features:**
+
+- **Unified Dynamic CRUD UI**: Deprecated all independent static CRUD tabs in favor of a single `unified_crud_tab.py` component that dynamically builds data grids, creation forms, and update forms directly from the active `schema.yaml` properties definitions.
+- **Data Management Hub**: Created a new dedicated `pages/2_💾_Data_Management.py` page. This fully uncouples data mutation activities from the main dashboard, allowing the main app to strictly focus on Visualizations and Analysis.
+- **TPO Migration**: TPOs (Top Program Objectives) and their respective impacts have been entirely rebuilt natively using the new Context Node framework, removing over a hundred lines of legacy hardcoded engine pathways.
+- **Scope-Awareness Enhancements**: When creating an entity while an Analysis Scope is active, the unified UI will seamlessly insert that new entity directly into the active subgraph without requiring manual association.
+
+**Files Modified:**
+- `pages/2_💾_Data_Management.py` — [NEW] Dedicated data management Streamlit page.
+- `ui/tabs/unified_crud_tab.py` — [NEW] Highly sophisticated schema-to-UI data grid and form generator.
+- `database/manager.py` — Created `create_unified_entity` and generic route wrappers to eliminate frontend type handling.
+- `ui/home.py` — Purged all legacy CRUD routing.
+- `ui/tabs/risks_tab.py`, `mitigations_tab.py`, `influences_tab.py`, `context_data_tab.py` — [DELETED] Replaced by the unified schema-driven UI.
+
+---
+
+## [v2.16.1] - 2026-03-06
+
+### Chore: `.gitignore` Update & Untracked Files Cleanup
+
+**Changes:**
+- Cleaned up the Git tracking state by removing several temporary execution, output, and configuration files that were inadvertently tracked.
+- Added strict ignore rules to `.gitignore` to prevent future tracking of:
+  - Automation output logs (`*_out.txt`, `test_output.txt`)
+  - Temporary scripts (`tmp_*.py`)
+  - The local active schema state file (`.rim_schema`)
+
+---
+
+## [v2.16.0] - 2026-03-06
+
+### [U4] Strict Data Validation & [U5] Mitigation Budget Attributes
+
+**New Features:**
+
+- **Strict Data Validation (Pydantic)**: Implemented rigid validation for all incoming graph logic using `pydantic`. Models are now dynamically generated at runtime based on the `schema.yaml` properties definitions, applying strict enforcement over types, constraints, and presence for risks, mitigations, and context nodes.
+- **Mitigation Budget Attributes**: Extended the `mitigation` schema entity across all domains to natively capture **CAPEX** and **OPEX** float attributes. Integrated into the database mutation pathways.
+
+**Files Modified:**
+- `schemas/default/schema.yaml` (and demo/it_security) — Appended CAPEX & OPEX property definitions.
+- `core/validation.py` — [NEW] Handles the compilation of dynamic Pydantic BaseModels using EntityTypeDefinitions.
+- `core/entity.py` — Injected dynamic validation replacing ad-hoc type checks.
+- `database/manager.py` & `database/queries/mitigations.py` — Refactored to catch and commit arbitrary `ext_fields` explicitly.
+- `ui/tabs/mitigations_tab.py` — Exposed CAPEX and OPEX inputs on the manual creation forms.
+- `models/mitigation.py` — Appended dataclass fields to round-trip expenditures properly.
+
 ## [v2.15.0] - 2026-03-04
 
 ### [F20] Exposure-Driven Opacity & [F21] Lifecycle Status Ghosting

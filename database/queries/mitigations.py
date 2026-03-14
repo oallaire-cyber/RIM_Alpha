@@ -20,7 +20,8 @@ def create_mitigation(
     status: str,
     description: str = "",
     owner: str = "",
-    source_entity: str = ""
+    source_entity: str = "",
+    ext_fields: Optional[Dict[str, Any]] = None
 ) -> Optional[str]:
     """
     Create a new Mitigation node.
@@ -33,12 +34,20 @@ def create_mitigation(
         description: Mitigation description
         owner: Mitigation owner
         source_entity: Source for inherited/baseline mitigations
+        ext_fields: Additional dynamic fields (like capex, opex)
     
     Returns:
         Created mitigation ID or None if failed
     """
-    query = """
-    CREATE (m:Mitigation {
+    ext_set_clause = ""
+    ext_items = {}
+    if ext_fields:
+        ext_items = {k: v for k, v in ext_fields.items() if v is not None}
+        if ext_items:
+            ext_set_clause = "SET " + ", ".join(f"m.{k} = ${k}" for k in ext_items.keys())
+            
+    query = f"""
+    CREATE (m:Mitigation {{
         id: randomUUID(),
         name: $name,
         type: $type,
@@ -48,7 +57,8 @@ def create_mitigation(
         source_entity: $source_entity,
         created_at: datetime(),
         updated_at: datetime()
-    })
+    }})
+    {ext_set_clause}
     RETURN m.id as id
     """
     
@@ -60,6 +70,7 @@ def create_mitigation(
         "owner": owner,
         "source_entity": source_entity
     }
+    params.update(ext_items)
     
     result = conn.execute_query(query, params)
     return result[0]["id"] if result else None
@@ -209,7 +220,8 @@ def update_mitigation(
     status: str,
     description: str,
     owner: str,
-    source_entity: str
+    source_entity: str,
+    ext_fields: Optional[Dict[str, Any]] = None
 ) -> bool:
     """
     Update an existing mitigation.
@@ -223,12 +235,20 @@ def update_mitigation(
         description: Updated description
         owner: Updated owner
         source_entity: Updated source entity
+        ext_fields: Additional dynamic fields (like capex, opex)
     
     Returns:
         True if successful, False otherwise
     """
-    query = """
-    MATCH (m:Mitigation {id: $id})
+    ext_set_clause = ""
+    ext_items = {}
+    if ext_fields:
+        ext_items = {k: v for k, v in ext_fields.items() if v is not None}
+        if ext_items:
+            ext_set_clause = ", " + ", ".join(f"m.{k} = ${k}" for k in ext_items.keys())
+            
+    query = f"""
+    MATCH (m:Mitigation {{id: $id}})
     SET m.name = $name,
         m.type = $type,
         m.status = $status,
@@ -236,6 +256,7 @@ def update_mitigation(
         m.owner = $owner,
         m.source_entity = $source_entity,
         m.updated_at = datetime()
+        {ext_set_clause}
     RETURN m.id
     """
     
@@ -248,6 +269,7 @@ def update_mitigation(
         "owner": owner,
         "source_entity": source_entity
     }
+    params.update(ext_items)
     
     result = conn.execute_query(query, params)
     return len(result) > 0

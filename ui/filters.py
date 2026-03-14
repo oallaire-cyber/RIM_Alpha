@@ -244,20 +244,12 @@ class FilterManager:
         if added:
             try:
                 from config.schema_loader import load_schema, save_schema
-                from core import get_registry
                 schema = load_schema()
                 if schema and schema.scopes:
                     for s in schema.scopes:
                         if s.id == scope_id and node_id not in s.node_ids:
                             s.node_ids.append(node_id)
                     save_schema(schema)
-                    
-                    # Update active registry to prevent stale schema overwriting filter_mgr
-                    registry = get_registry()
-                    if registry and registry.schema and registry.schema.scopes:
-                        for s in registry.schema.scopes:
-                            if s.id == scope_id and node_id not in s.node_ids:
-                                s.node_ids.append(node_id)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning(f"Failed to persist scope update: {e}")
@@ -278,20 +270,12 @@ class FilterManager:
         if removed:
             try:
                 from config.schema_loader import load_schema, save_schema
-                from core import get_registry
                 schema = load_schema()
                 if schema and schema.scopes:
                     for s in schema.scopes:
                         if s.id == scope_id and node_id in s.node_ids:
                             s.node_ids.remove(node_id)
                     save_schema(schema)
-                    
-                    # Update active registry to prevent stale schema overwriting filter_mgr
-                    registry = get_registry()
-                    if registry and registry.schema and registry.schema.scopes:
-                        for s in registry.schema.scopes:
-                            if s.id == scope_id and node_id in s.node_ids:
-                                s.node_ids.remove(node_id)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning(f"Failed to persist scope update: {e}")

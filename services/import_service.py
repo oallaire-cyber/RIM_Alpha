@@ -30,6 +30,10 @@ class ImportResult:
     mitigations_skipped: int = 0
     mitigates_created: int = 0
     mitigates_skipped: int = 0
+    context_nodes_created: int = 0
+    context_nodes_skipped: int = 0
+    context_edges_created: int = 0
+    context_edges_skipped: int = 0
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     logs: List[str] = field(default_factory=list)
@@ -49,6 +53,10 @@ class ImportResult:
             "mitigations_skipped": self.mitigations_skipped,
             "mitigates_created": self.mitigates_created,
             "mitigates_skipped": self.mitigates_skipped,
+            "context_nodes_created": self.context_nodes_created,
+            "context_nodes_skipped": self.context_nodes_skipped,
+            "context_edges_created": self.context_edges_created,
+            "context_edges_skipped": self.context_edges_skipped,
             "errors": self.errors,
             "warnings": self.warnings,
             "logs": self.logs
@@ -71,38 +79,41 @@ class ExcelImporter:
     def __init__(
         self,
         create_risk_fn: Callable,
-        create_tpo_fn: Callable,
         create_influence_fn: Callable,
-        create_tpo_impact_fn: Callable,
         create_mitigation_fn: Callable,
         create_mitigates_fn: Callable,
         get_all_risks_fn: Callable,
-        get_all_tpos_fn: Callable,
-        get_all_mitigations_fn: Callable
+        get_all_mitigations_fn: Callable,
+        create_generic_entity_fn: Optional[Callable] = None,
+        get_generic_entities_fn: Optional[Callable] = None,
+        create_generic_relationship_fn: Optional[Callable] = None,
+        registry=None,
     ):
         """
         Initialize the importer with database operation functions.
         
         Args:
             create_risk_fn: Function to create a risk
-            create_tpo_fn: Function to create a TPO
             create_influence_fn: Function to create an influence
-            create_tpo_impact_fn: Function to create a TPO impact
             create_mitigation_fn: Function to create a mitigation
             create_mitigates_fn: Function to create a mitigates relationship
             get_all_risks_fn: Function to get all risks
-            get_all_tpos_fn: Function to get all TPOs
             get_all_mitigations_fn: Function to get all mitigations
+            create_generic_entity_fn: Function to create a ContextNode (type_id, data) -> dict
+            get_generic_entities_fn: Function to get ContextNodes (type_id) -> list
+            create_generic_relationship_fn: Function to create a ContextEdge
+            registry: SchemaRegistry instance for ContextNode/ContextEdge type lookup
         """
         self.create_risk = create_risk_fn
-        self.create_tpo = create_tpo_fn
         self.create_influence = create_influence_fn
-        self.create_tpo_impact = create_tpo_impact_fn
         self.create_mitigation = create_mitigation_fn
         self.create_mitigates = create_mitigates_fn
         self.get_all_risks = get_all_risks_fn
-        self.get_all_tpos = get_all_tpos_fn
         self.get_all_mitigations = get_all_mitigations_fn
+        self.create_generic_entity = create_generic_entity_fn
+        self.get_generic_entities = get_generic_entities_fn
+        self.create_generic_relationship = create_generic_relationship_fn
+        self.registry = registry
     
     def import_from_excel(self, filepath: str) -> ImportResult:
         """
@@ -125,7 +136,7 @@ class ExcelImporter:
         mitigation_name_to_id: Dict[str, str] = {}
         
         try:
-            # Import Risks
+            # Import core entities
             self._import_risks(filepath, result)
             
             # Build risk name mapping
@@ -164,6 +175,22 @@ class ExcelImporter:
             # Import Mitigates relationships
             self._import_mitigates(filepath, result, mitigation_name_to_id, risk_name_to_id)
             
+            # Import Context data (schema-driven, no new types created)
+            if self.registry and self.create_generic_entity:
+                self._import_context_nodes(filepath, result)
+                # Build full node name map for edge resolution (risks + TPOs + context nodes)
+                node_name_to_id: Dict[str, str] = {**risk_name_to_id}
+                node_name_to_id.update(tpo_ref_to_id)
+                if self.get_generic_entities:
+                    for type_id in self.registry.entity_types:
+                        if type_id in ("risk", "mitigation"):
+                            continue
+                        for entity in (self.get_generic_entities(type_id) or []):
+                            if entity.get("name") and entity.get("id"):
+                                node_name_to_id[entity["name"]] = entity["id"]
+                if self.create_generic_relationship:
+                    self._import_context_edges(filepath, result, node_name_to_id)
+            
         except Exception as e:
             result.errors.append(f"Global import error: {str(e)}")
             result.log(f"Global error during import: {str(e)}", "ERROR")
@@ -177,6 +204,8 @@ class ExcelImporter:
         result.log(f"  TPO Impacts: {result.tpo_impacts_created} created, {result.tpo_impacts_skipped} skipped")
         result.log(f"  Mitigations: {result.mitigations_created} created, {result.mitigations_skipped} skipped")
         result.log(f"  Mitigates: {result.mitigates_created} created, {result.mitigates_skipped} skipped")
+        result.log(f"  Context Nodes: {result.context_nodes_created} created, {result.context_nodes_skipped} skipped")
+        result.log(f"  Context Edges: {result.context_edges_created} created, {result.context_edges_skipped} skipped")
         result.log(f"  Errors: {len(result.errors)}, Warnings: {len(result.warnings)}")
         
         return result
@@ -620,3 +649,252 @@ class ExcelImporter:
         if hasattr(value, 'isoformat'):
             return value.isoformat()
         return str(value) if value else None
+
+    def _import_context_nodes(self, filepath: str, result: ImportResult) -> None:
+        """
+        Import all ContextNode sheets (sheets prefixed with 'CN_') from an Excel file.
+
+        For each 'CN_{type_id}' sheet found:
+        - If the type_id is not in the schema registry, the sheet is skipped and a
+          structured [SCHEMA] warning with a ready-to-paste YAML snippet is logged.
+        - Extra columns not declared in the schema property list emit a one-time
+          per-sheet [SCHEMA] warning pointing to the exact schema.yaml location.
+        """
+        import pandas as pd
+        import openpyxl
+
+        result.log("Processing Context Node sheets (CN_*) ...")
+
+        try:
+            wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
+        except Exception as e:
+            result.log(f"Could not open workbook for context nodes: {e}", "WARNING")
+            return
+
+        cn_sheets = [s for s in wb.sheetnames if s.startswith("CN_")]
+        result.log(f"Found {len(cn_sheets)} context node sheet(s): {cn_sheets or 'none'}")
+
+        for sheet_name in cn_sheets:
+            type_id = sheet_name[3:]  # strip "CN_"
+
+            # --- Registry check ---
+            entity_type = self.registry.get_entity_type(type_id) if self.registry else None
+            if entity_type is None or type_id in ("risk", "mitigation"):
+                # Read column headers for the YAML scaffold
+                ws = wb[sheet_name]
+                col_headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+                col_headers = [c for c in col_headers if c]
+                props_yaml = "\n".join(
+                    f"            - {{ name: \"{c}\", type: \"string\" }}" for c in col_headers
+                )
+                warning = (
+                    f"\n[SCHEMA] Sheet '{sheet_name}' skipped — type '{type_id}' not found in schema.yaml.\n"
+                    f"To enable this import, add the following to schema.yaml under 'context_nodes':\n\n"
+                    f"    {type_id}:\n"
+                    f"      shape: \"box\"\n"
+                    f"      color: \"#AAAAAA\"\n"
+                    f"      zone: \"lower\"   # or \"upper\"\n"
+                    f"      properties:\n"
+                    f"{props_yaml}\n\n"
+                    f"Then re-import the file.\n"
+                )
+                result.warnings.append(warning)
+                result.log(f"[SCHEMA] Sheet '{sheet_name}' skipped (type unknown)", "WARNING")
+                # Count all rows (minus header) as skipped
+                row_count = sum(1 for _ in ws.iter_rows(min_row=2)) - 1
+                result.context_nodes_skipped += max(row_count, 0)
+                continue
+
+            # --- Load sheet with pandas for easy row iteration ---
+            try:
+                df = pd.read_excel(filepath, sheet_name=sheet_name)
+            except Exception as e:
+                result.log(f"Sheet '{sheet_name}': could not read — {e}", "WARNING")
+                continue
+
+            # --- Column mismatch check ---
+            schema_prop_names = {p.name for p in entity_type.properties}
+            sheet_cols = set(df.columns.tolist())
+            unknown_cols = sheet_cols - schema_prop_names - {"name"}
+            if unknown_cols:
+                loc = f"context_nodes.{type_id}.properties"
+                result.warnings.append(
+                    f"\n[SCHEMA] Sheet '{sheet_name}': unrecognized columns {sorted(unknown_cols)} ignored.\n"
+                    f"These are not declared in schema.yaml under '{loc}'.\n"
+                    f"To persist them, add entries like:\n"
+                    + "\n".join(
+                        f"    - {{ name: \"{c}\", type: \"string\" }}"
+                        for c in sorted(unknown_cols)
+                    )
+                    + f"\nto the '{loc}' list.\n"
+                )
+                result.log(f"[SCHEMA] Sheet '{sheet_name}': {len(unknown_cols)} unknown column(s) ignored", "WARNING")
+
+            # --- Import rows ---
+            result.log(f"Importing '{sheet_name}' ({len(df)} rows) ...")
+            for idx, row in df.iterrows():
+                row_num = idx + 2
+                try:
+                    # Build data dict using only schema-declared properties (+ name)
+                    data: Dict[str, Any] = {}
+                    if "name" in df.columns and not pd.isna(row.get("name")):
+                        data["name"] = str(row["name"])
+                    elif "name" in df.columns:
+                        result.warnings.append(f"[{sheet_name}] Row {row_num}: missing 'name', skipped")
+                        result.context_nodes_skipped += 1
+                        continue
+
+                    for prop in entity_type.properties:
+                        if prop.name in df.columns:
+                            val = row.get(prop.name)
+                            if not pd.isna(val):
+                                data[prop.name] = val
+
+                    created = self.create_generic_entity(type_id, data)
+                    if created:
+                        result.context_nodes_created += 1
+                        result.log(f"Created {type_id}: {data.get('name', '?')}")
+                    else:
+                        result.context_nodes_skipped += 1
+
+                except Exception as e:
+                    result.context_nodes_skipped += 1
+                    result.errors.append(f"[{sheet_name}] Row {row_num}: {str(e)}")
+
+        wb.close()
+
+    def _import_context_edges(
+        self,
+        filepath: str,
+        result: ImportResult,
+        node_name_to_id: Dict[str, str],
+    ) -> None:
+        """
+        Import all ContextEdge sheets (sheets prefixed with 'CE_') from an Excel file.
+
+        For each 'CE_{rel_type_id}' sheet found:
+        - If the rel_type_id is not in the schema registry, the sheet is skipped and a
+          structured [SCHEMA] warning with a ready-to-paste YAML snippet is logged.
+        - Extra columns not declared in the schema property list emit a one-time
+          per-sheet [SCHEMA] warning.
+        - Rows with unresolvable source_name / target_name are skipped with a warning.
+        """
+        import pandas as pd
+        import openpyxl
+
+        result.log("Processing Context Edge sheets (CE_*) ...")
+
+        try:
+            wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
+        except Exception as e:
+            result.log(f"Could not open workbook for context edges: {e}", "WARNING")
+            return
+
+        ce_sheets = [s for s in wb.sheetnames if s.startswith("CE_")]
+        result.log(f"Found {len(ce_sheets)} context edge sheet(s): {ce_sheets or 'none'}")
+
+        kernel_rel_ids = {"influences", "mitigates"}
+
+        for sheet_name in ce_sheets:
+            rel_type_id = sheet_name[3:]  # strip "CE_"
+
+            # --- Registry check ---
+            rel_type = self.registry.get_relationship_type(rel_type_id) if self.registry else None
+            if rel_type is None or rel_type_id in kernel_rel_ids:
+                ws = wb[sheet_name]
+                col_headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+                col_headers = [c for c in col_headers if c and c not in ("source_name", "target_name")]
+                props_yaml = "\n".join(
+                    f"            - {{ name: \"{c}\", type: \"string\" }}" for c in col_headers
+                ) if col_headers else "            []"
+                warning = (
+                    f"\n[SCHEMA] Sheet '{sheet_name}' skipped — relationship type '{rel_type_id}' not found in schema.yaml.\n"
+                    f"To enable this import, add the following to schema.yaml under 'relationship_types':\n\n"
+                    f"    {rel_type_id}:\n"
+                    f"      semantic: \"context\"          # or \"influence\" / \"cluster\"\n"
+                    f"      valid_from: [\"<source_node_type>\"]\n"
+                    f"      valid_to:   [\"<target_node_type>\"]\n"
+                    f"      properties:\n"
+                    f"{props_yaml}\n\n"
+                    f"Then re-import the file.\n"
+                )
+                result.warnings.append(warning)
+                result.log(f"[SCHEMA] Sheet '{sheet_name}' skipped (rel type unknown)", "WARNING")
+                row_count = sum(1 for _ in ws.iter_rows(min_row=2)) - 1
+                result.context_edges_skipped += max(row_count, 0)
+                continue
+
+            # --- Load sheet ---
+            try:
+                df = pd.read_excel(filepath, sheet_name=sheet_name)
+            except Exception as e:
+                result.log(f"Sheet '{sheet_name}': could not read — {e}", "WARNING")
+                continue
+
+            # --- Column mismatch check ---
+            schema_prop_names = {p.name for p in rel_type.properties}
+            reserved = {"source_name", "target_name"}
+            sheet_cols = set(df.columns.tolist())
+            unknown_cols = sheet_cols - schema_prop_names - reserved
+            if unknown_cols:
+                loc = f"relationship_types.{rel_type_id}.properties"
+                result.warnings.append(
+                    f"\n[SCHEMA] Sheet '{sheet_name}': unrecognized columns {sorted(unknown_cols)} ignored.\n"
+                    f"These are not declared in schema.yaml under '{loc}'.\n"
+                    f"To persist them, add entries like:\n"
+                    + "\n".join(
+                        f"    - {{ name: \"{c}\", type: \"string\" }}"
+                        for c in sorted(unknown_cols)
+                    )
+                    + f"\nto the '{loc}' list.\n"
+                )
+                result.log(f"[SCHEMA] Sheet '{sheet_name}': {len(unknown_cols)} unknown column(s) ignored", "WARNING")
+
+            # --- Import rows ---
+            result.log(f"Importing '{sheet_name}' ({len(df)} rows) ...")
+            for idx, row in df.iterrows():
+                row_num = idx + 2
+                try:
+                    source_name = row.get("source_name")
+                    target_name = row.get("target_name")
+
+                    if pd.isna(source_name) or pd.isna(target_name):
+                        result.warnings.append(f"[{sheet_name}] Row {row_num}: missing source_name or target_name, skipped")
+                        result.context_edges_skipped += 1
+                        continue
+
+                    source_id = node_name_to_id.get(str(source_name))
+                    target_id = node_name_to_id.get(str(target_name))
+
+                    if not source_id:
+                        result.warnings.append(f"[{sheet_name}] Row {row_num}: source '{source_name}' not found in graph, skipped")
+                        result.context_edges_skipped += 1
+                        continue
+                    if not target_id:
+                        result.warnings.append(f"[{sheet_name}] Row {row_num}: target '{target_name}' not found in graph, skipped")
+                        result.context_edges_skipped += 1
+                        continue
+
+                    # Build property data dict (schema-declared props only)
+                    data: Dict[str, Any] = {}
+                    for prop in rel_type.properties:
+                        if prop.name in df.columns:
+                            val = row.get(prop.name)
+                            if not pd.isna(val):
+                                data[prop.name] = val
+
+                    created = self.create_generic_relationship(
+                        rel_type_id, source_id, target_id, data
+                    )
+                    if created:
+                        result.context_edges_created += 1
+                        result.log(f"Created {rel_type_id}: {source_name} → {target_name}")
+                    else:
+                        result.context_edges_skipped += 1
+
+                except Exception as e:
+                    result.context_edges_skipped += 1
+                    result.errors.append(f"[{sheet_name}] Row {row_num}: {str(e)}")
+
+        wb.close()
+

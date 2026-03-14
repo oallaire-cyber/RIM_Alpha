@@ -57,9 +57,9 @@ streamlit run app.py
 
 1. Open http://localhost:8501 in your browser
 2. Connect to Neo4j (default credentials: neo4j/password)
-3. Navigate between **Home**, **Configuration**, and **Simulation** via the sidebar
-4. Load demo data via **Import/Export** tab on the Home page
-5. Explore the risk network in the **Visualization** tab
+3. Navigate between **Home**, **Data Management**, **Configuration**, and **Simulation** via the sidebar
+4. Load demo data via **Data Management** page
+5. Explore the risk network in the **Visualization** tab on the Home page
 
 ## ✨ Key Features
 
@@ -77,6 +77,7 @@ streamlit run app.py
 | **Complexity Toggle** | Switch between Simple and Advanced UI modes for different stakeholder technical levels |
 | **Risk Subtypes** | Schema-driven domain-specific extension fields on risks (Cyber, Supply Chain, Financial, etc.) |
 | **Interactive Focus Mode** | Instantly fade out non-connected neighborhoods when clicking specific graph nodes |
+| **Unified Data Management** | Dedicated fully dynamic UI page capable of managing CRUD operations for any custom schema entity |
 
 ### Visualization
 
@@ -131,8 +132,9 @@ rim/
 │   ├── edge_styles.py        # Relationship visualization
 │   └── colors.py             # Color palette
 ├── pages/                    # Streamlit multi-page navigation
-│   ├── 1_⚙️_Configuration.py # Schema and data management
-│   └── 2_🎲_Simulation.py    # Monte Carlo calibration
+│   ├── 1_⚙️_Configuration.py # Schema and database management
+│   ├── 2_💾_Data_Management.py # Unified CRUD Data Management hub
+│   └── 3_🎲_Simulation.py    # Monte Carlo calibration
 ├── utils/                    # Helper functions
 │   ├── state_manager.py      # Centralized session state management
 │   ├── db_manager.py         # Shared singleton connection
@@ -247,4 +249,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.15.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.17.0 | See [CHANGELOG.md](CHANGELOG.md) for history

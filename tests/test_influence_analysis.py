@@ -25,15 +25,12 @@ class TestPropagationResult:
             name="Test Risk",
             level="Strategic",
             score=15.5,
-            tpos_reached=2,
-            risks_reached=5,
-            tpo_ids=["tpo-001", "tpo-002"],
-            paths_to_tpo=[{"path": ["risk-001", "tpo-001"]}]
+            risks_reached=5
         )
         
         assert result.id == "risk-001"
         assert result.score == 15.5
-        assert result.tpos_reached == 2
+        assert result.risks_reached == 5
 
 
 class TestConvergenceResult:
@@ -116,9 +113,7 @@ class TestInfluenceAnalyzerInit:
         """Test initialization with empty data."""
         analyzer = InfluenceAnalyzer(
             risks=[],
-            tpos=[],
-            influences=[],
-            tpo_impacts=[]
+            influences=[]
         )
         
         assert analyzer is not None
@@ -128,9 +123,7 @@ class TestInfluenceAnalyzerInit:
         """Test initialization with sample network data."""
         analyzer = InfluenceAnalyzer(
             risks=sample_risk_network["risks"],
-            tpos=sample_risk_network["tpos"],
-            influences=sample_risk_network["influences"],
-            tpo_impacts=sample_risk_network["tpo_impacts"]
+            influences=sample_risk_network["influences"]
         )
         
         assert analyzer is not None
@@ -145,9 +138,7 @@ class TestInfluenceAnalyzerAdjacency:
         """Test that outgoing adjacency is built correctly."""
         analyzer = InfluenceAnalyzer(
             risks=sample_risk_network["risks"],
-            tpos=sample_risk_network["tpos"],
-            influences=sample_risk_network["influences"],
-            tpo_impacts=sample_risk_network["tpo_impacts"]
+            influences=sample_risk_network["influences"]
         )
         
         # Outgoing adjacency should be populated
@@ -157,9 +148,7 @@ class TestInfluenceAnalyzerAdjacency:
         """Test that incoming adjacency is built correctly."""
         analyzer = InfluenceAnalyzer(
             risks=sample_risk_network["risks"],
-            tpos=sample_risk_network["tpos"],
-            influences=sample_risk_network["influences"],
-            tpo_impacts=sample_risk_network["tpo_impacts"]
+            influences=sample_risk_network["influences"]
         )
         
         # Incoming adjacency should be populated
@@ -173,9 +162,7 @@ class TestInfluenceAnalyzerAnalyze:
         """Test analyze returns a dictionary with all sections."""
         analyzer = InfluenceAnalyzer(
             risks=sample_risk_network["risks"],
-            tpos=sample_risk_network["tpos"],
-            influences=sample_risk_network["influences"],
-            tpo_impacts=sample_risk_network["tpo_impacts"]
+            influences=sample_risk_network["influences"]
         )
         
         result = analyzer.analyze()
@@ -190,9 +177,7 @@ class TestInfluenceAnalyzerAnalyze:
         """Test analyze handles empty network."""
         analyzer = InfluenceAnalyzer(
             risks=[],
-            tpos=[],
-            influences=[],
-            tpo_impacts=[]
+            influences=[]
         )
         
         result = analyzer.analyze()
@@ -208,9 +193,7 @@ class TestInfluenceAnalyzerPropagators:
         """Test getting top propagators."""
         analyzer = InfluenceAnalyzer(
             risks=sample_risk_network["risks"],
-            tpos=sample_risk_network["tpos"],
-            influences=sample_risk_network["influences"],
-            tpo_impacts=sample_risk_network["tpo_impacts"]
+            influences=sample_risk_network["influences"]
         )
         
         propagators = analyzer.get_top_propagators(limit=5)
@@ -222,9 +205,7 @@ class TestInfluenceAnalyzerPropagators:
         """Test propagators are sorted by score descending."""
         analyzer = InfluenceAnalyzer(
             risks=sample_risk_network["risks"],
-            tpos=sample_risk_network["tpos"],
-            influences=sample_risk_network["influences"],
-            tpo_impacts=sample_risk_network["tpo_impacts"]
+            influences=sample_risk_network["influences"]
         )
         
         propagators = analyzer.get_top_propagators(limit=5)
@@ -241,9 +222,7 @@ class TestInfluenceAnalyzerConvergence:
         """Test getting convergence points."""
         analyzer = InfluenceAnalyzer(
             risks=sample_risk_network["risks"],
-            tpos=sample_risk_network["tpos"],
-            influences=sample_risk_network["influences"],
-            tpo_impacts=sample_risk_network["tpo_impacts"]
+            influences=sample_risk_network["influences"]
         )
         
         convergence = analyzer.get_convergence_points(limit=5)
@@ -258,9 +237,7 @@ class TestInfluenceAnalyzerCriticalPaths:
         """Test getting critical paths."""
         analyzer = InfluenceAnalyzer(
             risks=sample_risk_network["risks"],
-            tpos=sample_risk_network["tpos"],
-            influences=sample_risk_network["influences"],
-            tpo_impacts=sample_risk_network["tpo_impacts"]
+            influences=sample_risk_network["influences"]
         )
         
         paths = analyzer.get_critical_paths(limit=5)
@@ -275,9 +252,7 @@ class TestInfluenceAnalyzerBottlenecks:
         """Test getting bottlenecks."""
         analyzer = InfluenceAnalyzer(
             risks=sample_risk_network["risks"],
-            tpos=sample_risk_network["tpos"],
-            influences=sample_risk_network["influences"],
-            tpo_impacts=sample_risk_network["tpo_impacts"]
+            influences=sample_risk_network["influences"]
         )
         
         bottlenecks = analyzer.get_bottlenecks(limit=5)
@@ -292,9 +267,7 @@ class TestInfluenceAnalyzerClusters:
         """Test getting risk clusters."""
         analyzer = InfluenceAnalyzer(
             risks=sample_risk_network["risks"],
-            tpos=sample_risk_network["tpos"],
-            influences=sample_risk_network["influences"],
-            tpo_impacts=sample_risk_network["tpo_impacts"]
+            influences=sample_risk_network["influences"]
         )
         
         clusters = analyzer.get_risk_clusters(limit=5)
@@ -309,9 +282,7 @@ class TestInfluenceAnalyzerHelpers:
         """Test get_propagator_ids returns list/set of IDs."""
         analyzer = InfluenceAnalyzer(
             risks=sample_risk_network["risks"],
-            tpos=sample_risk_network["tpos"],
-            influences=sample_risk_network["influences"],
-            tpo_impacts=sample_risk_network["tpo_impacts"]
+            influences=sample_risk_network["influences"]
         )
         
         # First run analyze to populate results
@@ -325,9 +296,7 @@ class TestInfluenceAnalyzerHelpers:
         """Test get_high_priority_ids returns combined set."""
         analyzer = InfluenceAnalyzer(
             risks=sample_risk_network["risks"],
-            tpos=sample_risk_network["tpos"],
-            influences=sample_risk_network["influences"],
-            tpo_impacts=sample_risk_network["tpo_impacts"]
+            influences=sample_risk_network["influences"]
         )
         
         # First run analyze to populate results

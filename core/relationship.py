@@ -337,3 +337,46 @@ class RelationshipTypeDefinition:
             bidirectional=data.get("bidirectional", False),
             semantic=data.get("semantic", "context"),
         )
+
+    @classmethod
+    def from_context_edge_schema(cls, data: Dict[str, Any]) -> "RelationshipTypeDefinition":
+        """
+        Create from a context_edges entry in schema YAML.
+        
+        Args:
+            data: Relationship data from context_edges section
+            
+        Returns:
+            RelationshipTypeDefinition for the context edge
+        """
+        rel_id = data.get("id", "unknown")
+        
+        # In context edges, attributes are sometimes called 'properties' or 'attributes'
+        raw_attrs = data.get("properties", data.get("attributes", []))
+        attributes = [
+            AttributeDefinition.from_dict(a)
+            for a in raw_attrs
+        ]
+        
+        # Handle from_node/to_node mapping to from_entity_types/to_entity_types
+        from_entities = []
+        if data.get("from_node"):
+            from_entities = [data["from_node"]]
+        
+        to_entities = []
+        if data.get("to_node"):
+            to_entities = [data["to_node"]]
+            
+        return cls(
+            id=rel_id,
+            label=data.get("label", rel_id.replace("_", " ").title()),
+            neo4j_type=data.get("neo4j_type", rel_id.upper()),
+            description=data.get("description", ""),
+            from_entity_types=from_entities,
+            to_entity_types=to_entities,
+            color=data.get("color", "#808080"),
+            line_style=data.get("line_style", "solid"),
+            attributes=attributes,
+            bidirectional=data.get("bidirectional", False),
+            semantic="context",
+        )

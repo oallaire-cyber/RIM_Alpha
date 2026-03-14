@@ -7,7 +7,7 @@ maintaining backward compatibility with the existing application.
 
 from typing import List, Dict, Any, Optional
 from database.connection import Neo4jConnection
-from database.queries import risks, tpos, mitigations, influences, analysis
+from database.queries import risks, mitigations, influences, analysis, generic_entity, generic_relationship
 
 
 class RiskGraphManager:
@@ -239,99 +239,6 @@ class RiskGraphManager:
         return influences.delete_influence(self._connection, influence_id)
     
     # =========================================================================
-    # TPO OPERATIONS
-    # =========================================================================
-    
-    def create_tpo(
-        self,
-        reference: str,
-        name: str,
-        cluster: str,
-        description: str = ""
-    ) -> Optional[str]:
-        """Create a new TPO node. Returns the created node ID or None."""
-        result = tpos.create_tpo(self._connection, reference, name, cluster, description)
-        return result
-    
-    def get_all_tpos(self, cluster_filter: list = None) -> list:
-        """Retrieve all TPOs with optional cluster filter."""
-        return tpos.get_all_tpos(self._connection, cluster_filter)
-    
-    def get_tpo_by_id(self, tpo_id: str) -> Optional[Dict]:
-        """Retrieve a TPO by its ID."""
-        return tpos.get_tpo_by_id(self._connection, tpo_id)
-    
-    def get_tpo_by_reference(self, reference: str) -> Optional[Dict]:
-        """Retrieve a TPO by its reference code."""
-        return tpos.get_tpo_by_reference(self._connection, reference)
-    
-    def update_tpo(
-        self,
-        tpo_id: str,
-        reference: str,
-        name: str,
-        cluster: str,
-        description: str
-    ) -> bool:
-        """Update an existing TPO."""
-        return tpos.update_tpo(
-            self._connection, tpo_id, reference, name, cluster, description
-        )
-    
-    def delete_tpo(self, tpo_id: str) -> bool:
-        """Delete a TPO and all its relationships."""
-        return tpos.delete_tpo(self._connection, tpo_id)
-    
-    # =========================================================================
-    # TPO IMPACT OPERATIONS
-    # =========================================================================
-    
-    def create_tpo_impact(
-        self,
-        risk_id: str,
-        tpo_id: str,
-        impact_level: str,
-        description: str = ""
-    ) -> bool:
-        """Create an impact relationship from a Business Risk to a TPO."""
-        try:
-            result = tpos.create_tpo_impact(
-                self._connection, risk_id, tpo_id, impact_level, description
-            )
-            return result is not None
-        except ValueError as e:
-            import streamlit as st
-            st.error(str(e))
-            return False
-    
-    def get_all_tpo_impacts(self) -> list:
-        """Retrieve all TPO impact relationships."""
-        return tpos.get_all_tpo_impacts(self._connection)
-    
-    def get_tpo_impacts_for_risk(self, risk_id: str) -> list:
-        """Get all TPO impacts for a specific risk."""
-        return tpos.get_tpo_impacts_for_risk(self._connection, risk_id)
-    
-    def get_risks_impacting_tpo(self, tpo_id: str) -> list:
-        """Get all risks that impact a specific TPO."""
-        return tpos.get_risks_impacting_tpo(self._connection, tpo_id)
-    
-    def update_tpo_impact(
-        self,
-        impact_id: str,
-        impact_level: str,
-        description: str
-    ) -> bool:
-        """Update a TPO impact relationship."""
-        return tpos.update_tpo_impact(
-            self._connection, impact_id, impact_level, description
-        )
-    
-    def delete_tpo_impact(self, impact_id: str) -> bool:
-        """Delete a TPO impact relationship."""
-        return tpos.delete_tpo_impact(self._connection, impact_id)
-    
-    # =========================================================================
     # MITIGATION OPERATIONS
     # =========================================================================
     
@@ -342,12 +249,13 @@ class RiskGraphManager:
         status: str,
         description: str = "",
         owner: str = "",
-        source_entity: str = ""
+        source_entity: str = "",
+        ext_fields: Optional[Dict[str, Any]] = None
     ) -> Optional[str]:
         """Create a new mitigation node. Returns the created node ID or None."""
         result = mitigations.create_mitigation(
             self._connection, name, mitigation_type, status,
-            description, owner, source_entity
+            description, owner, source_entity, ext_fields
         )
         return result
     
@@ -457,6 +365,57 @@ class RiskGraphManager:
         return mitigations.get_risk_mitigation_summary(self._connection)
     
     # =========================================================================
+    # GENERIC ENTITY OPERATIONS (Context Nodes / Additional Entities)
+    # =========================================================================
+    
+    def create_generic_entity(self, entity_type, data: dict) -> dict:
+        """Create a generic entity."""
+        return generic_entity.create_entity(self.driver, entity_type, data)
+        
+    def get_generic_entities(self, entity_type, filters: dict = None) -> list:
+        """Get generic entities of a specific type."""
+        return generic_entity.get_all_entities(self.driver, entity_type, filters)
+        
+    def get_generic_entity_by_id(self, entity_type, entity_id: str) -> Optional[dict]:
+        """Get a generic entity by ID."""
+        return generic_entity.get_entity_by_id(self.driver, entity_type, entity_id)
+        
+    def update_generic_entity(self, entity_type, entity_id: str, data: dict) -> Optional[dict]:
+        """Update a generic entity."""
+        return generic_entity.update_entity(self.driver, entity_type, entity_id, data)
+        
+    def delete_generic_entity(self, entity_type, entity_id: str, cascade: bool = True) -> bool:
+        """Delete a generic entity."""
+        return generic_entity.delete_entity(self.driver, entity_type, entity_id, cascade)
+
+    # =========================================================================
+    # GENERIC RELATIONSHIP OPERATIONS (Context Edges)
+    # =========================================================================
+    
+    def create_generic_relationship(self, rel_type, source_id: str, target_id: str, 
+                                    source_type, target_type, data: dict = None) -> dict:
+        """Create a generic relationship."""
+        return generic_relationship.create_relationship(
+            self.driver, rel_type, source_id, target_id, source_type, target_type, data
+        )
+        
+    def get_generic_relationships(self, rel_type, filters: dict = None) -> list:
+        """Get generic relationships of a specific type."""
+        return generic_relationship.get_all_relationships(self.driver, rel_type, filters)
+        
+    def get_generic_relationship_by_id(self, rel_type, rel_id: str) -> Optional[dict]:
+        """Get a generic relationship by ID."""
+        return generic_relationship.get_relationship_by_id(self.driver, rel_type, rel_id)
+        
+    def update_generic_relationship(self, rel_type, rel_id: str, data: dict) -> Optional[dict]:
+        """Update a generic relationship."""
+        return generic_relationship.update_relationship(self.driver, rel_type, rel_id, data)
+        
+    def delete_generic_relationship(self, rel_type, rel_id: str) -> bool:
+        """Delete a generic relationship."""
+        return generic_relationship.delete_relationship(self.driver, rel_type, rel_id)
+
+    # =========================================================================
     # STATISTICS & ANALYSIS
     # =========================================================================
     
@@ -551,9 +510,7 @@ class RiskGraphManager:
         
         # Get all nodes and edges for analysis
         all_risks = self.get_all_risks()
-        all_tpos = self.get_all_tpos()
         all_influences = self.get_semantic_influences()
-        all_tpo_impacts = self.get_all_tpo_impacts()
         
         # Pre-filter by scope if provided
         if active_scopes:
@@ -584,20 +541,12 @@ class RiskGraphManager:
                 i for i in all_influences
                 if i["source_id"] in filtered_risk_ids and i["target_id"] in filtered_risk_ids
             ]
-            all_tpo_impacts = [
-                i for i in all_tpo_impacts
-                if i["risk_id"] in filtered_risk_ids
-            ]
-            # Keep TPOs that are reached by scoped risks
-            reached_tpo_ids = {i["tpo_id"] for i in all_tpo_impacts}
-            all_tpos = [t for t in all_tpos if t["id"] in reached_tpo_ids]
         
         if not all_risks:
             return analysis
         
         # Build adjacency structures
         risk_dict = {r["id"]: dict(r) for r in all_risks}
-        tpo_dict = {t["id"]: dict(t) for t in all_tpos}
         
         # Outgoing edges (for propagation analysis)
         outgoing = {}  # node_id -> [(target_id, strength, edge_type)]
@@ -619,27 +568,12 @@ class RiskGraphManager:
                 incoming[target] = []
             incoming[target].append((source, score, "INFLUENCES"))
         
-        for impact in all_tpo_impacts:
-            source = impact["risk_id"]
-            target = impact["tpo_id"]
-            impact_score = impact_values.get(impact.get("impact_level", "Medium"), 2)
-            
-            if source not in outgoing:
-                outgoing[source] = []
-            outgoing[source].append((target, impact_score * 1.5, "IMPACTS_TPO"))  # Boost TPO impacts
-            
-            if target not in incoming:
-                incoming[target] = []
-            incoming[target].append((source, impact_score * 1.5, "IMPACTS_TPO"))
-        
         # === 1. TOP PROPAGATORS ===
         propagation_scores = {}
         
         for risk_id, risk_data in risk_dict.items():
             score = 0
-            tpos_reached = set()
             risks_reached = set()
-            paths_to_tpo = []
             
             # BFS with score accumulation
             visited = set()
@@ -655,12 +589,7 @@ class RiskGraphManager:
                 if current != risk_id:
                     decay = 0.85 ** depth
                     
-                    if current in tpo_dict:
-                        tpos_reached.add(current)
-                        node_value = 10
-                        score += node_value * cum_strength * decay
-                        paths_to_tpo.append({"path": path, "score": cum_strength * decay})
-                    elif current in risk_dict:
+                    if current in risk_dict:
                         risks_reached.add(current)
                         node_value = 5 if risk_dict[current]["level"] == "Business" else 2
                         score += node_value * cum_strength * decay
@@ -676,10 +605,7 @@ class RiskGraphManager:
                 "name": risk_data["name"],
                 "level": risk_data["level"],
                 "score": round(score, 1),
-                "tpos_reached": len(tpos_reached),
                 "risks_reached": len(risks_reached),
-                "tpo_ids": list(tpos_reached),
-                "paths_to_tpo": sorted(paths_to_tpo, key=lambda x: -x["score"])[:3]
             }
         
         sorted_propagators = sorted(propagation_scores.values(), key=lambda x: -x["score"])
@@ -687,7 +613,7 @@ class RiskGraphManager:
         
         # === 2. CONVERGENCE POINTS ===
         convergence_scores = {}
-        convergence_candidates = list(risk_dict.keys()) + list(tpo_dict.keys())
+        convergence_candidates = list(risk_dict.keys())
         
         for node_id in convergence_candidates:
             if node_id not in incoming:
@@ -724,14 +650,13 @@ class RiskGraphManager:
                 convergence_multiplier = 1 + (path_count / len(unique_sources)) * 0.2
                 score *= convergence_multiplier
             
-            is_tpo = node_id in tpo_dict
-            node_data = tpo_dict[node_id] if is_tpo else risk_dict.get(node_id, {})
+            node_data = risk_dict.get(node_id, {})
             
             convergence_scores[node_id] = {
                 "id": node_id,
-                "name": node_data.get("reference", "") + ": " + node_data.get("name", "") if is_tpo else node_data.get("name", ""),
-                "level": "TPO" if is_tpo else node_data.get("level", ""),
-                "node_type": "TPO" if is_tpo else "Risk",
+                "name": node_data.get("name", ""),
+                "level": node_data.get("level", ""),
+                "node_type": "Risk",
                 "score": round(score, 1),
                 "source_count": len(unique_sources),
                 "path_count": path_count,
@@ -758,35 +683,33 @@ class RiskGraphManager:
                     continue
                 visited.add(current)
                 
-                if current in tpo_dict and len(path_nodes) > 1:
-                    critical_paths.append({
-                        "path": path_nodes,
-                        "edges": path_edges,
-                        "strength": round(cum_strength, 3),
-                        "length": len(path_nodes) - 1
-                    })
-                    continue
-                
                 if current in outgoing and len(path_nodes) < 6:
                     for target, edge_score, edge_type in outgoing[current]:
                         if target not in visited:
                             new_strength = cum_strength * (edge_score / 4)
                             
-                            if target in tpo_dict:
-                                target_info = {"id": target, "name": tpo_dict[target]["reference"], "type": "TPO"}
-                            elif target in risk_dict:
+                            if target in risk_dict:
                                 target_info = {"id": target, "name": risk_dict[target]["name"], "type": risk_dict[target]["level"]}
                             else:
                                 continue
                             
                             queue.append((target, new_strength, path_nodes + [target_info], path_edges + [{"type": edge_type, "score": edge_score}]))
+                            
+                            # Add path if we reached a Business risk
+                            if risk_dict[target]["level"] == "Business":
+                                critical_paths.append({
+                                    "path": path_nodes + [target_info],
+                                    "edges": path_edges + [{"type": edge_type, "score": edge_score}],
+                                    "strength": round(new_strength, 3),
+                                    "length": len(path_nodes)
+                                })
         
         critical_paths.sort(key=lambda x: -x["strength"])
         analysis["critical_paths"] = critical_paths[:5]
         
         # === 4. BOTTLENECKS ===
         node_path_count = {}
-        total_paths_to_tpo = 0
+        total_paths = 0
         
         for risk_id, risk_data in risk_dict.items():
             visited_paths = set()
@@ -800,8 +723,8 @@ class RiskGraphManager:
                     continue
                 visited_paths.add(path_key)
                 
-                if current in tpo_dict and len(path) > 1:
-                    total_paths_to_tpo += 1
+                if current in risk_dict and risk_dict[current]["level"] == "Business" and len(path) > 1:
+                    total_paths += 1
                     for node in path[1:-1]:
                         if node in risk_dict:
                             if node not in node_path_count:
@@ -822,8 +745,8 @@ class RiskGraphManager:
                     "name": risk_dict[node_id]["name"],
                     "level": risk_dict[node_id]["level"],
                     "path_count": count,
-                    "total_paths": total_paths_to_tpo,
-                    "percentage": round(count / max(total_paths_to_tpo, 1) * 100, 1)
+                    "total_paths": total_paths,
+                    "percentage": round(count / max(total_paths, 1) * 100, 1)
                 })
         
         bottlenecks.sort(key=lambda x: -x["path_count"])
@@ -1292,70 +1215,146 @@ class RiskGraphManager:
     
     def export_to_excel(self, filepath: str) -> bool:
         """
-        Export all data to an Excel file.
-        
+        Export all data (core + context) to an Excel file.
+
+        Sheets produced:
+          Core:    Risks, Influences, Mitigations, Mitigates
+          Context: CN_{type_id} per ContextNode type, CE_{rel_id} per ContextEdge type
+
         Args:
             filepath: Path to save the Excel file
-        
+
         Returns:
             True if export successful
         """
         from services.export_service import export_to_excel
-        
+        from core import get_registry
+
+        registry = get_registry()
+        context_nodes_data, context_edges_data = self._collect_context_data(registry)
+
         return export_to_excel(
             filepath=filepath,
             risks=self.get_all_risks(),
             influences=self.get_semantic_influences(),
-            tpos=self.get_all_tpos(),
-            tpo_impacts=self.get_all_tpo_impacts(),
             mitigations=self.get_all_mitigations(),
-            mitigates_relationships=self.get_all_mitigates_relationships()
+            mitigates_relationships=self.get_all_mitigates_relationships(),
+            context_nodes_data=context_nodes_data,
+            context_edges_data=context_edges_data,
         )
-    
+
     def export_to_excel_bytes(self) -> bytes:
         """
-        Export all data to Excel and return as bytes.
-        
+        Export all data (core + context) to Excel and return as bytes.
+
         Returns:
             Excel file content as bytes
         """
         from services.export_service import export_to_excel_bytes
-        
+        from core import get_registry
+
+        registry = get_registry()
+        context_nodes_data, context_edges_data = self._collect_context_data(registry)
+
         return export_to_excel_bytes(
             risks=self.get_all_risks(),
             influences=self.get_semantic_influences(),
-            tpos=self.get_all_tpos(),
-            tpo_impacts=self.get_all_tpo_impacts(),
             mitigations=self.get_all_mitigations(),
-            mitigates_relationships=self.get_all_mitigates_relationships()
+            mitigates_relationships=self.get_all_mitigates_relationships(),
+            context_nodes_data=context_nodes_data,
+            context_edges_data=context_edges_data,
         )
-    
+
     def import_from_excel(self, filepath: str) -> dict:
         """
-        Import data from an Excel file.
-        
+        Import data from an Excel file (core + context sheets).
+
         Args:
             filepath: Path to the Excel file
-        
+
         Returns:
-            ImportResult as dictionary with created counts and errors
+            ImportResult as dictionary with created/skipped counts and errors
         """
         from services.import_service import ExcelImporter
-        
+        from core import get_registry
+
+        registry = get_registry()
+
         importer = ExcelImporter(
             create_risk_fn=self.create_risk,
-            create_tpo_fn=self.create_tpo,
             create_influence_fn=self.create_influence,
-            create_tpo_impact_fn=self.create_tpo_impact,
             create_mitigation_fn=self.create_mitigation,
             create_mitigates_fn=self.create_mitigates_relationship,
             get_all_risks_fn=self.get_all_risks,
-            get_all_tpos_fn=self.get_all_tpos,
-            get_all_mitigations_fn=self.get_all_mitigations
+            get_all_mitigations_fn=self.get_all_mitigations,
+            # Context data callbacks
+            create_generic_entity_fn=self.create_entity,
+            get_generic_entities_fn=self.get_entities,
+            create_generic_relationship_fn=self.create_relationship,
+            registry=registry,
         )
-        
+
         result = importer.import_from_excel(filepath)
         return result.to_dict()
+
+    def export_to_json(self) -> Dict[str, Any]:
+        """
+        Export the full graph as a JSON-serialisable dict (backup).
+
+        Returns:
+            Dict with schema_version, exported_at, and all entity collections.
+        """
+        from services.backup_service import export_graph_to_json
+        from core import get_registry
+
+        return export_graph_to_json(manager=self, registry=get_registry())
+
+    def import_from_json(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Restore the graph from a JSON backup dict (upserts by name).
+
+        Args:
+            data: Backup dict as produced by export_to_json().
+
+        Returns:
+            Summary dict with created/skipped counts and error list.
+        """
+        from services.backup_service import import_graph_from_json
+        from core import get_registry
+
+        return import_graph_from_json(manager=self, data=data, registry=get_registry())
+
+    def _collect_context_data(
+        self, registry
+    ) -> tuple:
+        """
+        Collect all ContextNode and ContextEdge data keyed by type_id.
+
+        Returns:
+            Tuple of (context_nodes_data, context_edges_data) dicts.
+        """
+        kernel_rel_ids = {"influences", "mitigates"}
+        core_entity_ids = {"risk", "mitigation"}
+
+        context_nodes_data: Dict[str, list] = {}
+        for entity_type in registry.entity_types.values():
+            type_id = entity_type.type_id
+            if type_id in core_entity_ids:
+                continue
+            entities = self.get_entities(type_id) or []
+            if entities:
+                context_nodes_data[type_id] = entities
+
+        context_edges_data: Dict[str, list] = {}
+        for rel_type in registry.relationship_types.values():
+            rel_id = getattr(rel_type, "type_id", None) or getattr(rel_type, "id", None)
+            if not rel_id or rel_id in kernel_rel_ids:
+                continue
+            edges = self.get_relationships(rel_id) or []
+            if edges:
+                context_edges_data[rel_id] = edges
+
+        return context_nodes_data, context_edges_data
     
     # =========================================================================
     # EXPOSURE CALCULATION
@@ -1672,4 +1671,177 @@ class RiskGraphManager:
             return False
         
         return delete_relationship(self._connection._driver, rel_type, rel_id)
+
+    # =========================================================================
+    # UNIFIED UI ROUTERS (Schema-Agnostic CRUD)
+    # =========================================================================
+
+    def create_unified_entity(self, entity_type_id: str, data: Dict[str, Any]) -> Optional[Dict]:
+        """
+        Universal entity creator that routes to specific handlers (Risks)
+        or generic ones (Context Nodes).
+        """
+        from core import get_registry
+        
+        if entity_type_id == "risk":
+            # Extract risk-specific fields from flat data dictionary
+            return self.create_risk(
+                name=data.get("name", "New Risk"),
+                level=data.get("level", "Operational"),
+                categories=data.get("categories", []),
+                description=data.get("description", ""),
+                status=data.get("status", "Active"),
+                activation_condition=data.get("activation_condition"),
+                activation_decision_date=data.get("activation_decision_date"),
+                owner=data.get("owner", ""),
+                probability=data.get("probability"),
+                impact=data.get("impact"),
+                origin=data.get("origin", "New"),
+                subtype=data.get("subtype"),
+                ext_fields=data.get("ext_fields", {})
+            )
+        elif entity_type_id == "mitigation":
+            return self.create_mitigation(
+                name=data.get("name", "New Mitigation"),
+                mitigation_type=data.get("type", "Preventive"),
+                status=data.get("status", "Active"),
+                description=data.get("description", ""),
+                owner=data.get("owner", ""),
+                source_entity=data.get("source_entity", ""),
+                ext_fields=data.get("ext_fields")
+            )
+        else:
+            registry = get_registry()
+            type_def = registry.get_entity_type(entity_type_id)
+            if not type_def:
+                raise ValueError(f"Unknown entity type: {entity_type_id}")
+            return self.create_generic_entity(type_def, data)
+
+    def get_unified_entities(self, entity_type_id: str) -> List[Dict]:
+        """Universal entity fetcher."""
+        from core import get_registry
+        
+        if entity_type_id == "risk":
+            return self.get_all_risks()
+        elif entity_type_id == "mitigation":
+            return self.get_all_mitigations()
+        else:
+            registry = get_registry()
+            type_def = registry.get_entity_type(entity_type_id)
+            if not type_def:
+                return []
+            return self.get_generic_entities(type_def)
+
+    def update_unified_entity(self, entity_type_id: str, id: str, data: Dict[str, Any]) -> Optional[Dict]:
+        """Universal entity updater."""
+        from core import get_registry
+        
+        if entity_type_id == "risk":
+            # Update specific
+            success = self.update_risk(
+                risk_id=id,
+                name=data.get("name", "Unknown Risk"),
+                level=data.get("level", "Operational"),
+                categories=data.get("categories", []),
+                description=data.get("description", ""),
+                status=data.get("status", "Active"),
+                activation_condition=data.get("activation_condition"),
+                activation_decision_date=data.get("activation_decision_date"),
+                owner=data.get("owner", ""),
+                probability=data.get("probability"),
+                impact=data.get("impact"),
+                origin=data.get("origin", "New"),
+                subtype=data.get("subtype"),
+                ext_fields=data.get("ext_fields", {})
+            )
+            return self.get_risk_by_id(id) if success else None
+        elif entity_type_id == "mitigation":
+            success = self.update_mitigation(
+                mitigation_id=id,
+                name=data.get("name", "Unknown Mitigation"),
+                mitigation_type=data.get("type", "Preventive"),
+                status=data.get("status", "Active"),
+                description=data.get("description", ""),
+                owner=data.get("owner", ""),
+                source_entity=data.get("source_entity", "")
+            )
+            return self.get_mitigation_by_id(id) if success else None
+        else:
+            return self.update_generic_entity(entity_type_id, id, data)
+
+    def delete_unified_entity(self, entity_type_id: str, id: str) -> bool:
+        """Universal entity deleter."""
+        if entity_type_id == "risk":
+            return self.delete_risk(id)
+        elif entity_type_id == "mitigation":
+            return self.delete_mitigation(id)
+        else:
+            return self.delete_entity(entity_type_id, id)
+
+    def create_unified_relationship(self, rel_type_id: str, source_id: str, target_id: str, source_type_id: str, target_type_id: str, data: Dict[str, Any]) -> Optional[bool]:
+        """Universal relationship creator."""
+        if rel_type_id == "influences":
+            return self.create_influence(
+                source_id=source_id,
+                target_id=target_id,
+                influence_type="INFLUENCES",
+                strength=data.get("strength", "Moderate"),
+                description=data.get("description", ""),
+                confidence=float(data.get("confidence", 0.8))
+            )
+        elif rel_type_id == "mitigates":
+            return self.create_mitigates_link(
+                mitigation_id=source_id,
+                risk_id=target_id,
+                effectiveness=data.get("effectiveness", "Minor"),
+                description=data.get("description", "")
+            )
+            
+        # Context edges
+        res = self.create_relationship(
+            rel_type_id=rel_type_id,
+            source_id=source_id,
+            target_id=target_id,
+            source_entity_type_id=source_type_id,
+            target_entity_type_id=target_type_id,
+            data=data
+        )
+        return res is not None
+
+    def get_unified_relationships(self, rel_type_id: str) -> List[Dict]:
+        """Universal relationship getter."""
+        if rel_type_id == "influences":
+            return self.get_all_influences()
+        elif rel_type_id == "mitigates":
+            return self.get_all_mitigates_relationships()
+        else:
+            return self.get_relationships(rel_type_id=rel_type_id)
+
+    def update_unified_relationship(self, rel_type_id: str, id: str, data: Dict[str, Any]) -> bool:
+        """Universal relationship updater."""
+        if rel_type_id == "influences":
+            return self.update_influence(
+                influence_id=id,
+                strength=data.get("strength", "Moderate"),
+                description=data.get("description", ""),
+                confidence=float(data.get("confidence", 0.8))
+            )
+        elif rel_type_id == "mitigates":
+            return self.update_mitigates_link(
+                relationship_id=id,
+                effectiveness=data.get("effectiveness", "Minor"),
+                description=data.get("description", "")
+            )
+        else:
+            self.update_generic_relationship(rel_type_id, id, data)
+            return True
+
+    def delete_unified_relationship(self, rel_type_id: str, id: str) -> bool:
+        """Universal relationship deleter."""
+        if rel_type_id == "influences":
+            return self.delete_influence(id)
+        elif rel_type_id == "mitigates":
+            return self.delete_mitigates_link(id)
+        else:
+            return self.delete_relationship(rel_type_id, id)
 

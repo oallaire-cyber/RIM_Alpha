@@ -312,10 +312,9 @@ def render_schema_management():
         return
     
     # Sub-tabs for different schema sections
-    subtab1, subtab2, subtab3, subtab4, subtab5, subtab6, subtab7, subtab8 = st.tabs([
+    subtab1, subtab2, subtab3, subtab4, subtab5, subtab6, subtab7 = st.tabs([
         "⚙️ General",
         "🎯 Risk Config",
-        "🏆 TPO Config", 
         "🛡️ Mitigation Config",
         "🔗 Relationships",
         "🧩 Context Nodes",
@@ -330,21 +329,18 @@ def render_schema_management():
         render_risk_config(schema)
     
     with subtab3:
-        render_tpo_config(schema)
-    
-    with subtab4:
         render_mitigation_config(schema)
     
-    with subtab5:
+    with subtab4:
         render_relationship_config(schema)
     
-    with subtab6:
+    with subtab5:
         render_context_nodes_config(schema)
     
-    with subtab7:
+    with subtab6:
         render_context_edges_config(schema)
     
-    with subtab8:
+    with subtab7:
         render_yaml_preview(schema)
 
 
@@ -2447,6 +2443,26 @@ def render_scopes_tab():
     st.subheader("📐 Analysis Scopes")
     st.info("Define named subsets of graph nodes for focused analysis.")
     
+    # ── Fetch all available nodes once if connected ─
+    node_options = []
+    display_map = {}
+    reverse_display_map = {}
+    if st.session_state.get("config_connected"):
+        try:
+            conn = st.session_state.config_connection
+            result = conn.execute_query(
+                "MATCH (n) WHERE n.id IS NOT NULL AND n.name IS NOT NULL "
+                "RETURN n.id AS id, n.name AS name, labels(n)[0] AS label ORDER BY label, n.name"
+            )
+            node_options = [
+                {"id": r["id"], "display": f"[{r['label']}] {r['name']}"}
+                for r in result
+            ]
+            display_map = {n["display"]: n["id"] for n in node_options}
+            reverse_display_map = {n["id"]: n["display"] for n in node_options}
+        except Exception:
+            pass
+            
     # Current scopes
     scopes = schema.scopes or []
     
@@ -2461,24 +2477,7 @@ def render_scopes_tab():
                 new_desc = st.text_area("Description", placeholder="Risks related to fuel supply", height=68)
                 new_color = st.color_picker("Scope Color", "#808080")
             
-            # Node picker — list nodes from DB if connected
-            node_options = []
-            if st.session_state.get("config_connected"):
-                try:
-                    conn = st.session_state.config_connection
-                    result = conn.execute_query(
-                        "MATCH (n) WHERE n.id IS NOT NULL AND n.name IS NOT NULL "
-                        "RETURN n.id AS id, n.name AS name, labels(n)[0] AS label ORDER BY label, n.name"
-                    )
-                    node_options = [
-                        {"id": r["id"], "display": f"[{r['label']}] {r['name']}"}
-                        for r in result
-                    ]
-                except Exception:
-                    pass
-            
             if node_options:
-                display_map = {n["display"]: n["id"] for n in node_options}
                 selected_displays = st.multiselect("Select Nodes", list(display_map.keys()))
                 selected_node_ids = [display_map[d] for d in selected_displays]
             else:
@@ -2530,7 +2529,7 @@ def render_scopes_tab():
             
             # Save edits
             if edited_name != scope.name or edited_desc != scope.description or edited_color != scope.color:
-                if st.button("💾 Save Changes", key=f"save_scope_{scope.id}"):
+                if st.button("💾 Save Scope Details", key=f"save_scope_{scope.id}"):
                     scope.name = edited_name
                     scope.description = edited_desc
                     scope.color = edited_color
@@ -2538,10 +2537,44 @@ def render_scopes_tab():
                     st.success("Scope updated.")
                     st.rerun()
             
-            # Node list
-            if scope.node_ids:
-                st.markdown(f"**Nodes ({len(scope.node_ids)}):**")
-                st.code("\n".join(scope.node_ids[:50]) + ("\n..." if len(scope.node_ids) > 50 else ""))
+            # Node list management
+            st.markdown(f"**Manage Nodes ({len(scope.node_ids)}):**")
+            if node_options:
+                # Connected to DB: Show interactive multiselect
+                current_displays = [reverse_display_map[nid] for nid in scope.node_ids if nid in reverse_display_map]
+                
+                updated_displays = st.multiselect(
+                    "Scope Nodes", 
+                    options=list(display_map.keys()), 
+                    default=current_displays,
+                    key=f"nodes_{scope.id}",
+                    label_visibility="collapsed"
+                )
+                
+                new_node_ids = [display_map[d] for d in updated_displays]
+                
+                # Keep IDs that exist in the scope but might not be in the DB
+                missing_db_ids = [nid for nid in scope.node_ids if nid not in reverse_display_map]
+                final_node_ids = new_node_ids + missing_db_ids
+                
+                if set(final_node_ids) != set(scope.node_ids):
+                    if st.button("💾 Save Node Changes", key=f"save_nodes_{scope.id}"):
+                        scope.node_ids = final_node_ids
+                        _save_active_schema(schema)
+                        st.success(f"Scope nodes updated to {len(scope.node_ids)} items.")
+                        st.rerun()
+                
+                if missing_db_ids:
+                    st.caption(f"*(+{len(missing_db_ids)} nodes currently not found in DB but kept in scope)*")
+            else:
+                raw_ids = st.text_area("Node IDs (one per line)", value="\n".join(scope.node_ids), key=f"raw_nodes_{scope.id}")
+                updated_ids = [x.strip() for x in raw_ids.split("\n") if x.strip()]
+                if set(updated_ids) != set(scope.node_ids):
+                    if st.button("💾 Save Node Changes", key=f"save_raw_nodes_{scope.id}"):
+                        scope.node_ids = updated_ids
+                        _save_active_schema(schema)
+                        st.success(f"Scope nodes updated to {len(scope.node_ids)} items.")
+                        st.rerun()
 
 
 def _save_active_schema(schema):

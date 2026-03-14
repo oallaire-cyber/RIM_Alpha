@@ -184,15 +184,22 @@ relationship_types:
 - **~~[F4]~~ One-Click Visualization Export** ✅ _(v2.12.0)_: Export the active styled graph view to PNG or PDF.
 - **F5. Automated Risk Threshold Alerts**: Visual flags when computed exposure exceeds predefined thresholds. Must be scope-aware.
 - **F6. Mitigation Exposure View (Business Focus)**: Dedicated view showing mitigations contributing to exposure reduction for selected Business Risks, filterable by lifecycle status. Must be scope-aware.
-- **F12. Generic Context Node and Context Edge CRUD UI**: A schema-driven UI to manage custom context nodes and context edges in the main app exactly how risks and influences are managed. Field types, labels, enums, units, and required markers driven entirely by property definitions. No type-specific code. Must be scope-aware — new ContextNodes/Edges created while a scope is active are offered registration into that scope.
+- **~~[F12]~~ Generic Context Node and Context Edge CRUD UI** ✅ _(v2.17.0)_: A schema-driven UI to manage custom context nodes and context edges in the main app exactly how risks and influences are managed. Field types, labels, enums, units, and required markers driven entirely by property definitions. No type-specific code. Must be scope-aware — new ContextNodes/Edges created while a scope is active are offered registration into that scope.
 - **F18. Extend Data Management for Context Data**: Extend the existing Excel import/export and JSON backup/restore capabilities in the main app to fully handle ContextNode and ContextEdge data alongside core entities.
 - **~~[F13]~~ Zone-Aware 4-Layer Visual Layout** ✅ _(v2.13.0)_: Extend the layout engine with a zone-aware hierarchical mode.
 - **~~[F19]~~ Interactive Focus Mode (Neighborhood Highlight)** ✅ _(v2.14.0)_: When clicking a specific risk, mitigation, or TPO, automatically fade all nodes that are not connected to it to instantly highlight its root causes and consequences.
 - **F20. Exposure-Driven Opacity**: Combine the exposure color gradient with opacity. Low-exposure or acceptable risks naturally fade into the background, while high-exposure critical risks remain 100% opaque.
 - **F21. Lifecycle & Status Ghosting**: Use transparency as a metaphor for things that are "not fully realized yet" (e.g., Contingent Risks, or "Proposed" / "Deferred" mitigations appear at 50% opacity, while "Implemented" mitigations are fully solid).
+- **F25. Dashboard Simplification**: Remove TPOs related information in the dashboard panel.
+- **F26. Contextual Property Panel**: Display selected object properties in a dynamic zone below the graph, incorporating extensible properties like critical path and mitigation status.
+- **F27. Graph Canvas Search**: Search text area for fast direct node or edge selection in the UI.
+- **F28. Advanced Scope Definition Filters**: Improve finding and selecting nodes for scope definition using dynamic filters.
 ### Complex Workload
 
 - **F7. "What-If" Analysis Sandbox**: Toggle mitigations ON/OFF to live-preview downstream exposure changes without committing to the DB. Must operate fully within the active scope — the sandbox must never produce results including out-of-scope nodes.
+- **F29. Interactive Scope Sandbox**: Temporarily create or modify a scope by interacting directly with the graph during risk analysis.
+- **F30. Retroaction Loop Detection**: Validate and detect dependency cycles inside the exposure calculations to prevent infinite loops.
+- **F31. Scope-Driven Simulation & Results Storage**: Use active scope in Simulation pages rather than random graphs, and store results for comparison.
 - **F8. SPICE Scenario Manager**: Full UI for creating, editing, and linking `scenario` context nodes to risks via `SCENARIO_ILLUSTRATES` relationships. Multiple scenarios per risk; one scenario can illustrate multiple risks. Financial aggregation by linked `business_perimeter` nodes where present. Scenario nodes are pure ContextNodes defined in schema YAML — no hardcoded logic in the app.
 - **F9. Resilience State Modeling**: Track aggregated exposure of a scope against financial thresholds to classify into **Robust** / **Resilient** / **Fragile** states. Inherently scope-bounded — this state is meaningless without a defined scope boundary.
 - **F10. Mitigation Budget Management**: Optimization engine for CAPEX/OPEX-constrained mitigation selection using FAIR ALE as the objective function.

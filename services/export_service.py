@@ -3,6 +3,10 @@ Export Service.
 
 Provides functionality to export RIM data to various formats,
 primarily Excel spreadsheets.
+
+Sheet naming conventions for context data:
+  - ContextNode types  → sheet name: "CN_{type_id}"
+  - ContextEdge types  → sheet name: "CE_{rel_type_id}"
 """
 
 from typing import List, Dict, Any, Optional
@@ -32,49 +36,120 @@ def _clean_risk_df(df):
     return df
 
 
+def _get_context_node_sheets(
+    context_nodes_data: Dict[str, List[Dict[str, Any]]]
+) -> Dict[str, "pd.DataFrame"]:
+    """
+    Convert context node data into a dict of DataFrames keyed by sheet name.
+
+    Sheet names use the "CN_{type_id}" convention so the importer can
+    identify and route them back to the correct schema type.
+
+    Args:
+        context_nodes_data: Mapping of type_id → list of entity dicts.
+
+    Returns:
+        Dict of sheet_name → DataFrame (only non-empty types included).
+    """
+    import pandas as pd
+
+    sheets: Dict[str, pd.DataFrame] = {}
+    for type_id, entities in context_nodes_data.items():
+        if not entities:
+            continue
+        sheet_name = f"CN_{type_id}"
+        df = pd.DataFrame([dict(e) for e in entities])
+        # Drop internal Neo4j ID columns that should not round-trip
+        for col in ["id", "element_id"]:
+            if col in df.columns:
+                df = df.drop(columns=[col])
+        # Drop all-null columns
+        df = df.dropna(axis=1, how="all")
+        sheets[sheet_name] = df
+    return sheets
+
+
+def _get_context_edge_sheets(
+    context_edges_data: Dict[str, List[Dict[str, Any]]]
+) -> Dict[str, "pd.DataFrame"]:
+    """
+    Convert context edge data into a dict of DataFrames keyed by sheet name.
+
+    Sheet names use the "CE_{rel_type_id}" convention.
+    Each sheet always contains at minimum: source_name, target_name.
+
+    Args:
+        context_edges_data: Mapping of rel_type_id → list of relationship dicts.
+
+    Returns:
+        Dict of sheet_name → DataFrame (only non-empty types included).
+    """
+    import pandas as pd
+
+    sheets: Dict[str, pd.DataFrame] = {}
+    for rel_type_id, edges in context_edges_data.items():
+        if not edges:
+            continue
+        sheet_name = f"CE_{rel_type_id}"
+        df = pd.DataFrame([dict(e) for e in edges])
+        # Drop internal ID columns
+        for col in ["id", "element_id", "source_id", "target_id"]:
+            if col in df.columns:
+                df = df.drop(columns=[col])
+        # Drop all-null columns
+        df = df.dropna(axis=1, how="all")
+        # Ensure source_name / target_name appear first if present
+        priority = [c for c in ["source_name", "target_name"] if c in df.columns]
+        rest = [c for c in df.columns if c not in priority]
+        df = df[priority + rest]
+        sheets[sheet_name] = df
+    return sheets
+
+
 def export_to_excel(
     filepath: str,
     risks: List[Dict[str, Any]],
     influences: List[Dict[str, Any]],
-    tpos: List[Dict[str, Any]],
-    tpo_impacts: List[Dict[str, Any]],
     mitigations: List[Dict[str, Any]],
-    mitigates_relationships: List[Dict[str, Any]]
+    mitigates_relationships: List[Dict[str, Any]],
+    context_nodes_data: Optional[Dict[str, List[Dict[str, Any]]]] = None,
+    context_edges_data: Optional[Dict[str, List[Dict[str, Any]]]] = None,
 ) -> bool:
     """
     Export all RIM data to an Excel file.
-    
-    Creates an Excel file with the following sheets:
-    - Risks
-    - Influences
-    - TPOs
-    - TPO_Impacts
-    - Mitigations
-    - Mitigates
-    
+
+    Core sheets (always present when data exists):
+      Risks, Influences, Mitigations, Mitigates
+
+    Context sheets (schema-driven, one per type):
+      CN_{type_id}  — one sheet per ContextNode type
+      CE_{rel_id}   — one sheet per ContextEdge type
+
     Args:
         filepath: Path to save the Excel file
         risks: List of risk dictionaries
         influences: List of influence relationship dictionaries
-        tpos: List of TPO dictionaries
-        tpo_impacts: List of TPO impact relationship dictionaries
         mitigations: List of mitigation dictionaries
         mitigates_relationships: List of MITIGATES relationship dictionaries
-    
+        context_nodes_data: Optional mapping of type_id → entity list
+        context_edges_data: Optional mapping of rel_type_id → edge list
+
     Returns:
         True if export successful, False otherwise
     """
     try:
         import pandas as pd
-        
-        # Convert to DataFrames
+
+        # Convert core data to DataFrames
         df_risks = pd.DataFrame([dict(r) for r in risks]) if risks else pd.DataFrame()
         df_influences = pd.DataFrame([dict(i) for i in influences]) if influences else pd.DataFrame()
-        df_tpos = pd.DataFrame([dict(t) for t in tpos]) if tpos else pd.DataFrame()
-        df_tpo_impacts = pd.DataFrame([dict(i) for i in tpo_impacts]) if tpo_impacts else pd.DataFrame()
         df_mitigations = pd.DataFrame([dict(m) for m in mitigations]) if mitigations else pd.DataFrame()
         df_mitigates = pd.DataFrame([dict(rel) for rel in mitigates_relationships]) if mitigates_relationships else pd.DataFrame()
-        
+
+        # Build context sheets
+        cn_sheets = _get_context_node_sheets(context_nodes_data or {})
+        ce_sheets = _get_context_edge_sheets(context_edges_data or {})
+
         # Write to Excel
         with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
             if not df_risks.empty:
@@ -82,57 +157,60 @@ def export_to_excel(
                 df_risks.to_excel(writer, sheet_name='Risks', index=False)
             if not df_influences.empty:
                 df_influences.to_excel(writer, sheet_name='Influences', index=False)
-            if not df_tpos.empty:
-                df_tpos.to_excel(writer, sheet_name='TPOs', index=False)
-            if not df_tpo_impacts.empty:
-                df_tpo_impacts.to_excel(writer, sheet_name='TPO_Impacts', index=False)
             if not df_mitigations.empty:
                 df_mitigations.to_excel(writer, sheet_name='Mitigations', index=False)
             if not df_mitigates.empty:
                 df_mitigates.to_excel(writer, sheet_name='Mitigates', index=False)
-        
+            # Context sheets — one per ContextNode/ContextEdge type
+            for sheet_name, df in cn_sheets.items():
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+            for sheet_name, df in ce_sheets.items():
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+
         return True
-    
+
     except Exception as e:
         print(f"Export error: {e}")
         return False
 
-
 def export_to_excel_bytes(
     risks: List[Dict[str, Any]],
     influences: List[Dict[str, Any]],
-    tpos: List[Dict[str, Any]],
-    tpo_impacts: List[Dict[str, Any]],
     mitigations: List[Dict[str, Any]],
-    mitigates_relationships: List[Dict[str, Any]]
+    mitigates_relationships: List[Dict[str, Any]],
+    context_nodes_data: Optional[Dict[str, List[Dict[str, Any]]]] = None,
+    context_edges_data: Optional[Dict[str, List[Dict[str, Any]]]] = None,
 ) -> Optional[bytes]:
     """
     Export all RIM data to Excel format and return as bytes.
-    
+
     Useful for Streamlit downloads without writing to filesystem.
-    
+    Includes the same core + context sheets as export_to_excel().
+
     Args:
         risks: List of risk dictionaries
         influences: List of influence relationship dictionaries
-        tpos: List of TPO dictionaries
-        tpo_impacts: List of TPO impact relationship dictionaries
         mitigations: List of mitigation dictionaries
         mitigates_relationships: List of MITIGATES relationship dictionaries
-    
+        context_nodes_data: Optional mapping of type_id → entity list
+        context_edges_data: Optional mapping of rel_type_id → edge list
+
     Returns:
         Excel file content as bytes, or None if export failed
     """
     try:
         import pandas as pd
-        
-        # Convert to DataFrames
+
+        # Convert core data to DataFrames
         df_risks = pd.DataFrame([dict(r) for r in risks]) if risks else pd.DataFrame()
         df_influences = pd.DataFrame([dict(i) for i in influences]) if influences else pd.DataFrame()
-        df_tpos = pd.DataFrame([dict(t) for t in tpos]) if tpos else pd.DataFrame()
-        df_tpo_impacts = pd.DataFrame([dict(i) for i in tpo_impacts]) if tpo_impacts else pd.DataFrame()
         df_mitigations = pd.DataFrame([dict(m) for m in mitigations]) if mitigations else pd.DataFrame()
         df_mitigates = pd.DataFrame([dict(rel) for rel in mitigates_relationships]) if mitigates_relationships else pd.DataFrame()
-        
+
+        # Build context sheets
+        cn_sheets = _get_context_node_sheets(context_nodes_data or {})
+        ce_sheets = _get_context_edge_sheets(context_edges_data or {})
+
         # Write to BytesIO buffer
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
@@ -141,18 +219,24 @@ def export_to_excel_bytes(
                 df_risks.to_excel(writer, sheet_name='Risks', index=False)
             if not df_influences.empty:
                 df_influences.to_excel(writer, sheet_name='Influences', index=False)
-            if not df_tpos.empty:
-                df_tpos.to_excel(writer, sheet_name='TPOs', index=False)
-            if not df_tpo_impacts.empty:
-                df_tpo_impacts.to_excel(writer, sheet_name='TPO_Impacts', index=False)
             if not df_mitigations.empty:
                 df_mitigations.to_excel(writer, sheet_name='Mitigations', index=False)
             if not df_mitigates.empty:
                 df_mitigates.to_excel(writer, sheet_name='Mitigates', index=False)
-        
+            # Context sheets
+            for sheet_name, df in cn_sheets.items():
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+            for sheet_name, df in ce_sheets.items():
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+            # Ensure the workbook is never empty (openpyxl requires ≥1 sheet)
+            if not writer.sheets:
+                pd.DataFrame([{"info": "RIM Export — no data"}]).to_excel(
+                    writer, sheet_name="Info", index=False
+                )
+
         buffer.seek(0)
         return buffer.getvalue()
-    
+
     except Exception as e:
         print(f"Export error: {e}")
         return None

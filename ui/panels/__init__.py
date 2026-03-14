@@ -13,8 +13,13 @@ from ui.panels.mitigation_panel import (
     render_mitigation_analysis_panel,
 )
 
+from ui.panels.editor_panel import (
+    render_inline_editor,
+)
+
 __all__ = [
     "render_influence_analysis_panel",
     "render_mitigation_analysis_panel",
+    "render_inline_editor",
     "get_level_icon",
 ]
