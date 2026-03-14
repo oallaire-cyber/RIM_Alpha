@@ -45,6 +45,104 @@ MAX_BASE_EXPOSURE = MAX_LIKELIHOOD * MAX_IMPACT  # 100
 # =============================================================================
 
 @dataclass
+class GraphValidationResult:
+    """Result of retroaction loop (cycle) detection on the influence graph."""
+    has_cycles: bool
+    # Each inner list is one cycle expressed as an ordered sequence of risk IDs
+    cycles: List[List[str]]
+    # Flat set of all risk IDs that participate in at least one cycle
+    cycle_node_ids: List[str]
+    # Human-readable warning lines ready for display in the UI
+    warnings: List[str]
+
+
+def detect_cycles(
+    risk_ids: List[str],
+    influences: List[Dict[str, Any]],
+) -> GraphValidationResult:
+    """Detect retroaction loops (cycles) in the influence graph.
+
+    Uses an iterative DFS with tri-colour marking (WHITE / GRAY / BLACK) to
+    avoid Python recursion-depth issues on large graphs.  Only edges whose
+    both endpoints are in *risk_ids* are considered.
+
+    Args:
+        risk_ids:   IDs of all risks participating in the calculation.
+        influences: Raw influence dicts from the database
+                    (each must expose ``source_id``/``source`` and
+                    ``target_id``/``target`` keys).
+
+    Returns:
+        GraphValidationResult with cycle details and ready-to-display warnings.
+    """
+    risk_set = set(risk_ids)
+
+    # Build adjacency list restricted to known risks
+    adj: Dict[str, List[str]] = {rid: [] for rid in risk_ids}
+    for inf in influences:
+        src = inf.get("source_id") or inf.get("source")
+        tgt = inf.get("target_id") or inf.get("target")
+        if src in risk_set and tgt in risk_set and src != tgt:
+            if tgt not in adj[src]:
+                adj[src].append(tgt)
+
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color: Dict[str, int] = {rid: WHITE for rid in risk_ids}
+    cycles: List[List[str]] = []
+    cycle_nodes: set = set()
+    seen_cycle_keys: set = set()  # deduplication
+
+    for start in risk_ids:
+        if color[start] != WHITE:
+            continue
+
+        # Iterative DFS — stack holds (node, neighbor_iterator, current_path)
+        color[start] = GRAY
+        stack: List[tuple] = [(start, iter(adj[start]), [start])]
+
+        while stack:
+            node, nbr_iter, path = stack[-1]
+            try:
+                nbr = next(nbr_iter)
+                if color.get(nbr) == GRAY:
+                    # Back-edge → cycle found
+                    start_idx = path.index(nbr)
+                    cycle = path[start_idx:]
+                    key = tuple(sorted(cycle))
+                    if key not in seen_cycle_keys:
+                        seen_cycle_keys.add(key)
+                        cycles.append(cycle.copy())
+                        cycle_nodes.update(cycle)
+                elif color.get(nbr, BLACK) == WHITE:
+                    color[nbr] = GRAY
+                    stack.append((nbr, iter(adj[nbr]), path + [nbr]))
+            except StopIteration:
+                color[node] = BLACK
+                stack.pop()
+
+    warnings: List[str] = []
+    if cycles:
+        n = len(cycles)
+        warnings.append(
+            f"⚠️ **{n} retroaction loop{'s' if n > 1 else ''} detected** in the "
+            "influence graph. Exposure calculation continues using the current "
+            "topological fallback, but results for the involved risks may be "
+            "imprecise. Please review and break the cycle(s) below."
+        )
+        for i, cycle in enumerate(cycles[:5]):
+            warnings.append(f"- Loop {i + 1}: `{' → '.join(cycle)} → {cycle[0]}`")
+        if len(cycles) > 5:
+            warnings.append(f"- … and **{len(cycles) - 5}** more loop(s).")
+
+    return GraphValidationResult(
+        has_cycles=bool(cycles),
+        cycles=cycles,
+        cycle_node_ids=list(cycle_nodes),
+        warnings=warnings,
+    )
+
+
+@dataclass
 class RiskExposureResult:
     """Result of exposure calculation for a single risk."""
     risk_id: str
@@ -121,9 +219,15 @@ class GlobalExposureResult:
     
     # Metadata
     calculated_at: datetime = field(default_factory=datetime.now)
-    
+
     # Individual risk results (for detailed view)
     risk_results: List[RiskExposureResult] = field(default_factory=list)
+
+    # Cycle / retroaction-loop detection (F30)
+    # These fields default to "no cycles" so existing call-sites require no changes.
+    has_cycles: bool = False
+    cycle_warnings: List[str] = field(default_factory=list)
+    cycle_node_ids: List[str] = field(default_factory=list)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for storage/display."""
@@ -142,7 +246,11 @@ class GlobalExposureResult:
             "mitigated_risks_count": self.mitigated_risks_count,
             "unmitigated_risks_count": self.unmitigated_risks_count,
             "calculated_at": self.calculated_at.isoformat(),
-            "risk_results": [r.to_dict() for r in self.risk_results]
+            "risk_results": [r.to_dict() for r in self.risk_results],
+            # Cycle detection results (F30)
+            "has_cycles": self.has_cycles,
+            "cycle_warnings": self.cycle_warnings,
+            "cycle_node_ids": self.cycle_node_ids,
         }
     
     def get_health_status(self) -> Tuple[str, str]:
@@ -487,22 +595,31 @@ class ExposureCalculator:
     def calculate_all(self) -> GlobalExposureResult:
         """
         Calculate exposure for all risks and aggregate to global metrics.
-        
+
+        Retroaction loops (cycles) are detected before the main pass and
+        stored on the instance so ``_calculate_global_metrics`` can embed
+        them in the returned ``GlobalExposureResult``.
+
         Returns:
-            GlobalExposureResult with all metrics
+            GlobalExposureResult with all metrics (and cycle info when present)
         """
         # Clear previous results
         self.risk_results = {}
-        
-        # Get calculation order
+
+        # ── F30: Detect retroaction loops ──────────────────────────────────
+        self._cycle_validation: GraphValidationResult = detect_cycles(
+            list(self.risks.keys()), self.influences
+        )
+
+        # Get calculation order (topological sort with cycle fallback)
         order = self._get_calculation_order()
-        
+
         # Calculate each risk in order
         for risk_id in order:
             result = self.calculate_risk_exposure(risk_id, self.risk_results)
             if result:
                 self.risk_results[risk_id] = result
-        
+
         # Aggregate to global metrics
         return self._calculate_global_metrics()
     
@@ -515,6 +632,12 @@ class ExposureCalculator:
         """
         results = list(self.risk_results.values())
         
+        # Pick up cycle validation stored by calculate_all() (may be absent when
+        # _calculate_global_metrics is called directly in tests).
+        validation: Optional[GraphValidationResult] = getattr(
+            self, "_cycle_validation", None
+        )
+
         if not results:
             return GlobalExposureResult(
                 residual_risk_percentage=0.0,
@@ -530,7 +653,10 @@ class ExposureCalculator:
                 operational_exposure=0.0,
                 mitigated_risks_count=0,
                 unmitigated_risks_count=0,
-                risk_results=[]
+                risk_results=[],
+                has_cycles=validation.has_cycles if validation else False,
+                cycle_warnings=validation.warnings if validation else [],
+                cycle_node_ids=validation.cycle_node_ids if validation else [],
             )
         
         # Calculate totals
@@ -570,7 +696,11 @@ class ExposureCalculator:
             operational_exposure=operational_exp,
             mitigated_risks_count=mitigated,
             unmitigated_risks_count=unmitigated,
-            risk_results=results
+            risk_results=results,
+            # Cycle detection results (F30)
+            has_cycles=validation.has_cycles if validation else False,
+            cycle_warnings=validation.warnings if validation else [],
+            cycle_node_ids=validation.cycle_node_ids if validation else [],
         )
 
 

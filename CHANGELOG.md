@@ -4,6 +4,24 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.20.0] - 2026-03-13
+
+### Iteration 1 — Foundation Safety & Quick UX Wins (F25, F30, F27)
+
+**New Features:**
+
+- **[F25] Dashboard Simplification**: Removed TPO-related metrics (`🟡 TPOs`, `📌 TPO Impacts`) from the Statistics Dashboard. The second metrics row now shows only the three genuinely risk-centric counters: Mitigations, Influences, and Mitigates. This declutters the top-level view and aligns with the architectural decision to represent TPOs via generic ContextNodes rather than a dedicated dashboard slot.
+
+- **[F30] Retroaction Loop Detection**: Added a full cycle-detection pass to the exposure engine. A new `GraphValidationResult` dataclass and `detect_cycles()` standalone function (iterative DFS with tri-colour marking) scan the influence graph for retroaction loops before every exposure calculation. Detected cycles are embedded in `GlobalExposureResult` as `has_cycles`, `cycle_warnings`, and `cycle_node_ids` fields (backward-compatible defaults). The Exposure dashboard now surfaces a prominent `st.warning` banner listing every detected loop whenever cycles are present, so users can diagnose and break them before trusting the results.
+
+- **[F27] Graph Canvas Search**: Added a search text input above the graph in the Visualization tab. Typing a partial node name filters to all matching nodes, highlights them in the graph (via `highlighted_node_id` / `focus_node_ids`), auto-selects the first match for the Inline Editor below, and shows a match-count caption. A `✕` clear button resets the selection. The search input is automatically disabled and annotated when the Influence Explorer is active to avoid conflicting focus modes.
+
+**Files Modified:**
+- `services/exposure_calculator.py` — Added `GraphValidationResult` dataclass, `detect_cycles()` function, three new fields on `GlobalExposureResult` (`has_cycles`, `cycle_warnings`, `cycle_node_ids`), cycle-detection call in `calculate_all()`, and propagation into both return paths of `_calculate_global_metrics()`.
+- `ui/home.py` — Removed TPO rows from `_compute_stats_from_graph()` and `render_statistics_dashboard()` (F25). Added `st.warning` banner for cycle results in `render_exposure_dashboard()` (F30). Added graph canvas search bar with clear button and match-count caption in `render_visualization_tab()` (F27).
+
+---
+
 ## [v2.19.0] - 2026-03-10
 
 ### [F22] Scope Node Management UI & [F23] Enhanced Node and Edge Editor
