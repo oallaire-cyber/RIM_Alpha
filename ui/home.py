@@ -81,29 +81,25 @@ def _compute_stats_from_graph(nodes, edges):
     level2_label = risk_levels[1]["label"] if len(risk_levels) > 1 else "Operational"
     
     risk_nodes = [n for n in nodes if n.get("node_type") == "Risk"]
-    tpo_nodes = [n for n in nodes if n.get("node_type") == "TPO"]
     mit_nodes = [n for n in nodes if n.get("node_type") == "Mitigation"]
-    
+
     influence_edges = [e for e in edges if e.get("edge_type") == "INFLUENCES"]
-    tpo_edges = [e for e in edges if e.get("edge_type") == "IMPACTS_TPO"]
     mit_edges = [e for e in edges if e.get("edge_type") == "MITIGATES"]
-    
+
     # Count by subtype
     subtype_counts = {}
     for n in risk_nodes:
         st_id = n.get("subtype", "generic") or "generic"
         subtype_counts[st_id] = subtype_counts.get(st_id, 0) + 1
-    
+
     return {
         "total_risks": len(risk_nodes),
         "level1_risks": len([n for n in risk_nodes if n.get("level") == level1_label]),
         "level2_risks": len([n for n in risk_nodes if n.get("level") == level2_label]),
         "new_risks": len([n for n in risk_nodes if n.get("origin") == "New"]),
         "legacy_risks": len([n for n in risk_nodes if n.get("origin") == "Legacy"]),
-        "total_tpos": len(tpo_nodes),
         "total_mitigations": len(mit_nodes),
         "total_influences": len(influence_edges),
-        "total_tpo_impacts": len(tpo_edges),
         "total_mitigates": len(mit_edges),
         "subtype_counts": subtype_counts,
     }
@@ -215,17 +211,13 @@ def render_statistics_dashboard(stats: dict):
             st.metric("📜 Legacy", stats.get("legacy_risks", 0))
         
         # Second row of metrics
-        col6, col7, col8, col9, col10 = st.columns(5)
-        
+        col6, col7, col8 = st.columns(3)
+
         with col6:
-            st.metric("🟡 TPOs", stats.get("total_tpos", 0))
-        with col7:
             st.metric("🛡️ Mitigations", stats.get("total_mitigations", 0))
-        with col8:
+        with col7:
             st.metric("🔗 Influences", stats.get("total_influences", 0))
-        with col9:
-            st.metric("📌 TPO Impacts", stats.get("total_tpo_impacts", 0))
-        with col10:
+        with col8:
             st.metric("💊 Mitigates", stats.get("total_mitigates", 0))
         
         # Third row: subtype breakdown (only when >1 distinct subtype)
@@ -290,7 +282,12 @@ def render_exposure_dashboard(manager):
         
         if exposure_results:
             st.markdown("---")
-            
+
+            # ── F30: Retroaction loop warning ──────────────────────────────
+            if exposure_results.get("has_cycles"):
+                warning_lines = exposure_results.get("cycle_warnings", [])
+                st.warning("\n\n".join(warning_lines))
+
             # Main metrics row
             col1, col2, col3 = st.columns(3)
             
@@ -1007,9 +1004,57 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
             except:
                 pass
         
+        # ── F27: Graph canvas search ───────────────────────────────────────
+        explorer_active = st.session_state.influence_explorer_enabled
+        _search_col, _clear_col = st.columns([5, 1])
+        with _search_col:
+            _search_query = st.text_input(
+                "graph_search",
+                placeholder="🔍  Search node by name…",
+                key="graph_search_input",
+                label_visibility="collapsed",
+                disabled=explorer_active,
+                help="Type to find and select graph nodes by name. "
+                     "Disabled while Influence Explorer is active.",
+            )
+        with _clear_col:
+            if st.button(
+                "✕",
+                key="clear_graph_search",
+                use_container_width=True,
+                help="Clear search",
+                disabled=not st.session_state.get("graph_search_input"),
+            ):
+                st.session_state["graph_search_input"] = ""
+                st.session_state.selected_node_id = None
+                st.rerun()
+
+        # Apply search results when explorer is not active
+        if _search_query and not explorer_active:
+            _q = _search_query.lower()
+            _matches = [n for n in nodes if _q in n.get("name", "").lower()]
+            if _matches:
+                # Show match summary
+                _preview = ", ".join(m.get("name", m["id"]) for m in _matches[:3])
+                _suffix = f" (+{len(_matches) - 3} more)" if len(_matches) > 3 else ""
+                st.caption(f"🔍 **{len(_matches)}** match(es): {_preview}{_suffix}")
+                # Auto-select first result for the inline editor below the graph
+                _first_id = _matches[0]["id"]
+                if st.session_state.get("selected_node_id") not in [
+                    m["id"] for m in _matches
+                ]:
+                    st.session_state.selected_node_id = _first_id
+                # Drive graph highlight/focus to all matching nodes
+                highlighted_node_id = _first_id
+                focus_node_ids = [m["id"] for m in _matches]
+            else:
+                st.caption("❌ No nodes match your search.")
+        elif explorer_active and st.session_state.get("graph_search_input"):
+            st.caption("ℹ️ Search is paused while Influence Explorer is active.")
+
         # Add compact legend above graph
         render_compact_legend()
-        
+
         # Render graph
         render_graph_streamlit(
             nodes=nodes,
