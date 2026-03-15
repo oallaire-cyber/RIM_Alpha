@@ -94,5 +94,6 @@ Archive/
 mnt/
 .rim_schema
 
-# AI Agents & Roadmaps
-
+# AI Agents
+.claude/settings.json
+.claude/worktrees/

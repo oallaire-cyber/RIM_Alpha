@@ -17,9 +17,14 @@ from ui.panels.editor_panel import (
     render_inline_editor,
 )
 
+from ui.panels.node_property_panel import (
+    render_node_property_panel,
+)
+
 __all__ = [
     "render_influence_analysis_panel",
     "render_mitigation_analysis_panel",
     "render_inline_editor",
+    "render_node_property_panel",
     "get_level_icon",
 ]

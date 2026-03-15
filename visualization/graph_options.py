@@ -733,3 +733,37 @@ def get_focus_mode_js() -> str:
         }, 1000);
     </script>
     """
+
+
+def get_node_click_postmessage_js() -> str:
+    """
+    Inject a click handler that posts the clicked node ID to the parent frame.
+
+    When the PyVis graph is embedded inside the graph_click_bridge declare_component
+    (as an inner srcdoc iframe), window.parent is the outer component iframe.
+    That outer iframe catches this message and forwards it to Streamlit via
+    Streamlit.setComponentValue(), closing the JS → Python communication loop.
+
+    The setTimeout delay (1100 ms) is intentionally slightly longer than the
+    1000 ms used by get_focus_mode_js() so that both network.on("click") handlers
+    register in the correct order without conflict.
+    """
+    return """
+    <script>
+    setTimeout(function() {
+        if (typeof network !== 'undefined') {
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    window.parent.postMessage(
+                        {type: "node_selected", node_id: params.nodes[0]}, "*"
+                    );
+                } else {
+                    window.parent.postMessage(
+                        {type: "node_selected", node_id: null}, "*"
+                    );
+                }
+            });
+        }
+    }, 1100);
+    </script>
+    """

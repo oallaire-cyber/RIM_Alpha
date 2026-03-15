@@ -884,6 +884,10 @@ scopes:
   node_ids:
   - 36f55100-bb32-4c45-afde-639ac0c74ce9
   - d899e8d3-b3ef-4877-9c7c-ac099aa14c0b
+  - 28dd9222-6a21-471a-a3ea-30e1ea37db04
+  - 1c976b30-df51-44d7-afa7-51f63b494f32
+  - 38eb785a-bef7-4f76-9107-f519307c7b00
+  - 1f600a24-be90-4983-af72-4ad3899be8c8
   include_connected_edges: false
   show_boundary_edges: false
   color: '#808080'

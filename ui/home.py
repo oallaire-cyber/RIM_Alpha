@@ -27,6 +27,7 @@ from ui import (
     render_influence_analysis_panel,
     render_mitigation_analysis_panel,
     render_inline_editor,
+    render_node_property_panel,
 )
 
 # Legend
@@ -1061,7 +1062,7 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
         render_compact_legend()
 
         # Render graph
-        render_graph_streamlit(
+        clicked_node_id = render_graph_streamlit(
             nodes=nodes,
             edges=edges,
             color_by=st.session_state.color_by,
@@ -1074,11 +1075,24 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
             complexity_mode=st.session_state.get("complexity_mode", "Simple"),
             focus_node_ids=focus_node_ids
         )
-        
-        # Render details panel at the bottom of the graph
+
+        # Canvas click → update selected node (bridge returns UUID string or None)
+        if clicked_node_id:
+            st.session_state.selected_node_id = clicked_node_id
+        elif clicked_node_id is None and st.session_state.get("_graph_prev_click") is not None:
+            # Background click (component returned None explicitly after a previous click)
+            st.session_state.selected_node_id = None
+        st.session_state["_graph_prev_click"] = clicked_node_id
+
+        # Render contextual property panel at the bottom of the graph
         if st.session_state.get("selected_node_id"):
             st.markdown("---")
-            render_inline_editor(manager, st.session_state.selected_node_id)
+            render_node_property_panel(
+                manager,
+                st.session_state.selected_node_id,
+                exposure_results=st.session_state.get("exposure_results"),
+                influence_results=st.session_state.get("influence_analysis_cache"),
+            )
 
 
 def render_scope_selector():

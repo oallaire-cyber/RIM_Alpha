@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: transparent; }
+    #graph { border: none; width: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <iframe id="graph" scrolling="no"></iframe>
+
+  <script>
+    // ── Streamlit component protocol (v1, no external CDN) ──────────────────
+    var HEIGHT = 720;
+
+    function toStreamlit(type, data) {
+      var msg = Object.assign({ isStreamlitMessage: true, type: type }, data);
+      window.parent.postMessage(msg, "*");
+    }
+
+    function setFrameHeight(h) {
+      toStreamlit("streamlit:setFrameHeight", { height: h });
+    }
+
+    function setComponentValue(value) {
+      toStreamlit("streamlit:setComponentValue", { value: value });
+    }
+
+    function componentReady() {
+      toStreamlit("streamlit:componentReady", { apiVersion: 1 });
+    }
+
+    // ── Handle data from Streamlit ──────────────────────────────────────────
+    window.addEventListener("message", function (event) {
+      var data = event.data;
+      if (!data || !data.type) return;
+
+      if (data.type === "streamlit:render") {
+        var args = data.args || {};
+        HEIGHT = args.height || 720;
+
+        var graphFrame = document.getElementById("graph");
+        graphFrame.style.height = HEIGHT + "px";
+        setFrameHeight(HEIGHT);
+
+        // Load PyVis HTML into inner iframe via srcdoc
+        // srcdoc assignment triggers a fresh load each render
+        var htmlContent = args.html_content || "";
+        graphFrame.srcdoc = htmlContent;
+      }
+    });
+
+    // ── Receive click events from inner PyVis iframe ────────────────────────
+    // PyVis calls window.parent.postMessage({type:"node_selected", node_id:X})
+    // That message arrives HERE (the outer component iframe).
+    window.addEventListener("message", function (event) {
+      var data = event.data;
+      if (!data || data.type !== "node_selected") return;
+      // node_id is the raw UUID string, or null for background click
+      setComponentValue(data.node_id !== undefined ? data.node_id : null);
+    });
+
+    // Signal Streamlit that we are ready to receive props
+    componentReady();
+  </script>
+</body>
+</html>

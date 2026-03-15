@@ -4,7 +4,36 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
-## [v2.20.1] - 2026-03-14
+## [v2.21.0] - 2026-03-15
+
+### Iteration 2 — Rich Contextual Property Panel (F26)
+
+**New Features:**
+
+- **[F26] Contextual Property Panel**: Replaced the bare inline editor below the graph with a structured 6-section `NodePropertyPanel`. Sections are implemented as a list of `Section` dataclasses (id, title, render_fn, expanded) so future sections can be appended with zero changes to existing ones. The six sections are:
+  - **① Identity** — name, type, level, subtype, description, origin, status
+  - **② Exposure Metrics** — likelihood, impact, base/final exposure, residual %, mitigation coverage (sourced from last `exposure_results`; shows "Run Exposure Analysis" prompt when not yet calculated)
+  - **③ Graph Position** — upstream influence count and downstream influence count, with expandable node lists
+  - **④ Influence Analysis** — critical path ✅/❌, bottleneck ✅/❌, convergence score, propagation score (sourced from `influence_analysis_cache`; shows N/A when not yet calculated)
+  - **⑤ Mitigation Summary** — total linked mitigations, status breakdown, average effectiveness (risk nodes only)
+  - **⑥ Edit** — existing inline editor, collapsed by default
+
+- **Canvas click-to-select (JS bridge)**: Selecting a node by clicking the graph canvas now populates the property panel. Implemented via a thin `st.components.v1.declare_component` wrapper (`visualization/graph_click_bridge/index.html`) that embeds the PyVis HTML in an inner `srcdoc` iframe. Node clicks trigger `window.parent.postMessage` → the outer component iframe catches it → `Streamlit.setComponentValue(nodeId)` closes the JS→Python loop. Graph Search (F27) and Influence Explorer selections continue to work through the same panel.
+
+**Files Added:**
+- `visualization/graph_click_bridge/index.html` — Streamlit component frontend for the click bridge
+- `ui/panels/node_property_panel.py` — 6-section `NodePropertyPanel` with `Section` dataclass
+
+**Files Modified:**
+- `visualization/graph_options.py` — Added `get_node_click_postmessage_js()` (injects PyVis click → postMessage handler)
+- `visualization/graph_renderer.py` — Injects postMessage JS; registers `declare_component` at module level; `render_graph_streamlit()` now returns `Optional[str]` (clicked node UUID or None)
+- `ui/panels/__init__.py` — Exports `render_node_property_panel`
+- `ui/__init__.py` — Exports `render_node_property_panel`
+- `ui/home.py` — Captures click return value into `selected_node_id`; replaces `render_inline_editor` call with `render_node_property_panel`
+
+---
+
+## [v2.20.3] - 2026-03-14
 
 ### Bug Fixes — Scope & Cycle Detection Regressions (5 issues)
 

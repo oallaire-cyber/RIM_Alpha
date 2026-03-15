@@ -28,9 +28,9 @@ The following features have been broken down into independent work streams. **Mu
 *   ~~**[F19] Interactive Focus Mode (Neighborhood Highlight)**~~ ✅ _(v2.14.0)_: When clicking a specific risk, mitigation, or TPO, automatically fade all nodes that are not connected to it to instantly highlight its root causes and consequences.
 *   ~~**[F20] Exposure-Driven Opacity**~~ ✅ _(v2.15.0)_: Combine the exposure color gradient with opacity. Low-exposure or acceptable risks naturally fade into the background, while high-exposure critical risks remain 100% opaque.
 *   ~~**[F21] Lifecycle & Status Ghosting**~~ ✅ _(v2.15.0)_: Use transparency as a metaphor for things that are "not fully realized yet" (e.g., Contingent Risks, or "Proposed" / "Deferred" mitigations appear at 50% opacity, while "Implemented" mitigations are fully solid).
-*   **[F25] Dashboard Simplification** _(Iteration 1)_: Remove TPOs related information in the dashboard panel to reduce cognitive load.
-*   **[F26] Contextual Property Panel** _(Iteration 2)_: Display the properties of the selected object in the graph within an appropriate zone below the graph. Includes dynamic properties (critical path status, mitigated state, relevant risk management info) structured for easy future modification.
-*   **[F27] Graph Canvas Search** _(Iteration 1)_: Add a dedicated search text area for fast and direct graph node or edge selection in the graph UI.
+*   ~~**[F25] Dashboard Simplification**~~ ✅ _(v2.20.0)_: Remove TPOs related information in the dashboard panel to reduce cognitive load.
+*   ~~**[F26] Contextual Property Panel**~~ ✅ _(v2.21.0)_: Display the properties of the selected object in the graph within an appropriate zone below the graph. Includes dynamic properties (critical path status, mitigated state, relevant risk management info) structured for easy future modification.
+*   ~~**[F27] Graph Canvas Search**~~ ✅ _(v2.20.0)_: Add a dedicated search text area for fast and direct graph node or edge selection in the graph UI.
 
 ### 🌊 Work Stream B: Schema & Context Data Management (Backend/Fullstack)
 *Requires knowledge of the existing Pydantic/YAML schema loader, CRUD forms, and Streamlit session state.*
@@ -77,7 +77,7 @@ The following 4 iterations address features F25–F31, grouped to minimize conte
 
 ---
 
-### 🔁 Iteration 2 — Rich Contextual Property Panel (F26)
+### ✅ Iteration 2 — Rich Contextual Property Panel (F26) _(v2.21.0)_
 **Target features:** F26
 **Streams:** A (UI) — reads from existing services, no DB writes
 **Prerequisites:** Iteration 1 (F30 needed to surface cycle status in panel)

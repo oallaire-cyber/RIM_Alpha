@@ -4,9 +4,8 @@ Graph Renderer for RIM Visualization.
 Provides the main render_graph function using PyVis.
 """
 
+from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
-import tempfile
-import os
 
 from visualization.node_styles import create_node_config
 from visualization.edge_styles import create_edge_config, filter_edges_by_score
@@ -15,8 +14,16 @@ from visualization.graph_options import (
     get_position_capture_js,
     get_fullscreen_js,
     get_export_js,
-    get_focus_mode_js
+    get_focus_mode_js,
+    get_node_click_postmessage_js,
 )
+
+# ── Streamlit click-bridge declare_component (module-level, registered once) ─
+# The component embeds the PyVis HTML in an inner srcdoc iframe and relays
+# node-click postMessages back to Python via Streamlit.setComponentValue().
+import streamlit.components.v1 as _stv1
+_BRIDGE_DIR = Path(__file__).parent / "graph_click_bridge"
+_graph_click_bridge = _stv1.declare_component("graph_click_bridge", path=str(_BRIDGE_DIR))
 
 
 
@@ -142,7 +149,8 @@ def render_graph(
         width="100%",
         bgcolor="#ffffff",
         font_color="#333333",
-        directed=True
+        directed=True,
+        cdn_resources="in_line",  # embed all JS inline — required for srcdoc iframe
     )
     
     # Configure network
@@ -199,35 +207,31 @@ def render_graph(
             **edge_config
         )
     
-    # Generate HTML
-    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".html", mode="w", encoding="utf-8")
-    tmp_path = tmp_file.name
-    tmp_file.close()
-    
-    net.save_graph(tmp_path)
-    
-    with open(tmp_path, 'r', encoding='utf-8') as html_file:
-        html_content = html_file.read()
-    
+    # Generate HTML — generate_html() renders the Jinja2 template in memory and
+    # returns a Python str with no file I/O.  This avoids the Windows cp1252
+    # UnicodeEncodeError that occurs when save_graph() writes vis.js to disk
+    # using the system default codec.  cdn_resources="in_line" (set on the
+    # Network above) also ensures there are no relative-path lib/ references in
+    # the HTML, preventing 404s from Streamlit's ComponentRequestHandler when
+    # the HTML is loaded as a srcdoc iframe inside the declare_component.
+    html_content = net.generate_html()
+
     # Inject position capture JS if requested
     if capture_positions:
         html_content = html_content.replace('</body>', get_position_capture_js() + '</body>')
-    
+
     # Always add fullscreen capability
     html_content = html_content.replace('</body>', get_fullscreen_js() + '</body>')
-    
+
     # Always add export capability
     html_content = html_content.replace('</body>', get_export_js() + '</body>')
-    
+
     # Always add focus mode JS
     html_content = html_content.replace('</body>', get_focus_mode_js() + '</body>')
-    
-    # Clean up temp file
-    try:
-        os.unlink(tmp_path)
-    except PermissionError:
-        pass
-    
+
+    # Always add postMessage click bridge (fires after focus mode)
+    html_content = html_content.replace('</body>', get_node_click_postmessage_js() + '</body>')
+
     return html_content
 
 
@@ -244,19 +248,21 @@ def render_graph_streamlit(
     height: int = 720,
     complexity_mode: str = "Advanced",
     focus_node_ids: Optional[List[str]] = None
-):
+) -> Optional[str]:
     """
-    Render the RIM graph directly in Streamlit.
-    
-    Args:
-        Same as render_graph
+    Render the RIM graph directly in Streamlit via the click-bridge component.
+
+    Returns the UUID of the node that was most recently clicked on the canvas,
+    or None if no node was clicked / the background was clicked.
+    The caller (ui/home.py) is responsible for persisting this value to
+    st.session_state.selected_node_id.
     """
     import streamlit as st
-    
+
     if not nodes:
         st.info("No risks to display. Create your first risk!")
-        return
-    
+        return None
+
     html_content = render_graph(
         nodes=nodes,
         edges=edges,
@@ -274,9 +280,15 @@ def render_graph_streamlit(
         lifecycle_ghosting=st.session_state.get("lifecycle_ghosting_enabled", False),
         focus_node_ids=focus_node_ids
     )
-    
+
     if html_content:
-        st.components.v1.html(html_content, height=height, scrolling=False)
+        return _graph_click_bridge(
+            html_content=html_content,
+            height=height,
+            key="rim_graph",
+            default=None,
+        )
+    return None
 
 
 def render_subgraph(
