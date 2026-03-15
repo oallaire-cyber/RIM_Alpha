@@ -4,6 +4,31 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.23.0] - 2026-03-15
+
+### Iteration 3 — Interactive Scope Sandbox (F29)
+
+**New Features:**
+
+- **[F29] Interactive Scope Sandbox**: Lets users build or modify scope membership directly on the graph without touching the database until they explicitly commit.
+  - **🧪 Scope Sandbox toggle** in the sidebar (visible only when a scope is active): switches the graph from scope-filtered view to **full graph** view, so out-of-scope nodes are reachable.
+  - **In-scope visual indicator**: nodes that belong to the effective scope (base membership + pending additions − pending removals) gain a **green border** (`#2ecc71`, `borderWidth: 3`).
+  - **Right-click any node** on the graph canvas to open an action panel below the graph: **"➕ Add to scope"** or **"➖ Remove from scope"** depending on the node's current membership. Changes accumulate in `scope_sandbox_overrides` (session state only).
+  - **Banner**: "🧪 Sandbox active — N additions, M removals _(right-click any node to add / remove from scope)_" displayed above the graph while sandbox mode is on.
+  - **💾 Commit**: writes all overrides to `FilterManager` (and thereby to `schema.yaml`). Sandbox mode turns off automatically.
+  - **🗑️ Discard**: reverts all pending overrides, sandbox mode off.
+  - **➕ New Scope** button: always visible at the bottom of the Analysis Scopes expander. Opens an inline form (name + color picker) → "Create & Enter Sandbox" creates the scope, activates it, and immediately enters sandbox mode so the user can build the scope from scratch on the graph.
+  - Full Graph button cleanup extended to clear all sandbox session keys.
+
+**Files Modified:**
+- `visualization/graph_options.py` — Extended `get_node_click_postmessage_js()` to also emit `{type:"node_action", action:"contextmenu", node_id}` via `network.on("oncontext")`.
+- `visualization/graph_click_bridge/index.html` — Updated postMessage relay to structured `{action, node_id}` dict; legacy `node_selected` type kept as fallback.
+- `visualization/graph_renderer.py` — `render_graph_streamlit()` return type updated to `Optional[dict]` (`{"action": "click"|"contextmenu", "node_id": str|None}`).
+- `utils/state_manager.py` — Added `scope_sandbox_mode` and `scope_sandbox_pending_node` to `HOME_UI_DEFAULTS`.
+- `ui/home.py` — Helper functions `_sandbox_add`, `_sandbox_remove`, `_commit_sandbox`, `_discard_sandbox`, `_render_sandbox_action_panel`; scope filter bypass in graph query when sandbox active; node green-border indicator; sandbox banner; structured graph event parsing; sandbox action panel; sidebar sandbox toggle + commit/discard; "➕ New Scope" inline form.
+
+---
+
 ## [v2.22.0] - 2026-03-15
 
 ### Iteration 3 — Advanced Scope Filter UI (F28)

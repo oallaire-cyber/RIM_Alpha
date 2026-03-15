@@ -737,12 +737,13 @@ def get_focus_mode_js() -> str:
 
 def get_node_click_postmessage_js() -> str:
     """
-    Inject a click handler that posts the clicked node ID to the parent frame.
+    Inject left-click and right-click handlers that post structured events to the
+    parent frame.
 
-    When the PyVis graph is embedded inside the graph_click_bridge declare_component
-    (as an inner srcdoc iframe), window.parent is the outer component iframe.
-    That outer iframe catches this message and forwards it to Streamlit via
-    Streamlit.setComponentValue(), closing the JS → Python communication loop.
+    Both handlers use {type:"node_action", action:"click"|"contextmenu", node_id}.
+    The outer graph_click_bridge component catches these messages and forwards
+    them to Streamlit via Streamlit.setComponentValue(), closing the JS → Python
+    communication loop.
 
     The setTimeout delay (1100 ms) is intentionally slightly longer than the
     1000 ms used by get_focus_mode_js() so that both network.on("click") handlers
@@ -752,14 +753,21 @@ def get_node_click_postmessage_js() -> str:
     <script>
     setTimeout(function() {
         if (typeof network !== 'undefined') {
+            // Left click
             network.on("click", function(params) {
-                if (params.nodes.length > 0) {
+                var nid = params.nodes.length > 0 ? params.nodes[0] : null;
+                window.parent.postMessage(
+                    {type: "node_action", action: "click", node_id: nid}, "*"
+                );
+            });
+            // Right click (vis.js oncontext event)
+            // Note: params.nodes is unreliable on right-click; use getNodeAt() instead.
+            network.on("oncontext", function(params) {
+                params.event.preventDefault();
+                var nodeId = network.getNodeAt(params.pointer.DOM);
+                if (nodeId !== undefined) {
                     window.parent.postMessage(
-                        {type: "node_selected", node_id: params.nodes[0]}, "*"
-                    );
-                } else {
-                    window.parent.postMessage(
-                        {type: "node_selected", node_id: null}, "*"
+                        {type: "node_action", action: "contextmenu", node_id: nodeId}, "*"
                     );
                 }
             });

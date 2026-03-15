@@ -43,7 +43,7 @@ The following features have been broken down into independent work streams. **Mu
 *   ~~**[F22] Scope Node Management UI**~~ ✅ _(v2.19.0)_: Dedicated CRUD for Scopes allowing users to quickly add or suppress (remove) nodes within them.
 *   ~~**[F23] Enhanced Node and Edge Editor**~~ ✅ _(v2.19.0)_: Improved CRUD specifically focused on seamlessly modifying existing nodes and edges across the application.
 *   ~~**[F28] Advanced Scope Definition Filters**~~ ✅ _(v2.22.0)_: Implement an improved and user-friendly way to find and select nodes for scope definition, leveraging the dynamic filter system.
-*   **[F29] Interactive Scope Sandbox** _(Iteration 3)_: Provide a mechanism to temporarily create or modify a scope by interacting directly with the graph during a risk analysis session.
+*   ~~**[F29] Interactive Scope Sandbox**~~ ✅ _(v2.23.0)_: Provide a mechanism to temporarily create or modify a scope by interacting directly with the graph during a risk analysis session.
 
 ### 🌊 Work Stream C: Analytical & Simulation Tools (Algorithmic)
 *Requires deep understanding of the `exposure_calculator.py` engine, graph mathematics, and scope logic.*
@@ -93,7 +93,7 @@ The following 4 iterations address features F25–F31, grouped to minimize conte
 
 ---
 
-### 🔁 Iteration 3 — Smart Scope Management (F28 + F29)
+### ✅ Iteration 3 — Smart Scope Management (F28 + F29) _(v2.22.0 / v2.23.0)_
 **Target features:** F28, F29
 **Streams:** B (Schema/Data) + A (UI interaction)
 **Prerequisites:** None (independent of Iterations 1–2)
@@ -101,7 +101,7 @@ The following 4 iterations address features F25–F31, grouped to minimize conte
 | Task | File(s) | Details |
 |------|---------|---------|
 | ~~**F28**~~ ✅ _(v2.22.0)_ Advanced Scope Filter UI | `ui/panels/scope_filter_panel.py` (new), `ui/tabs/unified_crud_tab.py`, `pages/1_⚙️_Configuration.py` | In the Scope Definition view, add: **① Text search** field (filters node list by partial name match), **② Level filter** (Business / Operational multiselect), **③ Subtype filter** (schema-driven, multiselect), **④ Exposure range** slider (min/max final exposure — requires exposure results in session), **⑤ "Select All Filtered" / "Deselect All Filtered" bulk action buttons**. Results show as a filterable table with checkboxes. Also applied to Configuration page scope creation and edit sections. |
-| **F29** Interactive Scope Sandbox | `ui/home.py` (graph section), `utils/state_manager.py` | Add a **"Scope Sandbox"** toggle in the sidebar (visible only when a scope is active). In sandbox mode: right-clicking a node in the graph shows an `st.popover`-style action (add to scope / remove from scope). Sandbox changes are stored in `session_state.scope_sandbox_overrides` (add/remove sets). A banner shows "🧪 Sandbox active — N additions, M removals". A "Commit to Scope" button persists sandbox changes to DB. A "Discard Sandbox" button reverts. Sandbox mode does NOT affect DB until committed. |
+| ~~**F29**~~ ✅ _(v2.23.0)_ Interactive Scope Sandbox | `ui/home.py`, `visualization/graph_options.py`, `visualization/graph_click_bridge/index.html`, `visualization/graph_renderer.py`, `utils/state_manager.py` | Scope Sandbox toggle in sidebar; right-click node → add/remove action panel; green border on effective scope members; full-graph bypass in sandbox mode; 💾 Commit / 🗑️ Discard; ➕ New Scope inline form; structured `{action, node_id}` graph event dict. |
 
 **Testing scope:** Scope definition filter narrows node list correctly. Bulk-select respects filtered results. Sandbox mode flag is visible only with active scope. Adding/removing nodes in sandbox updates the banner count. Commit persists correctly; discard reverts without DB change.
 
@@ -141,6 +141,13 @@ The following streams have hard dependencies on the streams above and should be 
 
 ### 🌊 Work Stream G: Advanced Graphical Interaction (BIG Features)
 *   **[F24] Interactive Canvas Editing**: Graphically interact with the graph directly within the visualization. Includes drawing new nodes and edges, modifying existing elements right on the canvas, and advanced graphical analysis tooling.
+*   **[F32] Graph Visual Behavior Panel**: A dedicated settings panel (sidebar or modal) to configure how nodes and edges look and behave in the graph. Consolidates all current scatter-shot visual toggles into one place and adds new options:
+    - **Node appearance**: size strategy (flat / exposure-scaled / degree-scaled), shape override per level, label verbosity (name only / name + exposure / name + subtype)
+    - **Edge appearance**: thickness strategy (flat / influence-score-scaled), arrow style, curvature
+    - **Scope Sandbox visuals**: out-of-scope opacity level (slider 0–1), in-scope size multiplier, in-scope border color
+    - **Presets**: "Clean Presentation", "Analysis Deep-Dive", "Sandbox Edit" — one-click configurations
+    - Settings persisted to `schema.yaml` under a `graph_visual_config` block so they survive sessions
+    - Relates to / supersedes: Exposure-Driven Opacity (F20), Lifecycle Ghosting (F21), Simple Mode transparency, Scope Sandbox dimming (F29)
 
 ## Open Questions — Multi-Agent Coordination
 

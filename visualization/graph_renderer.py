@@ -123,11 +123,13 @@ def render_graph(
         
         for n in nodes:
             node_type = n.get("node_type", "Risk").lower()
-            # Context nodes and TPOs always stay opaque
+            # Context nodes, TPOs, highlighted node, and sandbox in-scope nodes always stay opaque
             if node_type == "tpo" or n.get("is_context_node") or node_type not in ("risk", "mitigation", "tpo", "undefined", "") or n.get("id") == highlighted_node_id:
-                continue # Objectives, context nodes, and highlighted node always opaque
+                continue
             if node_type in ("risk", "undefined", "") and n["id"] in top_risk_ids:
                 continue # Top risks always opaque
+            if n.get("_sandbox_in_scope"):
+                continue  # Sandbox in-scope nodes always opaque (green border must be visible)
             # All other nodes (including mitigations) are transparent
             transparent_node_ids.add(n["id"])
             
@@ -184,13 +186,48 @@ def render_graph(
                 node_config["color"] = hex_to_rgba(node_config["color"], opacity)
             if "font" in node_config:
                 node_config["font"]["color"] = f"rgba(0,0,0,{opacity})"
-        
+
+        # Apply sandbox out-of-scope dimming (F29) — moderate fade so nodes remain findable
+        _sandbox_dim_opacity = 0.25
+        if node.get("_sandbox_out_of_scope"):
+            if isinstance(node_config.get("color"), dict):
+                bg = node_config["color"].get("background", "")
+                bd = node_config["color"].get("border", "")
+                node_config["color"]["background"] = hex_to_rgba(bg, _sandbox_dim_opacity)
+                node_config["color"]["border"] = hex_to_rgba(bd, _sandbox_dim_opacity)
+            elif isinstance(node_config.get("color"), str):
+                node_config["color"] = hex_to_rgba(node_config["color"], _sandbox_dim_opacity)
+            if "font" in node_config:
+                node_config["font"]["color"] = f"rgba(0,0,0,{_sandbox_dim_opacity})"
+
+        # Apply sandbox scope border + size boost (F29) — must run LAST so nothing overrides it
+        if node.get("_sandbox_in_scope"):
+            if isinstance(node_config.get("color"), dict):
+                node_config["color"]["border"] = "#2ecc71"
+            node_config["borderWidth"] = 3
+            node_config["value"] = node_config.get("value", 10) * 1.3
+
         net.add_node(node["id"], **node_config)
-    
+
+    # Track sandbox out-of-scope node IDs for edge dimming
+    sandbox_out_ids = {n["id"] for n in nodes if n.get("_sandbox_out_of_scope")}
+
     # Add edges
     for edge in filtered_edges:
         edge_config = create_edge_config(edge)
-        
+
+        # Apply sandbox out-of-scope edge dimming (F29)
+        if sandbox_out_ids and (
+            edge["source"] in sandbox_out_ids and edge["target"] in sandbox_out_ids
+        ):
+            if isinstance(edge_config.get("color"), dict):
+                ec = edge_config["color"].get("color", "")
+                edge_config["color"]["color"] = hex_to_rgba(ec, _sandbox_dim_opacity)
+                edge_config["color"]["highlight"] = hex_to_rgba(ec, _sandbox_dim_opacity)
+                edge_config["color"]["hover"] = hex_to_rgba(ec, _sandbox_dim_opacity)
+            elif isinstance(edge_config.get("color"), str):
+                edge_config["color"] = hex_to_rgba(edge_config["color"], _sandbox_dim_opacity)
+
         # Apply transparency if connected to a transparent node
         if edge["source"] in transparent_node_ids or edge["target"] in transparent_node_ids:
             if isinstance(edge_config.get("color"), dict):
@@ -248,14 +285,19 @@ def render_graph_streamlit(
     height: int = 720,
     complexity_mode: str = "Advanced",
     focus_node_ids: Optional[List[str]] = None
-) -> Optional[str]:
+) -> Optional[dict]:
     """
     Render the RIM graph directly in Streamlit via the click-bridge component.
 
-    Returns the UUID of the node that was most recently clicked on the canvas,
-    or None if no node was clicked / the background was clicked.
-    The caller (ui/home.py) is responsible for persisting this value to
-    st.session_state.selected_node_id.
+    Returns a dict {"action": str, "node_id": str | None} describing the most
+    recent graph interaction, or None if no interaction occurred this rerun:
+
+      {"action": "click",       "node_id": "<uuid>"}  — left-click on a node
+      {"action": "click",       "node_id": None}       — left-click on background
+      {"action": "contextmenu", "node_id": "<uuid>"}   — right-click on a node
+
+    The caller (ui/home.py) is responsible for routing these events to the
+    appropriate handler (node selection vs. sandbox action).
     """
     import streamlit as st
 

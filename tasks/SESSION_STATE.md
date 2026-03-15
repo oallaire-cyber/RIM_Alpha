@@ -6,23 +6,23 @@
 ---
 
 ## Current Version
-`v2.22.0` — Iteration 3: F28 Advanced Scope Filter UI
+`v2.23.0` — Iteration 3: F29 Interactive Scope Sandbox
 
 ## Last Updated
-2026-03-15 — Iteration 3 session: F28 complete
+2026-03-15 — Iteration 3 session: F28 + F29 both complete
 
 ---
 
 ## 🔴 Active Work In Progress
-<!-- No task is mid-implementation. All committed. Next up is F29. -->
+<!-- No task is mid-implementation. All committed. Next up is F31. -->
 
-**Feature**: F29 Interactive Scope Sandbox (not yet started)
-**Stream**: A
+**Feature**: F31 Scope-Driven Simulation & Results Storage (not yet started)
+**Stream**: C
 **Status**: 0% — planning not yet started
 
 **Next immediate step**:
-> Begin planning F29 (Interactive Scope Sandbox).
-> See ROADMAPv2.md Iteration 3 section for full task details.
+> Begin planning F31 (Scope-Driven Simulation & Results Storage).
+> See ROADMAPv2.md Iteration 4 section for full task details.
 
 **Blocked on**: Nothing.
 
@@ -30,28 +30,7 @@
 
 ## ✅ Recently Completed (last 2 sessions)
 
-### Session N-1 (v2.21.0)
-- **v2.21.0** — **F26 Contextual Property Panel** (Iteration 2):
-  - Created `visualization/graph_click_bridge/index.html` — thin
-    `declare_component` frontend that wraps PyVis HTML in an inner `srcdoc`
-    iframe and relays `node_selected` postMessages to Python via
-    `Streamlit.setComponentValue()`. This closes the one-way iframe gap:
-    canvas click → JS → Python session state.
-  - Added `get_node_click_postmessage_js()` to `visualization/graph_options.py`
-    — injects a `network.on("click")` handler (with 1100ms delay after focus
-    mode) that calls `window.parent.postMessage({type:"node_selected", ...})`.
-  - Modified `visualization/graph_renderer.py`: injected postMessage JS,
-    registered `declare_component` at module level, changed
-    `render_graph_streamlit()` to use the bridge and return `Optional[str]`.
-  - Created `ui/panels/node_property_panel.py` — 6-section `NodePropertyPanel`
-    with `Section` dataclass.
-  - Wired in `ui/home.py`: captures `clicked_node_id` from graph render,
-    merges into `selected_node_id`, renders `render_node_property_panel`.
-  - Post-implementation fixes: `cdn_resources="in_line"` for PyVis to avoid
-    `utils.js` 404; switched to `net.generate_html()` to fix UnicodeEncodeError
-    and empty graph bug.
-
-### Session N (this session — v2.22.0)
+### Session N-1 (v2.22.0)
 - **v2.22.0** — **F28 Advanced Scope Filter UI** (Iteration 3):
   - Created `ui/panels/scope_filter_panel.py` with three functions:
     - `_render_filter_table()` — shared core (filter controls, bulk buttons,
@@ -68,8 +47,28 @@
     (replaced multiselect with immediate-save `render_scope_node_editor`).
   - Filter controls: text search, Level multiselect (schema-driven), Subtype
     multiselect (schema-driven), Exposure slider (conditional on session state).
-  - Also applied to scope creation/edit in Configuration page via
-    `render_scope_node_editor`.
+
+### Session N (this session — v2.23.0)
+- **v2.23.0** — **F29 Interactive Scope Sandbox** (Iteration 3):
+  - Extended `visualization/graph_options.py`: `get_node_click_postmessage_js()`
+    now also handles `network.on("oncontext")` → right-click postMessage
+    `{type:"node_action", action:"contextmenu", node_id}`.
+  - Updated `visualization/graph_click_bridge/index.html`: relay structured
+    `{action, node_id}` dict; legacy `node_selected` type kept as fallback.
+  - Updated `visualization/graph_renderer.py`: `render_graph_streamlit()` return
+    type changed to `Optional[dict]` `{"action": ..., "node_id": ...}`.
+  - Updated `utils/state_manager.py`: added `scope_sandbox_mode` and
+    `scope_sandbox_pending_node` to `HOME_UI_DEFAULTS`.
+  - Updated `ui/home.py`:
+    - Helper functions: `_sandbox_add`, `_sandbox_remove`, `_commit_sandbox`,
+      `_discard_sandbox`, `_render_sandbox_action_panel`.
+    - Graph section: scope filter bypass when sandbox active; green border
+      indicator on effective scope members; sandbox banner; structured
+      `graph_event` dict parsing; sandbox action panel after graph render.
+    - Sidebar `render_scope_selector()`: 🧪 Sandbox toggle + Commit/Discard
+      buttons; ➕ New Scope inline form with create-and-enter-sandbox flow.
+    - Full Graph cleanup extended to clear all sandbox session keys.
+  - Updated `docs/help_scopes.md`: added Sandbox section.
 
 ---
 
@@ -92,12 +91,24 @@
   This is the only working architecture: `st.components.v1.html` is one-way
   (no `declare_component` protocol), so the outer wrapper is essential.
 
-- **`render_graph_streamlit()` now returns `Optional[str]`**: It returns the
-  UUID of the most recently clicked node (or None). Callers must handle the
-  case where `None` means "no new click this rerun" (not "deselect").
-  Background click returns `None` with the bridge posting `node_id: null`.
-  `home.py` uses `_graph_prev_click` sentinel to distinguish "first None"
-  (nothing ever clicked) from "user clicked background" (None after a UUID).
+- **`render_graph_streamlit()` now returns `Optional[dict]`**: Returns
+  `{"action": "click"|"contextmenu", "node_id": str|None}` or `None`.
+  Callers parse `_action`/`_node_id`. Legacy string fallback preserved.
+  Background click returns dict with `node_id: null`.
+
+- **`scope_sandbox_overrides` lazy init**: NOT in `HOME_UI_DEFAULTS` to avoid a
+  shared mutable dict across sessions. Initialized in `setdefault()` calls
+  inside `_sandbox_add`/`_sandbox_remove`, and explicitly on toggle-on /
+  New Scope creation.
+
+- **Sandbox bypasses scope filter**: `filters.pop("scope_node_ids", None)` and
+  `filters.pop("scope_include_neighbors", None)` before `get_graph_data()` so
+  the full graph is visible and out-of-scope nodes can be added.
+
+- **Net effect of overrides**: `_sb_effective = (scope.node_ids ∪ ov["add"]) − ov["remove"]`.
+  This is the set used for the green border indicator and the in-scope detection
+  in the action panel. Commit applies these to `FilterManager` which then
+  persists to `schema.yaml` via the schema loader.
 
 - **`net.generate_html()` is the correct PyVis API for in-memory HTML**:
   `net.html` is an instance variable initialised to `""` — it is only
@@ -107,18 +118,12 @@
 
 - **`cdn_resources="in_line"` is required for the srcdoc bridge**: With
   `"local"` (default), PyVis embeds `<script src="lib/bindings/utils.js">` in
-  the HTML. That relative URL resolves to the component's URL path, causing
-  Streamlit's ComponentRequestHandler to look for the file in
-  `visualization/graph_click_bridge/lib/` — where it doesn't exist. With
-  `"in_line"`, all JS is embedded in the HTML and no external files are
-  referenced.
+  the HTML. That relative URL causes a 404. With `"in_line"`, all JS is
+  embedded in the HTML.
 
 - **`create_unified_entity` return type inconsistency** (from prior session):
   risk/mitigation return `str`, context nodes return `dict`. Branch on
   `isinstance(new_item, str)` vs `dict` at all call sites.
-
-- **`config.settings._active_schema` singleton vs fresh disk read**: See prior
-  session notes.
 
 ---
 
@@ -139,7 +144,7 @@
 
 ## 📋 Open Questions Pending User Decision
 
-1. **F29 start**: Ready to plan Interactive Scope Sandbox when user confirms.
+1. **F31 start**: Ready to plan Scope-Driven Simulation & Results Storage when user confirms.
 
 2. **Branch hygiene**: Push `feature/work_stream_AB` to remote when ready.
 
@@ -148,5 +153,5 @@
 ## 🔁 Resumption Prompt (copy-paste to start next session)
 ```
 Resume RIM development. Read tasks/SESSION_STATE.md first, then continue where we left off.
-Current task: F29 Interactive Scope Sandbox (Iteration 3).
+Current task: F31 Scope-Driven Simulation & Results Storage (Iteration 4).
 ```

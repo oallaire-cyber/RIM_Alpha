@@ -25,6 +25,20 @@ for focused analysis. All features respect scope boundaries.
 
 ---
 
+**🧪 Scope Sandbox** _(interactive graph editing)_
+
+Sandbox mode lets you build or reshape a scope by right-clicking nodes directly on the graph. Changes are held in memory and never touch the database until you press **Commit**.
+
+1. Activate a scope in the sidebar (or create one with **➕ New Scope**)
+2. Enable **🧪 Scope Sandbox** toggle — the full graph appears; in-scope nodes show a **green border**
+3. **Right-click** any node → action panel appears below the graph: **➕ Add to scope** or **➖ Remove from scope**
+4. A banner tracks pending changes: "🧪 Sandbox active — N additions, M removals"
+5. Press **💾 Commit** to persist, or **🗑️ Discard** to revert
+
+**➕ New Scope** button (bottom of the expander): creates a new empty scope and immediately enters Sandbox mode so you can populate it from the graph without navigating to the Configuration page.
+
+---
+
 **Smart Expansion:**
 
 When a scope is active, the system automatically includes:
