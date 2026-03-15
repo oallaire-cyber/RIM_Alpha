@@ -4,6 +4,29 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.22.0] - 2026-03-15
+
+### Iteration 3 — Advanced Scope Filter UI (F28)
+
+**New Features:**
+
+- **[F28] Advanced Scope Filter UI**: Replaced the bare "Select Nodes" multiselect in scope management with a filterable, checkboxable risk table. Available in two locations:
+  - **Data Management → Risks tab** (when a scope is active): a collapsed "🔍 Scope Definition — Add / Remove Risks" expander appears above the card list, showing ALL risks (not just in-scope ones) with scope membership as a checkbox column.
+  - **Configuration page → 📐 Scopes tab**: both the "Create New Scope" form and each existing scope's edit section now use the same filter panel instead of the old flat multiselect.
+  - Filter controls: **① text search** (partial name), **② Level multiselect** (Business / Operational — schema-driven), **③ Subtype multiselect** (schema-driven, e.g. Cyber, Strategic), **④ Exposure range slider** (visible only after running Exposure Calculation).
+  - Bulk actions: **✅ Select All Filtered** and **🔲 Deselect All Filtered** apply only to the currently filtered subset.
+  - Individual checkbox edits sync immediately to `FilterManager` (home.py) or via direct YAML save (config page).
+
+**Files Added:**
+- `ui/panels/scope_filter_panel.py` — two public entry points: `render_scope_filter_panel` (home.py, uses FilterManager) and `render_scope_node_editor` (config page, uses caller-supplied callbacks); shared core in `_render_filter_table`.
+
+**Files Modified:**
+- `ui/tabs/unified_crud_tab.py` — Injects `render_scope_filter_panel` expander for risk entity type when scope is active.
+- `ui/panels/__init__.py` — Exports `render_scope_filter_panel` and `render_scope_node_editor`.
+- `pages/1_⚙️_Configuration.py` — Creation form: removed `st.form` wrapper, replaced multiselect with `render_scope_node_editor` + draft scope in session state. Edit section: replaced multiselect with `render_scope_node_editor` with immediate-save callbacks.
+
+---
+
 ## [v2.21.0] - 2026-03-15
 
 ### Iteration 2 — Rich Contextual Property Panel (F26)

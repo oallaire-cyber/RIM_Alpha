@@ -2468,43 +2468,70 @@ def render_scopes_tab():
     
     # ── Create new scope ──────────────────────────────────────────
     with st.expander("➕ Create New Scope", expanded=not scopes):
-        with st.form("new_scope_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                new_id = st.text_input("Scope ID", placeholder="fuel_chain")
-                new_name = st.text_input("Display Name", placeholder="⛽ Fuel Supply Chain")
-            with col2:
-                new_desc = st.text_area("Description", placeholder="Risks related to fuel supply", height=68)
-                new_color = st.color_picker("Scope Color", "#808080")
-            
-            if node_options:
-                selected_displays = st.multiselect("Select Nodes", list(display_map.keys()))
-                selected_node_ids = [display_map[d] for d in selected_displays]
-            else:
-                raw_ids = st.text_area("Node IDs (one per line)", placeholder="Paste UUIDs, one per line")
-                selected_node_ids = [x.strip() for x in raw_ids.split("\n") if x.strip()]
-            
-            include_edges = st.checkbox("Include connected edges", value=True)
-            
-            submitted = st.form_submit_button("Create Scope", type="primary")
-            if submitted and new_id and new_name:
-                # Check for duplicate ID
-                if any(s.id == new_id for s in scopes):
-                    st.error(f"A scope with ID '{new_id}' already exists.")
+        col1, col2 = st.columns(2)
+        with col1:
+            new_id = st.text_input("Scope ID", placeholder="fuel_chain", key="new_scope_id")
+            new_name = st.text_input("Display Name", placeholder="⛽ Fuel Supply Chain", key="new_scope_name")
+        with col2:
+            new_desc = st.text_area("Description", placeholder="Risks related to fuel supply", height=68, key="new_scope_desc")
+            new_color = st.color_picker("Scope Color", "#808080", key="new_scope_color")
+
+        include_edges = st.checkbox("Include connected edges", value=True, key="new_scope_edges")
+
+        # Node selection — use filter panel when manager is available, else raw text input
+        manager = st.session_state.get("manager")
+        if manager:
+            from config.schema_loader import AnalysisScopeConfig as _ASC
+            # Draft scope stored in session state to persist selections across reruns
+            if "_new_scope_draft" not in st.session_state:
+                st.session_state._new_scope_draft = _ASC(id="__draft__", name="New Scope", node_ids=[])
+            draft = st.session_state._new_scope_draft
+
+            from ui.panels.scope_filter_panel import render_scope_node_editor
+
+            def _draft_add(nid: str) -> None:
+                if nid not in draft.node_ids:
+                    draft.node_ids.append(nid)
+
+            def _draft_remove(nid: str) -> None:
+                if nid in draft.node_ids:
+                    draft.node_ids.remove(nid)
+
+            st.markdown("**Select Risks for Scope:**")
+            render_scope_node_editor(manager, draft, _draft_add, _draft_remove, key_prefix="new_scope_editor")
+            selected_node_ids = list(draft.node_ids)
+        elif node_options:
+            selected_displays = st.multiselect("Select Nodes", list(display_map.keys()), key="new_scope_nodes")
+            selected_node_ids = [display_map[d] for d in selected_displays]
+        else:
+            raw_ids = st.text_area("Node IDs (one per line)", placeholder="Paste UUIDs, one per line", key="new_scope_raw_ids")
+            selected_node_ids = [x.strip() for x in raw_ids.split("\n") if x.strip()]
+
+        if st.button("Create Scope", type="primary", key="btn_create_scope"):
+            new_id_val = st.session_state.get("new_scope_id", "").strip()
+            new_name_val = st.session_state.get("new_scope_name", "").strip()
+            if new_id_val and new_name_val:
+                if any(s.id == new_id_val for s in scopes):
+                    st.error(f"A scope with ID '{new_id_val}' already exists.")
                 else:
                     from config.schema_loader import AnalysisScopeConfig
                     new_scope = AnalysisScopeConfig(
-                        id=new_id,
-                        name=new_name,
-                        description=new_desc,
+                        id=new_id_val,
+                        name=new_name_val,
+                        description=st.session_state.get("new_scope_desc", ""),
                         node_ids=selected_node_ids,
-                        include_connected_edges=include_edges,
-                        color=new_color,
+                        include_connected_edges=st.session_state.get("new_scope_edges", True),
+                        color=st.session_state.get("new_scope_color", "#808080"),
                     )
                     schema.scopes.append(new_scope)
                     _save_active_schema(schema)
-                    st.success(f"Scope '{new_name}' created with {len(selected_node_ids)} nodes.")
+                    # Reset draft
+                    if "_new_scope_draft" in st.session_state:
+                        del st.session_state._new_scope_draft
+                    st.success(f"Scope '{new_name_val}' created with {len(selected_node_ids)} nodes.")
                     st.rerun()
+            else:
+                st.warning("Scope ID and Display Name are required.")
     
     # ── Existing scopes ───────────────────────────────────────────
     if not scopes:
@@ -2538,32 +2565,44 @@ def render_scopes_tab():
                     st.rerun()
             
             # Node list management
-            st.markdown(f"**Manage Nodes ({len(scope.node_ids)}):**")
-            if node_options:
-                # Connected to DB: Show interactive multiselect
+            st.markdown(f"**Manage Risks ({len(scope.node_ids)}):**")
+            manager = st.session_state.get("manager")
+            if manager:
+                from ui.panels.scope_filter_panel import render_scope_node_editor
+
+                def _edit_add(nid: str, _scope=scope) -> None:
+                    if nid not in _scope.node_ids:
+                        _scope.node_ids.append(nid)
+                    _save_active_schema(schema)
+
+                def _edit_remove(nid: str, _scope=scope) -> None:
+                    if nid in _scope.node_ids:
+                        _scope.node_ids.remove(nid)
+                    _save_active_schema(schema)
+
+                render_scope_node_editor(
+                    manager, scope, _edit_add, _edit_remove,
+                    key_prefix=f"edit_{scope.id}",
+                )
+            elif node_options:
+                # Fallback: simple multiselect when manager unavailable
                 current_displays = [reverse_display_map[nid] for nid in scope.node_ids if nid in reverse_display_map]
-                
                 updated_displays = st.multiselect(
-                    "Scope Nodes", 
-                    options=list(display_map.keys()), 
+                    "Scope Nodes",
+                    options=list(display_map.keys()),
                     default=current_displays,
                     key=f"nodes_{scope.id}",
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
                 )
-                
                 new_node_ids = [display_map[d] for d in updated_displays]
-                
-                # Keep IDs that exist in the scope but might not be in the DB
                 missing_db_ids = [nid for nid in scope.node_ids if nid not in reverse_display_map]
                 final_node_ids = new_node_ids + missing_db_ids
-                
                 if set(final_node_ids) != set(scope.node_ids):
                     if st.button("💾 Save Node Changes", key=f"save_nodes_{scope.id}"):
                         scope.node_ids = final_node_ids
                         _save_active_schema(schema)
                         st.success(f"Scope nodes updated to {len(scope.node_ids)} items.")
                         st.rerun()
-                
                 if missing_db_ids:
                     st.caption(f"*(+{len(missing_db_ids)} nodes currently not found in DB but kept in scope)*")
             else:

@@ -11,6 +11,7 @@ from core import get_registry, EntityTypeDefinition, RelationshipTypeDefinition
 from database import RiskGraphManager
 from ui.dynamic_forms import build_entity_form, build_relationship_form
 from ui.components import render_pagination
+from ui.panels.scope_filter_panel import render_scope_filter_panel
 from config.settings import get_active_schema, get_active_schema_name
 from config.schema_loader import save_schema
 
@@ -32,7 +33,13 @@ def render_unified_crud_tab(manager: RiskGraphManager, definition: Union[EntityT
     
     if is_node and active_scopes:
         st.info(f"📍 **Scope Active:** Displayed {definition.label.lower()}s are limited to the active scope.")
-    
+
+    # F28: Advanced Scope Filter Panel (risks only, scope active)
+    if is_node and type_id == "risk" and active_scopes and filter_mgr:
+        with st.expander("🔍 Scope Definition — Add / Remove Risks", expanded=False):
+            render_scope_filter_panel(manager, filter_mgr, active_scopes[0])
+        st.markdown("---")
+
     col1, col2 = st.columns([3, 1])
     with col1:
         search = st.text_input("🔍 Search", key=f"search_{type_id}", placeholder=f"Search {definition.label.lower()}s...")

@@ -42,7 +42,7 @@ The following features have been broken down into independent work streams. **Mu
 *   ~~**[F18] Extend Data Management for Context Data**~~ ✅ _(v2.18.0)_: Extend the existing Excel import/export and JSON backup/restore capabilities (`import_export.py`) to fully handle ContextNode and ContextEdge data.
 *   ~~**[F22] Scope Node Management UI**~~ ✅ _(v2.19.0)_: Dedicated CRUD for Scopes allowing users to quickly add or suppress (remove) nodes within them.
 *   ~~**[F23] Enhanced Node and Edge Editor**~~ ✅ _(v2.19.0)_: Improved CRUD specifically focused on seamlessly modifying existing nodes and edges across the application.
-*   **[F28] Advanced Scope Definition Filters** _(Iteration 3)_: Implement an improved and user-friendly way to find and select nodes for scope definition, leveraging the dynamic filter system.
+*   ~~**[F28] Advanced Scope Definition Filters**~~ ✅ _(v2.22.0)_: Implement an improved and user-friendly way to find and select nodes for scope definition, leveraging the dynamic filter system.
 *   **[F29] Interactive Scope Sandbox** _(Iteration 3)_: Provide a mechanism to temporarily create or modify a scope by interacting directly with the graph during a risk analysis session.
 
 ### 🌊 Work Stream C: Analytical & Simulation Tools (Algorithmic)
@@ -51,7 +51,7 @@ The following features have been broken down into independent work streams. **Mu
 *   **[F5] Automated Risk Threshold Alerts**: Visual flags in the UI when computed exposure exceeds predefined thresholds. Must be scope-aware.
 *   **[F6] Mitigation Exposure View (Business Focus)**: Dedicated view showing mitigations contributing to exposure reduction for selected Business Risks, filterable by lifecycle status. Must be scope-aware.
 *   **[F7] "What-If" Analysis Sandbox**: Toggle mitigations ON/OFF to live-preview downstream exposure changes without committing to the DB. **Critical Constraint**: Must operate fully within the active scope — Sandbox must never produce results including out-of-scope nodes.
-*   **[F30] Retroaction Loop Detection** _(Iteration 1)_: Implement a check control to reliably detect any retroaction loops (cyclical dependencies) prior to running exposure calculations.
+*   ~~**[F30] Retroaction Loop Detection**~~ ✅ _(v2.20.0)_: Implement a check control to reliably detect any retroaction loops (cyclical dependencies) prior to running exposure calculations.
 *   **[F31] Scope-Driven Simulation & Results Storage** _(Iteration 4)_: Update Simulation/Calibration pages to utilize the *current active scope* rather than randomly generated graphs. Introduce a storage system to record simulation results for future exploitation and comparison.
 
 ---
@@ -62,7 +62,7 @@ The following 4 iterations address features F25–F31, grouped to minimize conte
 
 ---
 
-### 🔁 Iteration 1 — Foundation Safety & Quick UX Wins
+### ✅ Iteration 1 — Foundation Safety & Quick UX Wins _(v2.20.0)_
 **Target features:** F25, F30, F27
 **Streams:** A (UI) + C (Algorithm) — no Stream B dependency, no merge conflicts
 **Prerequisites:** None
@@ -100,7 +100,7 @@ The following 4 iterations address features F25–F31, grouped to minimize conte
 
 | Task | File(s) | Details |
 |------|---------|---------|
-| **F28** Advanced Scope Filter UI | `ui/tabs/unified_crud_tab.py` or new `ui/panels/scope_filter_panel.py` | In the Scope Definition view, add: **① Text search** field (filters node list by partial name match), **② Level filter** (Business / Operational multiselect), **③ Subtype filter** (schema-driven, multiselect), **④ Exposure range** slider (min/max final exposure — requires exposure results in session), **⑤ "Select All Filtered" / "Deselect All Filtered" bulk action buttons**. Results show as a filterable table with checkboxes. |
+| ~~**F28**~~ ✅ _(v2.22.0)_ Advanced Scope Filter UI | `ui/panels/scope_filter_panel.py` (new), `ui/tabs/unified_crud_tab.py`, `pages/1_⚙️_Configuration.py` | In the Scope Definition view, add: **① Text search** field (filters node list by partial name match), **② Level filter** (Business / Operational multiselect), **③ Subtype filter** (schema-driven, multiselect), **④ Exposure range** slider (min/max final exposure — requires exposure results in session), **⑤ "Select All Filtered" / "Deselect All Filtered" bulk action buttons**. Results show as a filterable table with checkboxes. Also applied to Configuration page scope creation and edit sections. |
 | **F29** Interactive Scope Sandbox | `ui/home.py` (graph section), `utils/state_manager.py` | Add a **"Scope Sandbox"** toggle in the sidebar (visible only when a scope is active). In sandbox mode: right-clicking a node in the graph shows an `st.popover`-style action (add to scope / remove from scope). Sandbox changes are stored in `session_state.scope_sandbox_overrides` (add/remove sets). A banner shows "🧪 Sandbox active — N additions, M removals". A "Commit to Scope" button persists sandbox changes to DB. A "Discard Sandbox" button reverts. Sandbox mode does NOT affect DB until committed. |
 
 **Testing scope:** Scope definition filter narrows node list correctly. Bulk-select respects filtered results. Sandbox mode flag is visible only with active scope. Adding/removing nodes in sandbox updates the banner count. Commit persists correctly; discard reverts without DB change.
