@@ -28,9 +28,9 @@ The following features have been broken down into independent work streams. **Mu
 *   ~~**[F19] Interactive Focus Mode (Neighborhood Highlight)**~~ ✅ _(v2.14.0)_: When clicking a specific risk, mitigation, or TPO, automatically fade all nodes that are not connected to it to instantly highlight its root causes and consequences.
 *   ~~**[F20] Exposure-Driven Opacity**~~ ✅ _(v2.15.0)_: Combine the exposure color gradient with opacity. Low-exposure or acceptable risks naturally fade into the background, while high-exposure critical risks remain 100% opaque.
 *   ~~**[F21] Lifecycle & Status Ghosting**~~ ✅ _(v2.15.0)_: Use transparency as a metaphor for things that are "not fully realized yet" (e.g., Contingent Risks, or "Proposed" / "Deferred" mitigations appear at 50% opacity, while "Implemented" mitigations are fully solid).
-*   **[F25] Dashboard Simplification**: Remove TPOs related information in the dashboard panel to reduce cognitive load.
-*   **[F26] Contextual Property Panel**: Display the properties of the selected object in the graph within an appropriate zone below the graph. Includes dynamic properties (critical path status, mitigated state, relevant risk management info) structured for easy future modification.
-*   **[F27] Graph Canvas Search**: Add a dedicated search text area for fast and direct graph node or edge selection in the graph UI.
+*   ~~**[F25] Dashboard Simplification**~~ ✅ _(v2.20.0)_: Remove TPOs related information in the dashboard panel to reduce cognitive load.
+*   ~~**[F26] Contextual Property Panel**~~ ✅ _(v2.21.0)_: Display the properties of the selected object in the graph within an appropriate zone below the graph. Includes dynamic properties (critical path status, mitigated state, relevant risk management info) structured for easy future modification.
+*   ~~**[F27] Graph Canvas Search**~~ ✅ _(v2.20.0)_: Add a dedicated search text area for fast and direct graph node or edge selection in the graph UI.
 
 ### 🌊 Work Stream B: Schema & Context Data Management (Backend/Fullstack)
 *Requires knowledge of the existing Pydantic/YAML schema loader, CRUD forms, and Streamlit session state.*
@@ -42,8 +42,8 @@ The following features have been broken down into independent work streams. **Mu
 *   ~~**[F18] Extend Data Management for Context Data**~~ ✅ _(v2.18.0)_: Extend the existing Excel import/export and JSON backup/restore capabilities (`import_export.py`) to fully handle ContextNode and ContextEdge data.
 *   ~~**[F22] Scope Node Management UI**~~ ✅ _(v2.19.0)_: Dedicated CRUD for Scopes allowing users to quickly add or suppress (remove) nodes within them.
 *   ~~**[F23] Enhanced Node and Edge Editor**~~ ✅ _(v2.19.0)_: Improved CRUD specifically focused on seamlessly modifying existing nodes and edges across the application.
-*   **[F28] Advanced Scope Definition Filters**: Implement an improved and user-friendly way to find and select nodes for scope definition, leveraging the dynamic filter system.
-*   **[F29] Interactive Scope Sandbox**: Provide a mechanism to temporarily create or modify a scope by interacting directly with the graph during a risk analysis session.
+*   ~~**[F28] Advanced Scope Definition Filters**~~ ✅ _(v2.22.0)_: Implement an improved and user-friendly way to find and select nodes for scope definition, leveraging the dynamic filter system.
+*   ~~**[F29] Interactive Scope Sandbox**~~ ✅ _(v2.23.0)_: Provide a mechanism to temporarily create or modify a scope by interacting directly with the graph during a risk analysis session.
 
 ### 🌊 Work Stream C: Analytical & Simulation Tools (Algorithmic)
 *Requires deep understanding of the `exposure_calculator.py` engine, graph mathematics, and scope logic.*
@@ -51,8 +51,73 @@ The following features have been broken down into independent work streams. **Mu
 *   **[F5] Automated Risk Threshold Alerts**: Visual flags in the UI when computed exposure exceeds predefined thresholds. Must be scope-aware.
 *   **[F6] Mitigation Exposure View (Business Focus)**: Dedicated view showing mitigations contributing to exposure reduction for selected Business Risks, filterable by lifecycle status. Must be scope-aware.
 *   **[F7] "What-If" Analysis Sandbox**: Toggle mitigations ON/OFF to live-preview downstream exposure changes without committing to the DB. **Critical Constraint**: Must operate fully within the active scope — Sandbox must never produce results including out-of-scope nodes.
-*   **[F30] Retroaction Loop Detection**: Implement a check control to reliably detect any retroaction loops (cyclical dependencies) prior to running exposure calculations.
-*   **[F31] Scope-Driven Simulation & Results Storage**: Update Simulation/Calibration pages to utilize the *current active scope* rather than randomly generated graphs. Introduce a storage system to record simulation results for future exploitation and comparison.
+*   ~~**[F30] Retroaction Loop Detection**~~ ✅ _(v2.20.0)_: Implement a check control to reliably detect any retroaction loops (cyclical dependencies) prior to running exposure calculations.
+*   **[F31] Scope-Driven Simulation & Results Storage** _(Iteration 4)_: Update Simulation/Calibration pages to utilize the *current active scope* rather than randomly generated graphs. Introduce a storage system to record simulation results for future exploitation and comparison.
+
+---
+
+## 🗓️ Active Sprint Plan: Iterations for Next Development Cycle
+
+The following 4 iterations address features F25–F31, grouped to minimize context-switching and inter-agent conflicts. Each iteration is a self-contained deliverable with a clear testing scope. **Git commits are performed by the user after each iteration is verified.**
+
+---
+
+### ✅ Iteration 1 — Foundation Safety & Quick UX Wins _(v2.20.0)_
+**Target features:** F25, F30, F27
+**Streams:** A (UI) + C (Algorithm) — no Stream B dependency, no merge conflicts
+**Prerequisites:** None
+
+| Task | File(s) | Details |
+|------|---------|---------|
+| **F25** Dashboard TPO removal | `ui/home.py` → `render_statistics_dashboard()` | Remove rows 2 metrics: `total_tpos`, `total_tpo_impacts`. Remove corresponding keys from `_compute_stats_from_graph()`. Remove TPO-specific columns from stats layout. |
+| **F30** Retroaction loop detection | `services/exposure_calculator.py`, `ui/home.py` | Add `detect_cycles(influences) → List[List[str]]` function using DFS. Add `validate_graph_for_calculation() → ValidationResult` that returns cycle info. Call validation in `render_exposure_dashboard()` before calculation; surface a `st.warning` with cycle details if loops found. The exposure calc continues (with existing fallback) but the user is informed. |
+| **F27** Graph canvas search | `ui/home.py` (visualization section) | Add a `st.text_input` search box above the graph. On input, filter the node list and highlight matching nodes (set `highlighted_node_id` and auto-select first match). Supports partial match on node name. Clear button resets selection. Wired to existing `selected_node_id` session state. |
+
+**Testing scope:** Stats dashboard no longer shows TPO rows. Cycle warning appears when a cyclic graph is loaded. Search box selects and highlights matching nodes.
+
+---
+
+### ✅ Iteration 2 — Rich Contextual Property Panel (F26) _(v2.21.0)_
+**Target features:** F26
+**Streams:** A (UI) — reads from existing services, no DB writes
+**Prerequisites:** Iteration 1 (F30 needed to surface cycle status in panel)
+
+| Task | File(s) | Details |
+|------|---------|---------|
+| **F26** New `NodePropertyPanel` component | `ui/panels/node_property_panel.py` (new file) | Replace the bare `render_inline_editor` call below the graph with a structured panel. Sections (all collapsible, easily extendable): **① Identity** (name, level, subtype, description, origin, status), **② Exposure Metrics** (likelihood, impact, base/final exposure, residual %, mitigation factor — sourced from last `exposure_results`), **③ Graph Position** (computed level/BFS depth, upstream count, downstream count), **④ Influence Analysis** (is on critical path ✅/❌, is a bottleneck ✅/❌, convergence score, propagation score — sourced from last `influence_results` in session state), **⑤ Mitigation Summary** (count, lifecycle breakdown, effective coverage %), **⑥ Edit shortcut** (existing `render_inline_editor` call preserved inside this section). |
+| Wire panel to graph | `ui/home.py` | Replace current `render_inline_editor(manager, selected_node_id)` call (line ~1031) with `render_node_property_panel(manager, selected_node_id, exposure_results, influence_results)`. Also wire search result selection (F27) through the same panel. |
+
+**Design principle:** The panel is built as a list of `Section` dataclasses — each section has an `id`, `title`, `render_fn`. Future sections can be appended to this list with zero modification to existing sections.
+
+**Testing scope:** Selecting any node via click, dropdown, or search shows the panel. All 6 sections render correctly. Panel updates when a new node is selected. Exposure and influence data shows "N/A" gracefully when not yet calculated.
+
+---
+
+### ✅ Iteration 3 — Smart Scope Management (F28 + F29) _(v2.22.0 / v2.23.0)_
+**Target features:** F28, F29
+**Streams:** B (Schema/Data) + A (UI interaction)
+**Prerequisites:** None (independent of Iterations 1–2)
+
+| Task | File(s) | Details |
+|------|---------|---------|
+| ~~**F28**~~ ✅ _(v2.22.0)_ Advanced Scope Filter UI | `ui/panels/scope_filter_panel.py` (new), `ui/tabs/unified_crud_tab.py`, `pages/1_⚙️_Configuration.py` | In the Scope Definition view, add: **① Text search** field (filters node list by partial name match), **② Level filter** (Business / Operational multiselect), **③ Subtype filter** (schema-driven, multiselect), **④ Exposure range** slider (min/max final exposure — requires exposure results in session), **⑤ "Select All Filtered" / "Deselect All Filtered" bulk action buttons**. Results show as a filterable table with checkboxes. Also applied to Configuration page scope creation and edit sections. |
+| ~~**F29**~~ ✅ _(v2.23.0)_ Interactive Scope Sandbox | `ui/home.py`, `visualization/graph_options.py`, `visualization/graph_click_bridge/index.html`, `visualization/graph_renderer.py`, `utils/state_manager.py` | Scope Sandbox toggle in sidebar; right-click node → add/remove action panel; green border on effective scope members; full-graph bypass in sandbox mode; 💾 Commit / 🗑️ Discard; ➕ New Scope inline form; structured `{action, node_id}` graph event dict. |
+
+**Testing scope:** Scope definition filter narrows node list correctly. Bulk-select respects filtered results. Sandbox mode flag is visible only with active scope. Adding/removing nodes in sandbox updates the banner count. Commit persists correctly; discard reverts without DB change.
+
+---
+
+### 🔁 Iteration 4 — Simulation Grounding (F31)
+**Target features:** F31
+**Streams:** C (Algorithmic) — self-contained to `pages/2_🎲_Simulation.py`
+**Prerequisites:** None (independent of Iterations 1–3)
+
+| Task | File(s) | Details |
+|------|---------|---------|
+| **F31a** Scope-driven simulation mode | `pages/2_🎲_Simulation.py` | Add a new simulation mode: **"Scope-Based (Real Data)"** alongside the existing Random/Path modes. In this mode: connect to DB via session state credentials, load risks and influences for the active scope (or full graph if no scope), use real `likelihood`/`impact`/`strength` values, run the same mitigation variation logic on real node topology. Requires sidebar DB connection reuse (read from `st.session_state.manager` if available, else prompt). |
+| **F31b** Simulation results storage | `pages/2_🎲_Simulation.py`, new `utils/simulation_store.py` | After any simulation run, offer **"💾 Save Results"** button. Saved results stored in `st.session_state.saved_simulations` as a list of `SimulationRecord` (timestamp, mode, params, key metrics, full DataFrame). A **"📊 Saved Results"** tab shows all saved runs in a comparison table (delta metrics vs. first saved run). Export all saved results as a single Excel file with one sheet per run. |
+
+**Testing scope:** Scope-based mode loads real risks from DB. Simulation completes without error on demo dataset. Results can be saved, listed, and compared. Export produces valid Excel.
 
 ---
 
@@ -76,6 +141,13 @@ The following streams have hard dependencies on the streams above and should be 
 
 ### 🌊 Work Stream G: Advanced Graphical Interaction (BIG Features)
 *   **[F24] Interactive Canvas Editing**: Graphically interact with the graph directly within the visualization. Includes drawing new nodes and edges, modifying existing elements right on the canvas, and advanced graphical analysis tooling.
+*   **[F32] Graph Visual Behavior Panel**: A dedicated settings panel (sidebar or modal) to configure how nodes and edges look and behave in the graph. Consolidates all current scatter-shot visual toggles into one place and adds new options:
+    - **Node appearance**: size strategy (flat / exposure-scaled / degree-scaled), shape override per level, label verbosity (name only / name + exposure / name + subtype)
+    - **Edge appearance**: thickness strategy (flat / influence-score-scaled), arrow style, curvature
+    - **Scope Sandbox visuals**: out-of-scope opacity level (slider 0–1), in-scope size multiplier, in-scope border color
+    - **Presets**: "Clean Presentation", "Analysis Deep-Dive", "Sandbox Edit" — one-click configurations
+    - Settings persisted to `schema.yaml` under a `graph_visual_config` block so they survive sessions
+    - Relates to / supersedes: Exposure-Driven Opacity (F20), Lifecycle Ghosting (F21), Simple Mode transparency, Scope Sandbox dimming (F29)
 
 ## Open Questions — Multi-Agent Coordination
 

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: transparent; }
+    #graph { border: none; width: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <iframe id="graph" scrolling="no"></iframe>
+
+  <script>
+    // ── Streamlit component protocol (v1, no external CDN) ──────────────────
+    var HEIGHT = 720;
+
+    function toStreamlit(type, data) {
+      var msg = Object.assign({ isStreamlitMessage: true, type: type }, data);
+      window.parent.postMessage(msg, "*");
+    }
+
+    function setFrameHeight(h) {
+      toStreamlit("streamlit:setFrameHeight", { height: h });
+    }
+
+    function setComponentValue(value) {
+      toStreamlit("streamlit:setComponentValue", { value: value });
+    }
+
+    function componentReady() {
+      toStreamlit("streamlit:componentReady", { apiVersion: 1 });
+    }
+
+    // ── Handle data from Streamlit ──────────────────────────────────────────
+    window.addEventListener("message", function (event) {
+      var data = event.data;
+      if (!data || !data.type) return;
+
+      if (data.type === "streamlit:render") {
+        var args = data.args || {};
+        HEIGHT = args.height || 720;
+
+        var graphFrame = document.getElementById("graph");
+        graphFrame.style.height = HEIGHT + "px";
+        setFrameHeight(HEIGHT);
+
+        // Load PyVis HTML into inner iframe via srcdoc
+        // srcdoc assignment triggers a fresh load each render
+        var htmlContent = args.html_content || "";
+        graphFrame.srcdoc = htmlContent;
+      }
+    });
+
+    // ── Receive click/right-click events from inner PyVis iframe ───────────
+    // PyVis posts {type:"node_action", action:"click"|"contextmenu", node_id}
+    // That message arrives HERE (the outer component iframe).
+    // We forward a structured {action, node_id} object to Streamlit.
+    // Legacy {type:"node_selected"} messages are also handled for compatibility.
+    window.addEventListener("message", function (event) {
+      var data = event.data;
+      if (!data) return;
+      if (data.type === "node_action") {
+        setComponentValue({action: data.action, node_id: data.node_id || null});
+      } else if (data.type === "node_selected") {
+        // legacy fallback: treat as left click
+        setComponentValue({action: "click", node_id: data.node_id || null});
+      }
+    });
+
+    // Signal Streamlit that we are ready to receive props
+    componentReady();
+  </script>
+</body>
+</html>

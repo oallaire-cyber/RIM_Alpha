@@ -27,6 +27,7 @@ from ui import (
     render_influence_analysis_panel,
     render_mitigation_analysis_panel,
     render_inline_editor,
+    render_node_property_panel,
 )
 
 # Legend
@@ -81,29 +82,25 @@ def _compute_stats_from_graph(nodes, edges):
     level2_label = risk_levels[1]["label"] if len(risk_levels) > 1 else "Operational"
     
     risk_nodes = [n for n in nodes if n.get("node_type") == "Risk"]
-    tpo_nodes = [n for n in nodes if n.get("node_type") == "TPO"]
     mit_nodes = [n for n in nodes if n.get("node_type") == "Mitigation"]
-    
+
     influence_edges = [e for e in edges if e.get("edge_type") == "INFLUENCES"]
-    tpo_edges = [e for e in edges if e.get("edge_type") == "IMPACTS_TPO"]
     mit_edges = [e for e in edges if e.get("edge_type") == "MITIGATES"]
-    
+
     # Count by subtype
     subtype_counts = {}
     for n in risk_nodes:
         st_id = n.get("subtype", "generic") or "generic"
         subtype_counts[st_id] = subtype_counts.get(st_id, 0) + 1
-    
+
     return {
         "total_risks": len(risk_nodes),
         "level1_risks": len([n for n in risk_nodes if n.get("level") == level1_label]),
         "level2_risks": len([n for n in risk_nodes if n.get("level") == level2_label]),
         "new_risks": len([n for n in risk_nodes if n.get("origin") == "New"]),
         "legacy_risks": len([n for n in risk_nodes if n.get("origin") == "Legacy"]),
-        "total_tpos": len(tpo_nodes),
         "total_mitigations": len(mit_nodes),
         "total_influences": len(influence_edges),
-        "total_tpo_impacts": len(tpo_edges),
         "total_mitigates": len(mit_edges),
         "subtype_counts": subtype_counts,
     }
@@ -215,17 +212,13 @@ def render_statistics_dashboard(stats: dict):
             st.metric("📜 Legacy", stats.get("legacy_risks", 0))
         
         # Second row of metrics
-        col6, col7, col8, col9, col10 = st.columns(5)
-        
+        col6, col7, col8 = st.columns(3)
+
         with col6:
-            st.metric("🟡 TPOs", stats.get("total_tpos", 0))
-        with col7:
             st.metric("🛡️ Mitigations", stats.get("total_mitigations", 0))
-        with col8:
+        with col7:
             st.metric("🔗 Influences", stats.get("total_influences", 0))
-        with col9:
-            st.metric("📌 TPO Impacts", stats.get("total_tpo_impacts", 0))
-        with col10:
+        with col8:
             st.metric("💊 Mitigates", stats.get("total_mitigates", 0))
         
         # Third row: subtype breakdown (only when >1 distinct subtype)
@@ -290,7 +283,12 @@ def render_exposure_dashboard(manager):
         
         if exposure_results:
             st.markdown("---")
-            
+
+            # ── F30: Retroaction loop warning ──────────────────────────────
+            if exposure_results.get("has_cycles"):
+                warning_lines = exposure_results.get("cycle_warnings", [])
+                st.warning("\n\n".join(warning_lines))
+
             # Main metrics row
             col1, col2, col3 = st.columns(3)
             
@@ -915,9 +913,26 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
         
         # Prepare graph data
         filters = filter_mgr.get_filters_for_query()
+        # F29: bypass scope filter in sandbox mode so full graph is visible
+        if st.session_state.get("scope_sandbox_mode"):
+            filters.pop("scope_node_ids", None)
+            filters.pop("scope_include_neighbors", None)
         nodes, edges = manager.get_graph_data(filters)
         highlighted_node_id = None
         focus_node_ids = None
+
+        # F29: mark nodes as in-scope / out-of-scope for sandbox visuals
+        if st.session_state.get("scope_sandbox_mode") and filter_mgr.active_scopes:
+            _sb_scope = filter_mgr.active_scopes[0]
+            _sb_ov = st.session_state.get("scope_sandbox_overrides", {"add": [], "remove": []})
+            _sb_effective = (
+                set(_sb_scope.node_ids) | set(_sb_ov.get("add", []))
+            ) - set(_sb_ov.get("remove", []))
+            for _n in nodes:
+                if _n.get("id") in _sb_effective:
+                    _n["_sandbox_in_scope"] = True
+                else:
+                    _n["_sandbox_out_of_scope"] = True
 
         if (st.session_state.influence_explorer_enabled and 
             st.session_state.selected_node_id):
@@ -1007,11 +1022,75 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
             except:
                 pass
         
+        # ── F27: Graph canvas search ───────────────────────────────────────
+        explorer_active = st.session_state.influence_explorer_enabled
+
+        # Callback for the clear button — must mutate widget key BEFORE the
+        # widget is instantiated (i.e. in on_click, not in the button's if-body).
+        def _clear_graph_search_cb():
+            st.session_state["graph_search_input"] = ""
+            st.session_state["selected_node_id"] = None
+
+        _search_col, _clear_col = st.columns([5, 1])
+        with _search_col:
+            _search_query = st.text_input(
+                "graph_search",
+                placeholder="🔍  Search node by name…",
+                key="graph_search_input",
+                label_visibility="collapsed",
+                disabled=explorer_active,
+                help="Type to find and select graph nodes by name. "
+                     "Disabled while Influence Explorer is active.",
+            )
+        with _clear_col:
+            st.button(
+                "✕",
+                key="clear_graph_search",
+                use_container_width=True,
+                help="Clear search",
+                disabled=not st.session_state.get("graph_search_input"),
+                on_click=_clear_graph_search_cb,
+            )
+
+        # Apply search results when explorer is not active
+        if _search_query and not explorer_active:
+            _q = _search_query.lower()
+            _matches = [n for n in nodes if _q in n.get("name", "").lower()]
+            if _matches:
+                # Show match summary
+                _preview = ", ".join(m.get("name", m["id"]) for m in _matches[:3])
+                _suffix = f" (+{len(_matches) - 3} more)" if len(_matches) > 3 else ""
+                st.caption(f"🔍 **{len(_matches)}** match(es): {_preview}{_suffix}")
+                # Auto-select first result for the inline editor below the graph
+                _first_id = _matches[0]["id"]
+                if st.session_state.get("selected_node_id") not in [
+                    m["id"] for m in _matches
+                ]:
+                    st.session_state.selected_node_id = _first_id
+                # Drive graph highlight/focus to all matching nodes
+                highlighted_node_id = _first_id
+                focus_node_ids = [m["id"] for m in _matches]
+            else:
+                st.caption("❌ No nodes match your search.")
+        elif explorer_active and st.session_state.get("graph_search_input"):
+            st.caption("ℹ️ Search is paused while Influence Explorer is active.")
+
         # Add compact legend above graph
         render_compact_legend()
-        
+
+        # F29: sandbox status banner
+        if st.session_state.get("scope_sandbox_mode"):
+            _sb_ov2 = st.session_state.get("scope_sandbox_overrides", {"add": [], "remove": []})
+            _n_add = len(_sb_ov2.get("add", []))
+            _n_rem = len(_sb_ov2.get("remove", []))
+            st.info(
+                f"🧪 **Sandbox active** — {_n_add} addition{'s' if _n_add != 1 else ''}, "
+                f"{_n_rem} removal{'s' if _n_rem != 1 else ''}  "
+                f"_(right-click any node to add / remove from scope)_"
+            )
+
         # Render graph
-        render_graph_streamlit(
+        graph_event = render_graph_streamlit(
             nodes=nodes,
             edges=edges,
             color_by=st.session_state.color_by,
@@ -1024,11 +1103,125 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
             complexity_mode=st.session_state.get("complexity_mode", "Simple"),
             focus_node_ids=focus_node_ids
         )
-        
-        # Render details panel at the bottom of the graph
+
+        # Parse structured graph event (F29) or legacy string (fallback)
+        if isinstance(graph_event, dict):
+            _action, _node_id = graph_event.get("action"), graph_event.get("node_id")
+        elif isinstance(graph_event, str):
+            _action, _node_id = "click", graph_event
+        else:
+            _action, _node_id = None, None
+
+        # Left-click → update selected node
+        if _action == "click":
+            if _node_id:
+                st.session_state.selected_node_id = _node_id
+            elif st.session_state.get("_graph_prev_click") is not None:
+                st.session_state.selected_node_id = None
+            st.session_state["_graph_prev_click"] = _node_id
+        # Right-click → sandbox action (only when sandbox mode is active)
+        # No st.rerun() here — the panel renders in the same pass.
+        # st.rerun() would cause an infinite loop because the component retains
+        # its last value across reruns, re-firing the contextmenu event repeatedly.
+        elif _action == "contextmenu" and _node_id:
+            if st.session_state.get("scope_sandbox_mode"):
+                st.session_state.scope_sandbox_pending_node = _node_id
+
+        # F29: sandbox action panel (shown after right-click on a node)
+        if (
+            st.session_state.get("scope_sandbox_mode")
+            and st.session_state.get("scope_sandbox_pending_node")
+            and filter_mgr.active_scopes
+        ):
+            _render_sandbox_action_panel(manager, filter_mgr.active_scopes[0])
+
+        # Render contextual property panel at the bottom of the graph
         if st.session_state.get("selected_node_id"):
             st.markdown("---")
-            render_inline_editor(manager, st.session_state.selected_node_id)
+            render_node_property_panel(
+                manager,
+                st.session_state.selected_node_id,
+                exposure_results=st.session_state.get("exposure_results"),
+                influence_results=st.session_state.get("influence_analysis_cache"),
+            )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# F29 — Scope Sandbox helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _sandbox_add(node_id: str) -> None:
+    ov = st.session_state.setdefault("scope_sandbox_overrides", {"add": [], "remove": []})
+    if node_id not in ov["add"]:
+        ov["add"].append(node_id)
+    if node_id in ov["remove"]:
+        ov["remove"].remove(node_id)
+
+
+def _sandbox_remove(node_id: str) -> None:
+    ov = st.session_state.setdefault("scope_sandbox_overrides", {"add": [], "remove": []})
+    if node_id not in ov["remove"]:
+        ov["remove"].append(node_id)
+    if node_id in ov["add"]:
+        ov["add"].remove(node_id)
+
+
+def _commit_sandbox(filter_mgr) -> None:
+    ov = st.session_state.get("scope_sandbox_overrides", {"add": [], "remove": []})
+    scope = filter_mgr.active_scopes[0]
+    for nid in ov.get("add", []):
+        filter_mgr.add_node_to_scope(scope.id, nid)
+    for nid in ov.get("remove", []):
+        filter_mgr.remove_node_from_scope(scope.id, nid)
+    st.session_state.scope_sandbox_overrides = {"add": [], "remove": []}
+    st.session_state.scope_sandbox_pending_node = None
+    st.session_state.scope_sandbox_mode = False
+    st.rerun()
+
+
+def _discard_sandbox() -> None:
+    st.session_state.scope_sandbox_overrides = {"add": [], "remove": []}
+    st.session_state.scope_sandbox_pending_node = None
+    st.session_state.scope_sandbox_mode = False
+    st.rerun()
+
+
+def _render_sandbox_action_panel(manager, active_scope) -> None:
+    """Render the action panel that appears after right-clicking a node in sandbox mode."""
+    node_id = st.session_state.scope_sandbox_pending_node
+    node_name = node_id
+    try:
+        from ui.panels.editor_panel import get_entity_type_id
+        type_id = get_entity_type_id(manager, node_id)
+        if type_id:
+            entities = manager.get_unified_entities(type_id)
+            match = next((n for n in entities if n.get("id") == node_id), None)
+            if match:
+                node_name = match.get("name", node_id)
+    except Exception:
+        pass
+
+    ov = st.session_state.get("scope_sandbox_overrides", {"add": [], "remove": []})
+    in_scope = (
+        node_id in active_scope.node_ids or node_id in ov.get("add", [])
+    ) and node_id not in ov.get("remove", [])
+
+    with st.container(border=True):
+        st.markdown(f"🧪 **Sandbox action** — `{node_name}`")
+        col1, col2, _ = st.columns([1, 1, 2])
+        if in_scope:
+            if col1.button("➖ Remove from scope", key="sb_remove", type="primary"):
+                _sandbox_remove(node_id)
+                st.session_state.scope_sandbox_pending_node = None
+                st.rerun()
+        else:
+            if col1.button("➕ Add to scope", key="sb_add", type="primary"):
+                _sandbox_add(node_id)
+                st.session_state.scope_sandbox_pending_node = None
+                st.rerun()
+        if col2.button("✕ Cancel", key="sb_cancel"):
+            st.session_state.scope_sandbox_pending_node = None
+            st.rerun()
 
 
 def render_scope_selector():
@@ -1050,10 +1243,13 @@ def render_scope_selector():
         
         if st.button("🌐 Full Graph", use_container_width=True, key="clear_scopes_btn"):
             filter_mgr.clear_scopes()
-            if "scope_include_neighbors" in st.session_state:
-                del st.session_state["scope_include_neighbors"]
-            if "scope_selector" in st.session_state:
-                del st.session_state["scope_selector"]
+            for _key in (
+                "scope_include_neighbors", "scope_include_mitigations", "scope_selector",
+                "scope_sandbox_mode", "scope_sandbox_overrides", "scope_sandbox_pending_node",
+                "_new_scope_form_open",
+            ):
+                if _key in st.session_state:
+                    del st.session_state[_key]
             st.rerun()
             
         # Build options: list of scope names
@@ -1092,6 +1288,92 @@ def render_scope_selector():
                 key="scope_include_neighbors",
                 help="Also display risks directly connected to the scoped nodes.",
             )
+
+            # Mitigation auto-include toggle
+            st.checkbox(
+                "🛡️ Include linked mitigations",
+                value=st.session_state.get("scope_include_mitigations", False),
+                key="scope_include_mitigations",
+                help=(
+                    "Automatically show and count mitigation nodes that are linked "
+                    "to any risk in the active scope, even if mitigations are not "
+                    "explicitly listed in the scope definition."
+                ),
+            )
+
+            # ── F29: Scope Sandbox toggle ─────────────────────────────────────
+            st.markdown("---")
+            sandbox_on = st.toggle(
+                "🧪 Scope Sandbox",
+                value=st.session_state.get("scope_sandbox_mode", False),
+                key="scope_sandbox_toggle",
+                help=(
+                    "Right-click any graph node to add/remove it from scope "
+                    "without committing. Use Commit to apply or Discard to revert."
+                ),
+            )
+            if sandbox_on != st.session_state.get("scope_sandbox_mode", False):
+                st.session_state.scope_sandbox_mode = sandbox_on
+                if sandbox_on:
+                    st.session_state.scope_sandbox_overrides = {"add": [], "remove": []}
+                    st.session_state.scope_sandbox_pending_node = None
+                else:
+                    _discard_sandbox()
+
+            # Commit / Discard — only when there are pending changes
+            if st.session_state.get("scope_sandbox_mode"):
+                _ov = st.session_state.get("scope_sandbox_overrides", {"add": [], "remove": []})
+                if _ov.get("add") or _ov.get("remove"):
+                    _c1, _c2 = st.columns(2)
+                    with _c1:
+                        if st.button("💾 Commit", key="sb_commit_btn",
+                                     use_container_width=True, type="primary"):
+                            _commit_sandbox(filter_mgr)
+                    with _c2:
+                        if st.button("🗑️ Discard", key="sb_discard_btn",
+                                     use_container_width=True):
+                            _discard_sandbox()
+
+        # ── F29: New Scope button ─────────────────────────────────────────────
+        st.markdown("---")
+        if st.button("➕ New Scope", key="new_scope_sandbox_btn",
+                     use_container_width=True,
+                     help="Create a new scope and build it interactively on the graph."):
+            st.session_state["_new_scope_form_open"] = True
+
+        if st.session_state.get("_new_scope_form_open"):
+            _ns_name = st.text_input("Scope name", key="nsb_name", placeholder="My Scope")
+            _ns_color = st.color_picker("Color", "#3498db", key="nsb_color")
+            _nc1, _nc2 = st.columns(2)
+            with _nc1:
+                if st.button("Create & Enter Sandbox", key="nsb_confirm", type="primary"):
+                    if _ns_name.strip():
+                        import re as _re, uuid as _uuid
+                        from config.schema_loader import AnalysisScopeConfig
+                        from config.settings import get_active_schema, get_active_schema_name
+                        from config.schema_loader import save_schema as _save_schema
+                        _new_id = _re.sub(r"[^a-z0-9_]", "_",
+                                          _ns_name.strip().lower())[:32]
+                        _schema = get_active_schema()
+                        _existing_ids = {s.id for s in _schema.scopes}
+                        if _new_id in _existing_ids:
+                            _new_id = _new_id + "_" + _uuid.uuid4().hex[:4]
+                        _new_scope = AnalysisScopeConfig(
+                            id=_new_id, name=_ns_name.strip(),
+                            color=_ns_color, node_ids=[],
+                        )
+                        _schema.scopes.append(_new_scope)
+                        _save_schema(_schema, get_active_schema_name())
+                        filter_mgr.set_active_scopes([_new_scope])
+                        st.session_state.scope_sandbox_mode = True
+                        st.session_state.scope_sandbox_overrides = {"add": [], "remove": []}
+                        st.session_state.scope_sandbox_pending_node = None
+                        st.session_state["_new_scope_form_open"] = False
+                        st.rerun()
+            with _nc2:
+                if st.button("Cancel", key="nsb_cancel"):
+                    st.session_state["_new_scope_form_open"] = False
+                    st.rerun()
 
 
 def render_complexity_toggle():
@@ -1140,6 +1422,10 @@ def render_main_content(manager: RiskGraphManager):
         # Build scoped filters and compute stats from filtered graph data
         scoped_filters = filter_mgr.get_filters_for_query()
         scoped_filters["scope_include_neighbors"] = _global_include_neighbors
+        # Bug 5: when the user opts-in, force mitigation nodes to be loaded so
+        # that mitigations linked to scoped risks appear in the graph and stats.
+        if st.session_state.get("scope_include_mitigations", False):
+            scoped_filters["show_mitigations"] = True
         scoped_nodes, scoped_edges = manager.get_graph_data(scoped_filters)
         scoped_stats = _compute_stats_from_graph(scoped_nodes, scoped_edges)
         render_statistics_dashboard(scoped_stats)

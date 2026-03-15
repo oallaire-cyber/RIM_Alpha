@@ -51,6 +51,12 @@ HOME_UI_DEFAULTS: Dict[str, Any] = {
     "selected_node_id": None,
     "complexity_mode": "Simple",
     "show_filters_in_simple_mode": False,
+    # F29 — Scope Sandbox
+    "scope_sandbox_mode": False,
+    "scope_sandbox_pending_node": None,
+    # scope_sandbox_overrides is intentionally NOT listed here to avoid a shared
+    # mutable dict across sessions.  It is initialised lazily in home.py when
+    # sandbox mode is first activated.
 }
 
 CONFIG_PAGE_DEFAULTS: Dict[str, Any] = {

@@ -423,7 +423,9 @@ relationships:
       value: 1.0
       description: Direct, inevitable causation
       color: '#e74c3c'
-
+  impacts_tpo:
+    neo4j_type: IMPACTS_TPO
+    impact_levels: []
   mitigates:
     neo4j_type: MITIGATES
     effectiveness_levels:
@@ -674,10 +676,11 @@ context_nodes:
     - name: capability_level
       type: int
       required: false
+      default: null
       description: Capability level (1-10)
   tpo:
     label: Target Performance Objective
-    description: 'Business objective impacted by risk'
+    description: Business objective impacted by risk
     color: '#f1c40f'
     shape: hexagon
     emoji: 🟡
@@ -728,30 +731,9 @@ context_edges:
     from_node: risk
     to_node: tpo
     color: '#3498db'
-    line_style: dash-dot
+    line_style: solid
     bidirectional: false
     properties: []
-    impact_levels:
-    - id: low
-      label: Low
-      value: 1
-      description: Minor impact on objective
-      color: '#27ae60'
-    - id: medium
-      label: Medium
-      value: 2
-      description: Moderate impact on objective
-      color: '#f39c12'
-    - id: high
-      label: High
-      value: 3
-      description: Significant impact on objective
-      color: '#e67e22'
-    - id: critical
-      label: Critical
-      value: 4
-      description: Severe impact on objective
-      color: '#e74c3c'
 scopes:
 - id: odt_demo
   name: 🚀 ODT Demo - Full Example
@@ -896,3 +878,61 @@ scopes:
   include_connected_edges: true
   show_boundary_edges: false
   color: '#F0A500'
+- id: test_loopback
+  name: Test Loopback
+  description: Test Loopback
+  node_ids:
+  - 36f55100-bb32-4c45-afde-639ac0c74ce9
+  - d899e8d3-b3ef-4877-9c7c-ac099aa14c0b
+  - 28dd9222-6a21-471a-a3ea-30e1ea37db04
+  - 1c976b30-df51-44d7-afa7-51f63b494f32
+  - 38eb785a-bef7-4f76-9107-f519307c7b00
+  - 1f600a24-be90-4983-af72-4ad3899be8c8
+  include_connected_edges: false
+  show_boundary_edges: false
+  color: '#808080'
+- id: full_demo
+  name: Full Demo
+  description: ''
+  node_ids:
+  - 132e355b-0f93-5f25-9f5d-18d2316df783
+  - e11e8386-169a-53c1-aade-eb18c631ac70
+  - 2eafec16-02c7-5052-bb93-93e3c6ea2e2a
+  - d8b6b169-814c-50be-8395-848a88985d7b
+  - 4d86ae18-0440-515f-84a6-620863f408e4
+  - 0d6ccb4d-7026-5553-ba80-9518bb8bbccb
+  - e86c8139-0c3e-549d-82ac-c48116fa066c
+  - ac04d220-f64e-51f3-b7ff-c0e0016f8c1c
+  - 71a799e3-67a2-599b-a85e-229cefe000ff
+  - 04568e76-d323-5040-9717-609e329eedf5
+  - 60483d97-c148-5250-9216-85f4808797f6
+  - c1333b4c-354c-542f-90a0-8d8910ce307c
+  - 04c48648-3240-512c-9311-2737a110a26b
+  - e4a17955-5a1e-51e3-997f-c05614f6b569
+  - 9be2a27b-4bcd-5878-807a-cf76dc3a224e
+  - 0145477a-1d33-5723-9c4e-ac997b92bd52
+  - 579d302c-c4e2-517b-bd3b-adbcf9ad3df5
+  - a636b334-ecf7-56a0-bb9e-a69006c872c2
+  - a5031626-2cd5-5b6d-b322-828e1ddea443
+  - 8e072c8c-66cd-53e3-8ecb-1d599c981d89
+  - 5b34400a-87c4-5996-af66-0808b8c96fb6
+  - 4e6f18f1-4a4e-556c-89ba-d8b94a5a2055
+  - 545446b4-26eb-5572-bd14-8699594e7a40
+  - c1002844-5da5-5fcc-8fef-26c72e11efc3
+  - a3fca39e-52d0-577d-be2d-065c0a3ffe3b
+  - 3cd50776-6b8e-516c-b584-045a230744a7
+  - cbc7e0a8-c4ed-5455-bff2-e63341428395
+  - 2821ca91-008b-50db-a0c3-881cc6da7621
+  - dc6e2a61-57f9-58fe-9932-8fe7b187ccb7
+  - f0c82bbe-e107-56cd-839d-e432bd31632e
+  - cea650ca-5655-5ec6-977c-0f06c0ccdc72
+  - ea204cec-2d2e-5350-81fc-b12207ba2575
+  - b300c05d-51aa-5a58-8d24-db67c8344d2f
+  - 78d595ef-8471-5a5e-aca2-a85373e83733
+  - 529b6266-fd42-5ba0-842a-12c8a21b2d5d
+  - eea6f2c4-44a9-5c52-bdbc-622aac608a46
+  - 9913bf59-9f10-51ae-952c-546666de4325
+  - b8223662-3e03-40b8-a898-b3d161bbc51c
+  include_connected_edges: true
+  show_boundary_edges: false
+  color: '#808080'

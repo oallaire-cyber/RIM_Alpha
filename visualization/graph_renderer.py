@@ -4,9 +4,8 @@ Graph Renderer for RIM Visualization.
 Provides the main render_graph function using PyVis.
 """
 
+from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
-import tempfile
-import os
 
 from visualization.node_styles import create_node_config
 from visualization.edge_styles import create_edge_config, filter_edges_by_score
@@ -15,8 +14,16 @@ from visualization.graph_options import (
     get_position_capture_js,
     get_fullscreen_js,
     get_export_js,
-    get_focus_mode_js
+    get_focus_mode_js,
+    get_node_click_postmessage_js,
 )
+
+# ── Streamlit click-bridge declare_component (module-level, registered once) ─
+# The component embeds the PyVis HTML in an inner srcdoc iframe and relays
+# node-click postMessages back to Python via Streamlit.setComponentValue().
+import streamlit.components.v1 as _stv1
+_BRIDGE_DIR = Path(__file__).parent / "graph_click_bridge"
+_graph_click_bridge = _stv1.declare_component("graph_click_bridge", path=str(_BRIDGE_DIR))
 
 
 
@@ -116,11 +123,13 @@ def render_graph(
         
         for n in nodes:
             node_type = n.get("node_type", "Risk").lower()
-            # Context nodes and TPOs always stay opaque
+            # Context nodes, TPOs, highlighted node, and sandbox in-scope nodes always stay opaque
             if node_type == "tpo" or n.get("is_context_node") or node_type not in ("risk", "mitigation", "tpo", "undefined", "") or n.get("id") == highlighted_node_id:
-                continue # Objectives, context nodes, and highlighted node always opaque
+                continue
             if node_type in ("risk", "undefined", "") and n["id"] in top_risk_ids:
                 continue # Top risks always opaque
+            if n.get("_sandbox_in_scope"):
+                continue  # Sandbox in-scope nodes always opaque (green border must be visible)
             # All other nodes (including mitigations) are transparent
             transparent_node_ids.add(n["id"])
             
@@ -142,7 +151,8 @@ def render_graph(
         width="100%",
         bgcolor="#ffffff",
         font_color="#333333",
-        directed=True
+        directed=True,
+        cdn_resources="in_line",  # embed all JS inline — required for srcdoc iframe
     )
     
     # Configure network
@@ -176,13 +186,48 @@ def render_graph(
                 node_config["color"] = hex_to_rgba(node_config["color"], opacity)
             if "font" in node_config:
                 node_config["font"]["color"] = f"rgba(0,0,0,{opacity})"
-        
+
+        # Apply sandbox out-of-scope dimming (F29) — moderate fade so nodes remain findable
+        _sandbox_dim_opacity = 0.25
+        if node.get("_sandbox_out_of_scope"):
+            if isinstance(node_config.get("color"), dict):
+                bg = node_config["color"].get("background", "")
+                bd = node_config["color"].get("border", "")
+                node_config["color"]["background"] = hex_to_rgba(bg, _sandbox_dim_opacity)
+                node_config["color"]["border"] = hex_to_rgba(bd, _sandbox_dim_opacity)
+            elif isinstance(node_config.get("color"), str):
+                node_config["color"] = hex_to_rgba(node_config["color"], _sandbox_dim_opacity)
+            if "font" in node_config:
+                node_config["font"]["color"] = f"rgba(0,0,0,{_sandbox_dim_opacity})"
+
+        # Apply sandbox scope border + size boost (F29) — must run LAST so nothing overrides it
+        if node.get("_sandbox_in_scope"):
+            if isinstance(node_config.get("color"), dict):
+                node_config["color"]["border"] = "#2ecc71"
+            node_config["borderWidth"] = 3
+            node_config["value"] = node_config.get("value", 10) * 1.3
+
         net.add_node(node["id"], **node_config)
-    
+
+    # Track sandbox out-of-scope node IDs for edge dimming
+    sandbox_out_ids = {n["id"] for n in nodes if n.get("_sandbox_out_of_scope")}
+
     # Add edges
     for edge in filtered_edges:
         edge_config = create_edge_config(edge)
-        
+
+        # Apply sandbox out-of-scope edge dimming (F29)
+        if sandbox_out_ids and (
+            edge["source"] in sandbox_out_ids and edge["target"] in sandbox_out_ids
+        ):
+            if isinstance(edge_config.get("color"), dict):
+                ec = edge_config["color"].get("color", "")
+                edge_config["color"]["color"] = hex_to_rgba(ec, _sandbox_dim_opacity)
+                edge_config["color"]["highlight"] = hex_to_rgba(ec, _sandbox_dim_opacity)
+                edge_config["color"]["hover"] = hex_to_rgba(ec, _sandbox_dim_opacity)
+            elif isinstance(edge_config.get("color"), str):
+                edge_config["color"] = hex_to_rgba(edge_config["color"], _sandbox_dim_opacity)
+
         # Apply transparency if connected to a transparent node
         if edge["source"] in transparent_node_ids or edge["target"] in transparent_node_ids:
             if isinstance(edge_config.get("color"), dict):
@@ -199,35 +244,31 @@ def render_graph(
             **edge_config
         )
     
-    # Generate HTML
-    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".html", mode="w", encoding="utf-8")
-    tmp_path = tmp_file.name
-    tmp_file.close()
-    
-    net.save_graph(tmp_path)
-    
-    with open(tmp_path, 'r', encoding='utf-8') as html_file:
-        html_content = html_file.read()
-    
+    # Generate HTML — generate_html() renders the Jinja2 template in memory and
+    # returns a Python str with no file I/O.  This avoids the Windows cp1252
+    # UnicodeEncodeError that occurs when save_graph() writes vis.js to disk
+    # using the system default codec.  cdn_resources="in_line" (set on the
+    # Network above) also ensures there are no relative-path lib/ references in
+    # the HTML, preventing 404s from Streamlit's ComponentRequestHandler when
+    # the HTML is loaded as a srcdoc iframe inside the declare_component.
+    html_content = net.generate_html()
+
     # Inject position capture JS if requested
     if capture_positions:
         html_content = html_content.replace('</body>', get_position_capture_js() + '</body>')
-    
+
     # Always add fullscreen capability
     html_content = html_content.replace('</body>', get_fullscreen_js() + '</body>')
-    
+
     # Always add export capability
     html_content = html_content.replace('</body>', get_export_js() + '</body>')
-    
+
     # Always add focus mode JS
     html_content = html_content.replace('</body>', get_focus_mode_js() + '</body>')
-    
-    # Clean up temp file
-    try:
-        os.unlink(tmp_path)
-    except PermissionError:
-        pass
-    
+
+    # Always add postMessage click bridge (fires after focus mode)
+    html_content = html_content.replace('</body>', get_node_click_postmessage_js() + '</body>')
+
     return html_content
 
 
@@ -244,19 +285,26 @@ def render_graph_streamlit(
     height: int = 720,
     complexity_mode: str = "Advanced",
     focus_node_ids: Optional[List[str]] = None
-):
+) -> Optional[dict]:
     """
-    Render the RIM graph directly in Streamlit.
-    
-    Args:
-        Same as render_graph
+    Render the RIM graph directly in Streamlit via the click-bridge component.
+
+    Returns a dict {"action": str, "node_id": str | None} describing the most
+    recent graph interaction, or None if no interaction occurred this rerun:
+
+      {"action": "click",       "node_id": "<uuid>"}  — left-click on a node
+      {"action": "click",       "node_id": None}       — left-click on background
+      {"action": "contextmenu", "node_id": "<uuid>"}   — right-click on a node
+
+    The caller (ui/home.py) is responsible for routing these events to the
+    appropriate handler (node selection vs. sandbox action).
     """
     import streamlit as st
-    
+
     if not nodes:
         st.info("No risks to display. Create your first risk!")
-        return
-    
+        return None
+
     html_content = render_graph(
         nodes=nodes,
         edges=edges,
@@ -274,9 +322,15 @@ def render_graph_streamlit(
         lifecycle_ghosting=st.session_state.get("lifecycle_ghosting_enabled", False),
         focus_node_ids=focus_node_ids
     )
-    
+
     if html_content:
-        st.components.v1.html(html_content, height=height, scrolling=False)
+        return _graph_click_bridge(
+            html_content=html_content,
+            height=height,
+            key="rim_graph",
+            default=None,
+        )
+    return None
 
 
 def render_subgraph(

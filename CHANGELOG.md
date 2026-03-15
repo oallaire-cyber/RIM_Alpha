@@ -4,6 +4,123 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.23.0] - 2026-03-15
+
+### Iteration 3 — Interactive Scope Sandbox (F29)
+
+**New Features:**
+
+- **[F29] Interactive Scope Sandbox**: Lets users build or modify scope membership directly on the graph without touching the database until they explicitly commit.
+  - **🧪 Scope Sandbox toggle** in the sidebar (visible only when a scope is active): switches the graph from scope-filtered view to **full graph** view, so out-of-scope nodes are reachable.
+  - **In-scope visual indicator**: nodes that belong to the effective scope (base membership + pending additions − pending removals) gain a **green border** (`#2ecc71`, `borderWidth: 3`).
+  - **Right-click any node** on the graph canvas to open an action panel below the graph: **"➕ Add to scope"** or **"➖ Remove from scope"** depending on the node's current membership. Changes accumulate in `scope_sandbox_overrides` (session state only).
+  - **Banner**: "🧪 Sandbox active — N additions, M removals _(right-click any node to add / remove from scope)_" displayed above the graph while sandbox mode is on.
+  - **💾 Commit**: writes all overrides to `FilterManager` (and thereby to `schema.yaml`). Sandbox mode turns off automatically.
+  - **🗑️ Discard**: reverts all pending overrides, sandbox mode off.
+  - **➕ New Scope** button: always visible at the bottom of the Analysis Scopes expander. Opens an inline form (name + color picker) → "Create & Enter Sandbox" creates the scope, activates it, and immediately enters sandbox mode so the user can build the scope from scratch on the graph.
+  - Full Graph button cleanup extended to clear all sandbox session keys.
+
+**Files Modified:**
+- `visualization/graph_options.py` — Extended `get_node_click_postmessage_js()` to also emit `{type:"node_action", action:"contextmenu", node_id}` via `network.on("oncontext")`.
+- `visualization/graph_click_bridge/index.html` — Updated postMessage relay to structured `{action, node_id}` dict; legacy `node_selected` type kept as fallback.
+- `visualization/graph_renderer.py` — `render_graph_streamlit()` return type updated to `Optional[dict]` (`{"action": "click"|"contextmenu", "node_id": str|None}`).
+- `utils/state_manager.py` — Added `scope_sandbox_mode` and `scope_sandbox_pending_node` to `HOME_UI_DEFAULTS`.
+- `ui/home.py` — Helper functions `_sandbox_add`, `_sandbox_remove`, `_commit_sandbox`, `_discard_sandbox`, `_render_sandbox_action_panel`; scope filter bypass in graph query when sandbox active; node green-border indicator; sandbox banner; structured graph event parsing; sandbox action panel; sidebar sandbox toggle + commit/discard; "➕ New Scope" inline form.
+
+---
+
+## [v2.22.0] - 2026-03-15
+
+### Iteration 3 — Advanced Scope Filter UI (F28)
+
+**New Features:**
+
+- **[F28] Advanced Scope Filter UI**: Replaced the bare "Select Nodes" multiselect in scope management with a filterable, checkboxable risk table. Available in two locations:
+  - **Data Management → Risks tab** (when a scope is active): a collapsed "🔍 Scope Definition — Add / Remove Risks" expander appears above the card list, showing ALL risks (not just in-scope ones) with scope membership as a checkbox column.
+  - **Configuration page → 📐 Scopes tab**: both the "Create New Scope" form and each existing scope's edit section now use the same filter panel instead of the old flat multiselect.
+  - Filter controls: **① text search** (partial name), **② Level multiselect** (Business / Operational — schema-driven), **③ Subtype multiselect** (schema-driven, e.g. Cyber, Strategic), **④ Exposure range slider** (visible only after running Exposure Calculation).
+  - Bulk actions: **✅ Select All Filtered** and **🔲 Deselect All Filtered** apply only to the currently filtered subset.
+  - Individual checkbox edits sync immediately to `FilterManager` (home.py) or via direct YAML save (config page).
+
+**Files Added:**
+- `ui/panels/scope_filter_panel.py` — two public entry points: `render_scope_filter_panel` (home.py, uses FilterManager) and `render_scope_node_editor` (config page, uses caller-supplied callbacks); shared core in `_render_filter_table`.
+
+**Files Modified:**
+- `ui/tabs/unified_crud_tab.py` — Injects `render_scope_filter_panel` expander for risk entity type when scope is active.
+- `ui/panels/__init__.py` — Exports `render_scope_filter_panel` and `render_scope_node_editor`.
+- `pages/1_⚙️_Configuration.py` — Creation form: removed `st.form` wrapper, replaced multiselect with `render_scope_node_editor` + draft scope in session state. Edit section: replaced multiselect with `render_scope_node_editor` with immediate-save callbacks.
+
+---
+
+## [v2.21.0] - 2026-03-15
+
+### Iteration 2 — Rich Contextual Property Panel (F26)
+
+**New Features:**
+
+- **[F26] Contextual Property Panel**: Replaced the bare inline editor below the graph with a structured 6-section `NodePropertyPanel`. Sections are implemented as a list of `Section` dataclasses (id, title, render_fn, expanded) so future sections can be appended with zero changes to existing ones. The six sections are:
+  - **① Identity** — name, type, level, subtype, description, origin, status
+  - **② Exposure Metrics** — likelihood, impact, base/final exposure, residual %, mitigation coverage (sourced from last `exposure_results`; shows "Run Exposure Analysis" prompt when not yet calculated)
+  - **③ Graph Position** — upstream influence count and downstream influence count, with expandable node lists
+  - **④ Influence Analysis** — critical path ✅/❌, bottleneck ✅/❌, convergence score, propagation score (sourced from `influence_analysis_cache`; shows N/A when not yet calculated)
+  - **⑤ Mitigation Summary** — total linked mitigations, status breakdown, average effectiveness (risk nodes only)
+  - **⑥ Edit** — existing inline editor, collapsed by default
+
+- **Canvas click-to-select (JS bridge)**: Selecting a node by clicking the graph canvas now populates the property panel. Implemented via a thin `st.components.v1.declare_component` wrapper (`visualization/graph_click_bridge/index.html`) that embeds the PyVis HTML in an inner `srcdoc` iframe. Node clicks trigger `window.parent.postMessage` → the outer component iframe catches it → `Streamlit.setComponentValue(nodeId)` closes the JS→Python loop. Graph Search (F27) and Influence Explorer selections continue to work through the same panel.
+
+**Files Added:**
+- `visualization/graph_click_bridge/index.html` — Streamlit component frontend for the click bridge
+- `ui/panels/node_property_panel.py` — 6-section `NodePropertyPanel` with `Section` dataclass
+
+**Files Modified:**
+- `visualization/graph_options.py` — Added `get_node_click_postmessage_js()` (injects PyVis click → postMessage handler)
+- `visualization/graph_renderer.py` — Injects postMessage JS; registers `declare_component` at module level; `render_graph_streamlit()` now returns `Optional[str]` (clicked node UUID or None)
+- `ui/panels/__init__.py` — Exports `render_node_property_panel`
+- `ui/__init__.py` — Exports `render_node_property_panel`
+- `ui/home.py` — Captures click return value into `selected_node_id`; replaces `render_inline_editor` call with `render_node_property_panel`
+
+---
+
+## [v2.20.3] - 2026-03-14
+
+### Bug Fixes — Scope & Cycle Detection Regressions (5 issues)
+
+- **[Bug 1] New node not added to active scope**: When creating an entity while a scope is active with "Add to active scope" checked, the node was written to YAML but the in-memory `FilterManager.active_scopes` list was not updated. Fixed in `unified_crud_tab.py` by routing through `filter_mgr.add_node_to_scope()` (which updates both in-memory state and persists to YAML) instead of the bare `_add_node_to_scope()` helper.
+
+- **[Bug 2] Cycle warnings showed raw UUIDs**: The retroaction loop detection banner displayed raw node UUIDs (e.g. `36f55100-bb32-4c45-afde-639ac0c74ce9`) which are not human-readable. Fixed in `exposure_calculator.py` by adding an optional `risk_names: Dict[str, str]` parameter to `detect_cycles()` and building a `{id: name}` map from `self.risks` in `calculate_all()` before the detection call. Cycle warnings now show actual node names.
+
+- **[Bug 3] Scope shows correct count in sidebar but 0 nodes in graph/dashboard**: When a scope was active, `get_risks_with_filters()` applied the level/status/origin pre-filters before the scope intersection. If a scoped risk node didn't match the current visualization filter (e.g. wrong level), it was dropped before scope filtering could include it. Fixed in `database/queries/analysis.py` by detecting when a scope is active (`scope_node_ids` or `active_scopes` present in filters) and bypassing all pre-filters in that case, falling through to the scope intersection only.
+
+- **[Bug 4] Influence edges in Data Management ignored active scope**: The edge list branch in `unified_crud_tab.py` had no scope filtering, while the node list branch did. Fixed by adding a scope-membership filter for edges: only edges where at least one endpoint (`source_id` or `target_id`) belongs to the active scope node set are shown.
+
+- **[Bug 5] No option to auto-include linked mitigations in scope**: When building a scope from risk nodes, their linked mitigation nodes were never included, causing the Exposure dashboard to show risks without mitigations. Fixed in `ui/home.py` by adding a `🛡️ Include linked mitigations` checkbox in `render_scope_selector()`. When enabled, `show_mitigations=True` is injected into `scoped_filters` in `render_main_content()` so `get_graph_data()` loads mitigation nodes. The flag is also cleared when resetting to Full Graph.
+
+**Files Modified:**
+- `services/exposure_calculator.py` — Added `risk_names` parameter and `_label()` helper to `detect_cycles()`; builds name map in `calculate_all()`.
+- `database/queries/analysis.py` — Added `_scope_active` bypass to skip pre-filters when a scope is set.
+- `ui/tabs/unified_crud_tab.py` — Bug 1 (use `filter_mgr.add_node_to_scope()`); Bug 4 (scope filter on edge list).
+- `ui/home.py` — Bug 5 (`scope_include_mitigations` checkbox, `show_mitigations` injection, reset cleanup).
+
+---
+
+## [v2.20.0] - 2026-03-13
+
+### Iteration 1 — Foundation Safety & Quick UX Wins (F25, F30, F27)
+
+**New Features:**
+
+- **[F25] Dashboard Simplification**: Removed TPO-related metrics (`🟡 TPOs`, `📌 TPO Impacts`) from the Statistics Dashboard. The second metrics row now shows only the three genuinely risk-centric counters: Mitigations, Influences, and Mitigates. This declutters the top-level view and aligns with the architectural decision to represent TPOs via generic ContextNodes rather than a dedicated dashboard slot.
+
+- **[F30] Retroaction Loop Detection**: Added a full cycle-detection pass to the exposure engine. A new `GraphValidationResult` dataclass and `detect_cycles()` standalone function (iterative DFS with tri-colour marking) scan the influence graph for retroaction loops before every exposure calculation. Detected cycles are embedded in `GlobalExposureResult` as `has_cycles`, `cycle_warnings`, and `cycle_node_ids` fields (backward-compatible defaults). The Exposure dashboard now surfaces a prominent `st.warning` banner listing every detected loop whenever cycles are present, so users can diagnose and break them before trusting the results.
+
+- **[F27] Graph Canvas Search**: Added a search text input above the graph in the Visualization tab. Typing a partial node name filters to all matching nodes, highlights them in the graph (via `highlighted_node_id` / `focus_node_ids`), auto-selects the first match for the Inline Editor below, and shows a match-count caption. A `✕` clear button resets the selection. The search input is automatically disabled and annotated when the Influence Explorer is active to avoid conflicting focus modes.
+
+**Files Modified:**
+- `services/exposure_calculator.py` — Added `GraphValidationResult` dataclass, `detect_cycles()` function, three new fields on `GlobalExposureResult` (`has_cycles`, `cycle_warnings`, `cycle_node_ids`), cycle-detection call in `calculate_all()`, and propagation into both return paths of `_calculate_global_metrics()`.
+- `ui/home.py` — Removed TPO rows from `_compute_stats_from_graph()` and `render_statistics_dashboard()` (F25). Added `st.warning` banner for cycle results in `render_exposure_dashboard()` (F30). Added graph canvas search bar with clear button and match-count caption in `render_visualization_tab()` (F27).
+
+---
+
 ## [v2.19.0] - 2026-03-10
 
 ### [F22] Scope Node Management UI & [F23] Enhanced Node and Edge Editor

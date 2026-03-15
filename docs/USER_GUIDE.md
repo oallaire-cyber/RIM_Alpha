@@ -431,7 +431,7 @@ All TC scopes use deterministic UUIDs that match `demo_tc_dataset.cypher` — no
 
 ### Interactive Features
 
-- **Click node**: View details and activate **Interactive Focus Mode**, instantly fading out all unrelated nodes to highlight the selected node's neighborhood. Use the "Full Chain Focus" toggle (top-left of map) to expand highlighting from direct neighbors to the entire connected influence chain. Click the empty canvas space to reset.
+- **Click node**: Select the node to open the **Contextual Property Panel** below the graph (6 sections: Identity, Exposure Metrics, Graph Position, Influence Analysis, Mitigation Summary, Edit). Also activates **Interactive Focus Mode**, fading out unrelated nodes to highlight the selected node's neighborhood. Use the "Full Chain Focus" toggle (top-left of map) to expand to the full connected chain. Click the empty canvas space to deselect.
 - **Drag node**: Reposition (with physics off)
 - **Scroll**: Zoom in/out
 - **Right-click**: Context menu

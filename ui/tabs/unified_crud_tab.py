@@ -11,6 +11,7 @@ from core import get_registry, EntityTypeDefinition, RelationshipTypeDefinition
 from database import RiskGraphManager
 from ui.dynamic_forms import build_entity_form, build_relationship_form
 from ui.components import render_pagination
+from ui.panels.scope_filter_panel import render_scope_filter_panel
 from config.settings import get_active_schema, get_active_schema_name
 from config.schema_loader import save_schema
 
@@ -32,7 +33,13 @@ def render_unified_crud_tab(manager: RiskGraphManager, definition: Union[EntityT
     
     if is_node and active_scopes:
         st.info(f"📍 **Scope Active:** Displayed {definition.label.lower()}s are limited to the active scope.")
-    
+
+    # F28: Advanced Scope Filter Panel (risks only, scope active)
+    if is_node and type_id == "risk" and active_scopes and filter_mgr:
+        with st.expander("🔍 Scope Definition — Add / Remove Risks", expanded=False):
+            render_scope_filter_panel(manager, filter_mgr, active_scopes[0])
+        st.markdown("---")
+
     col1, col2 = st.columns([3, 1])
     with col1:
         search = st.text_input("🔍 Search", key=f"search_{type_id}", placeholder=f"Search {definition.label.lower()}s...")
@@ -70,10 +77,26 @@ def render_unified_crud_tab(manager: RiskGraphManager, definition: Union[EntityT
                         try:
                             if is_node:
                                 new_item = manager.create_unified_entity(type_id, form_data)
-                                
-                                # Add to scope logic
-                                if active_scopes and add_to_scope and new_item and "id" in new_item:
-                                    _add_node_to_scope(new_item["id"], active_scopes[0].id)
+
+                                # Add to scope logic — use FilterManager so both the
+                                # in-memory active_scopes AND the YAML file are updated.
+                                # NOTE: create_unified_entity returns a raw str (UUID) for
+                                # risk/mitigation, but a dict with an "id" key for context
+                                # nodes — handle both.
+                                if active_scopes and add_to_scope and new_item:
+                                    if isinstance(new_item, str):
+                                        _new_node_id = new_item
+                                    elif isinstance(new_item, dict):
+                                        _new_node_id = new_item.get("id")
+                                    else:
+                                        _new_node_id = None
+                                    if _new_node_id:
+                                        if filter_mgr:
+                                            filter_mgr.add_node_to_scope(
+                                                active_scopes[0].id, _new_node_id
+                                            )
+                                        else:
+                                            _add_node_to_scope(_new_node_id, active_scopes[0].id)
                             else:
                                 sid = form_data.pop("source_id", None)
                                 tid = form_data.pop("target_id", None)
@@ -114,6 +137,18 @@ def render_unified_crud_tab(manager: RiskGraphManager, definition: Union[EntityT
                 items = [n for n in items if n.get("id") in scope_ids]
         else:
             items = manager.get_unified_relationships(type_id)
+
+            # Apply scope filtering for edges: only show edges where at least one
+            # endpoint belongs to the active scope node set.
+            if active_scopes:
+                _scope_ids = set()
+                for _s in active_scopes:
+                    _scope_ids.update(_s.node_ids)
+                items = [
+                    i for i in items
+                    if i.get("source_id") in _scope_ids or i.get("target_id") in _scope_ids
+                ]
+
             # Fetch resolving dictionaries for display names
             source_entities = _get_entities_by_types(manager, registry, definition.from_entity_types)
             target_entities = _get_entities_by_types(manager, registry, definition.to_entity_types)

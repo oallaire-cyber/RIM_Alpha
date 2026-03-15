@@ -93,3 +93,7 @@ demo_output/
 Archive/
 mnt/
 .rim_schema
+
+# AI Agents
+.claude/settings.json
+.claude/worktrees/

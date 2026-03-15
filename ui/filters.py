@@ -240,16 +240,20 @@ class FilterManager:
                 added = True
                 break # Node added to active_scopes, exit loop
         
-        # Also try to update the schema file if the scope exists there
+        # Also try to update the schema file if the scope exists there.
+        # Use config.settings helpers (not the bare schema_loader) which know
+        # the active schema name and already hold the loaded schema object.
         if added:
             try:
-                from config.schema_loader import load_schema, save_schema
-                schema = load_schema()
+                from config.settings import get_active_schema, get_active_schema_name
+                from config.schema_loader import save_schema
+                schema = get_active_schema()
+                schema_name = get_active_schema_name() or "default"
                 if schema and schema.scopes:
                     for s in schema.scopes:
                         if s.id == scope_id and node_id not in s.node_ids:
                             s.node_ids.append(node_id)
-                    save_schema(schema)
+                    save_schema(schema, schema_name)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning(f"Failed to persist scope update: {e}")

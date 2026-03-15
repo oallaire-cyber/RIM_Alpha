@@ -43,14 +43,24 @@ def get_graph_data(
     """
     filters = filters or {}
     
-    # Get risk nodes
-    risk_nodes = risks.get_risks_with_filters(
-        conn,
-        levels=filters.get("level"),
-        categories=filters.get("categories"),
-        statuses=filters.get("status"),
-        origins=filters.get("origins")
+    # When a scope is active it is the authoritative boundary — visual filters
+    # (level, status, origin…) must not silently cull nodes that are explicitly
+    # in scope.  Fetch all risks without pre-filtering; the scope intersection
+    # step below will produce the correct restricted set.
+    _scope_active = (
+        filters.get("scope_node_ids") is not None
+        or bool(filters.get("active_scopes"))
     )
+    if _scope_active:
+        risk_nodes = risks.get_risks_with_filters(conn)
+    else:
+        risk_nodes = risks.get_risks_with_filters(
+            conn,
+            levels=filters.get("level"),
+            categories=filters.get("categories"),
+            statuses=filters.get("status"),
+            origins=filters.get("origins"),
+        )
     
     nodes = list(risk_nodes) if risk_nodes else []
     risk_ids = [n["id"] for n in nodes]
