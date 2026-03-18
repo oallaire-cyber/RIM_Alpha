@@ -46,9 +46,9 @@ def _load_exposure_context() -> tuple[dict[str, float], object]:
     """Return (exposure_map, exposure_results) from session state."""
     exposure_map: dict[str, float] = {}
     exposure_results = st.session_state.get("exposure_results")
-    if exposure_results:
-        for r in exposure_results.risk_results:
-            exposure_map[r.risk_id] = r.final_exposure
+    if exposure_results and "risk_results" in exposure_results:
+        for r in exposure_results["risk_results"]:
+            exposure_map[r["risk_id"]] = r["final_exposure"]
     return exposure_map, exposure_results
 
 

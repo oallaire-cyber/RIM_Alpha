@@ -77,6 +77,11 @@ ANALYSIS_CACHE_DEFAULTS: Dict[str, Any] = {
     "pending_explore_node": None,
 }
 
+SIMULATION_DEFAULTS: Dict[str, Any] = {
+    # Lazily initialised to [] in the simulation page to avoid a shared mutable list.
+    "saved_simulations": None,
+}
+
 
 # ---------------------------------------------------------------------------
 # Generic initializer
@@ -143,6 +148,11 @@ def init_analysis_cache_state() -> None:
     init_defaults(ANALYSIS_CACHE_DEFAULTS)
 
 
+def init_simulation_state() -> None:
+    """Initialise simulation page keys."""
+    init_defaults(SIMULATION_DEFAULTS)
+
+
 def init_all() -> None:
     """Initialise every registered key.  Useful in test harnesses."""
     init_connection_state()
@@ -150,6 +160,7 @@ def init_all() -> None:
     init_home_state()
     init_config_page_state()
     init_analysis_cache_state()
+    init_simulation_state()
 
 
 # ---------------------------------------------------------------------------

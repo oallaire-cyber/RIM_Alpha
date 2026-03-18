@@ -6,25 +6,23 @@
 ---
 
 ## Current Version
-`v2.23.0` — Iteration 3: F29 Interactive Scope Sandbox
+`v2.24.0` — Iteration 4 complete. Branch: feature/work_stream_C (not yet merged).
 
 ## Last Updated
-2026-03-15 — Iteration 3 session: F28 + F29 both complete
+2026-03-18 — F31 fully implemented and tested (378 tests pass).
 
 ---
 
 ## 🔴 Active Work In Progress
-<!-- No task is mid-implementation. All committed. Next up is F31. -->
+<!-- No task is mid-implementation. F31 complete, ready for user commit + merge. -->
 
-**Feature**: F31 Scope-Driven Simulation & Results Storage (not yet started)
+**Feature**: None — F31 complete.
 **Stream**: C
-**Status**: 0% — planning not yet started
+**Status**: 100% — awaiting user git commit and merge to main.
 
 **Next immediate step**:
-> Begin planning F31 (Scope-Driven Simulation & Results Storage).
-> See ROADMAPv2.md Iteration 4 section for full task details.
-
-**Blocked on**: Nothing.
+> User to commit + merge feature/work_stream_C → main.
+> Next feature TBD — consult ROADMAPv2.md Future Horizons section.
 
 ---
 
@@ -32,98 +30,72 @@
 
 ### Session N-1 (v2.22.0)
 - **v2.22.0** — **F28 Advanced Scope Filter UI** (Iteration 3):
-  - Created `ui/panels/scope_filter_panel.py` with three functions:
-    - `_render_filter_table()` — shared core (filter controls, bulk buttons,
-      `st.data_editor` with checkbox column, delta sync via callbacks).
-    - `render_scope_filter_panel(manager, filter_mgr, active_scope)` — home.py
-      entry point, persists via `FilterManager`.
-    - `render_scope_node_editor(manager, scope, on_add, on_remove, key_prefix)`
-      — config page entry point, caller-supplied callbacks, no FilterManager.
-  - Modified `ui/tabs/unified_crud_tab.py`: injects collapsed expander
-    "🔍 Scope Definition — Add / Remove Risks" when `type_id == "risk"` and
-    scope is active.
-  - Modified `pages/1_⚙️_Configuration.py`: scope creation form (removed
-    `st.form`, added draft scope in session state); scope edit section
-    (replaced multiselect with immediate-save `render_scope_node_editor`).
-  - Filter controls: text search, Level multiselect (schema-driven), Subtype
-    multiselect (schema-driven), Exposure slider (conditional on session state).
+  - Created `ui/panels/scope_filter_panel.py` — `_render_filter_table` shared core,
+    `render_scope_filter_panel` (home.py / FilterManager), `render_scope_node_editor`
+    (config page / caller-supplied callbacks).
+  - Modified `ui/tabs/unified_crud_tab.py`, `ui/panels/__init__.py`,
+    `pages/1_⚙️_Configuration.py`.
 
-### Session N (this session — v2.23.0)
+### Session N+1 (this session — v2.24.0)
+- **v2.24.0** — **F31 Scope-Driven Simulation & Results Storage** (Iteration 4):
+  - `utils/simulation_store.py`: new file — `SimulationRecord` dataclass.
+  - `utils/state_manager.py`: added `SIMULATION_DEFAULTS` + `init_simulation_state()`.
+  - `pages/2_🎲_Simulation.py`: full F31 implementation — "Scope-Based (Real Data)" mode with real/random L×I toggle; `_load_scope_data()` (scope-filtered DB load, maps `probability`→`likelihood`, `level` "Business"→"Strategic"); `run_scope_based_monte_carlo()` (fixed topology, variable mitigation coverage ±variance); `run_scope_based_simulation_ui()`; `_render_save_results_button()` added to all three run UIs; `_render_saved_results_tab()` with delta comparison, per-run expanders, Excel export, clear; page wrapped in top-level "🎲 Simulator" / "📊 Saved Results" tabs; `_render_about_expander()` extracted.
+  - Tests: 378 pass.
+
+### Session N (v2.23.0)
 - **v2.23.0** — **F29 Interactive Scope Sandbox** (Iteration 3):
-  - Extended `visualization/graph_options.py`: `get_node_click_postmessage_js()`
-    now also handles `network.on("oncontext")` → right-click postMessage
-    `{type:"node_action", action:"contextmenu", node_id}`.
-  - Updated `visualization/graph_click_bridge/index.html`: relay structured
-    `{action, node_id}` dict; legacy `node_selected` type kept as fallback.
-  - Updated `visualization/graph_renderer.py`: `render_graph_streamlit()` return
-    type changed to `Optional[dict]` `{"action": ..., "node_id": ...}`.
-  - Updated `utils/state_manager.py`: added `scope_sandbox_mode` and
-    `scope_sandbox_pending_node` to `HOME_UI_DEFAULTS`.
-  - Updated `ui/home.py`:
-    - Helper functions: `_sandbox_add`, `_sandbox_remove`, `_commit_sandbox`,
-      `_discard_sandbox`, `_render_sandbox_action_panel`.
-    - Graph section: scope filter bypass when sandbox active; green border
-      indicator on effective scope members; sandbox banner; structured
-      `graph_event` dict parsing; sandbox action panel after graph render.
-    - Sidebar `render_scope_selector()`: 🧪 Sandbox toggle + Commit/Discard
-      buttons; ➕ New Scope inline form with create-and-enter-sandbox flow.
-    - Full Graph cleanup extended to clear all sandbox session keys.
-  - Updated `docs/help_scopes.md`: added Sandbox section.
+  - `visualization/graph_options.py`: right-click via `network.on("oncontext")`
+    using `network.getNodeAt(params.pointer.DOM)` (params.nodes unreliable).
+  - `visualization/graph_click_bridge/index.html`: structured `{action, node_id}` relay.
+  - `visualization/graph_renderer.py`: `render_graph_streamlit()` returns `Optional[dict]`;
+    sandbox border + size boost applied LAST (after transparency); out-of-scope dimming
+    at 0.25 opacity; in-scope nodes excluded from Simple mode transparency.
+  - `utils/state_manager.py`: `scope_sandbox_mode`, `scope_sandbox_pending_node` in defaults.
+  - `ui/home.py`: helpers `_sandbox_add/remove/_commit/_discard/_render_sandbox_action_panel`;
+    scope filter bypass; node flags `_sandbox_in_scope` / `_sandbox_out_of_scope`;
+    structured `graph_event` dict parsing; NO `st.rerun()` in contextmenu handler
+    (causes infinite loop — component retains last value across reruns);
+    sidebar toggle + Commit/Discard; ➕ New Scope inline form.
+  - `docs/help_scopes.md`: Sandbox workflow documented.
+  - **[F32] Graph Visual Behavior Panel** added to ROADMAPv2 Work Stream G backlog.
+  - `feature/work_stream_AB` merged → `main`. Now on `feature/work_stream_C`.
 
 ---
 
 ## 🧠 Key Decisions Made (not in docs yet)
 
-- **`render_scope_node_editor` callback pattern**: The config page can't use
-  `FilterManager` (it's a home.py singleton). The solution is caller-supplied
-  `on_add(node_id)` / `on_remove(node_id)` callbacks that handle persistence.
-  The shared core `_render_filter_table` is agnostic to persistence strategy.
+- **`render_scope_node_editor` callback pattern**: Config page can't use FilterManager
+  (home.py singleton). Uses caller-supplied `on_add`/`on_remove` callbacks instead.
 
-- **Draft scope for creation form**: Removing `st.form` means individual widget
-  values are preserved via Streamlit's normal session_state keying. The pending
-  node selection is stored in `st.session_state._new_scope_draft`
-  (an `AnalysisScopeConfig` with `id="__draft__"`). It is deleted on successful
-  scope creation or when the user navigates away.
+- **JS click bridge architecture**: PyVis in inner `srcdoc` iframe; `declare_component`
+  outer iframe. `window.parent.postMessage` → outer component → `setComponentValue`.
+  `st.components.v1.html` is one-way only, so the outer wrapper is essential.
 
-- **JS click bridge architecture**: PyVis is now wrapped in a `declare_component`
-  (outer iframe). PyVis lives in an inner `srcdoc` iframe. `window.parent` from
-  the inner iframe = outer component iframe → postMessage is received correctly.
-  This is the only working architecture: `st.components.v1.html` is one-way
-  (no `declare_component` protocol), so the outer wrapper is essential.
+- **`render_graph_streamlit()` returns `Optional[dict]`**: `{"action": "click"|"contextmenu",
+  "node_id": str|None}`. Legacy string fallback preserved. Background click → `node_id: null`.
 
-- **`render_graph_streamlit()` now returns `Optional[dict]`**: Returns
-  `{"action": "click"|"contextmenu", "node_id": str|None}` or `None`.
-  Callers parse `_action`/`_node_id`. Legacy string fallback preserved.
-  Background click returns dict with `node_id: null`.
+- **No `st.rerun()` after contextmenu event**: Streamlit components retain their last
+  `setComponentValue` across reruns. Calling `st.rerun()` after setting
+  `scope_sandbox_pending_node` causes an infinite loop (same event re-fires each run).
+  The sandbox action panel renders in the same script pass — no rerun needed.
 
-- **`scope_sandbox_overrides` lazy init**: NOT in `HOME_UI_DEFAULTS` to avoid a
-  shared mutable dict across sessions. Initialized in `setdefault()` calls
-  inside `_sandbox_add`/`_sandbox_remove`, and explicitly on toggle-on /
-  New Scope creation.
+- **`network.getNodeAt(params.pointer.DOM)` required for right-click**: `params.nodes`
+  in vis.js `oncontext` is unreliable — often empty even when clicking a node directly.
 
-- **Sandbox bypasses scope filter**: `filters.pop("scope_node_ids", None)` and
-  `filters.pop("scope_include_neighbors", None)` before `get_graph_data()` so
-  the full graph is visible and out-of-scope nodes can be added.
+- **Sandbox border must be applied LAST in graph_renderer.py**: `create_node_config`
+  rebuilds `color` from scratch. Transparency code overwrites border colors. Sandbox
+  border block must run after both, and `_sandbox_in_scope` nodes must be excluded
+  from `transparent_node_ids` in Simple mode.
 
-- **Net effect of overrides**: `_sb_effective = (scope.node_ids ∪ ov["add"]) − ov["remove"]`.
-  This is the set used for the green border indicator and the in-scope detection
-  in the action panel. Commit applies these to `FilterManager` which then
-  persists to `schema.yaml` via the schema loader.
+- **`net.generate_html()` is the correct PyVis API**: `net.html` is only populated
+  as a side-effect of `write_html()`. Always use `generate_html()` for in-memory HTML.
 
-- **`net.generate_html()` is the correct PyVis API for in-memory HTML**:
-  `net.html` is an instance variable initialised to `""` — it is only
-  populated as a side-effect of `write_html()`. `generate_html()` renders
-  the Jinja2 template and returns the string directly without any file I/O.
-  Always use `generate_html()` when you need the HTML as a Python string.
+- **`cdn_resources="in_line"` required**: Avoids 404 on `lib/bindings/utils.js` inside
+  the srcdoc iframe.
 
-- **`cdn_resources="in_line"` is required for the srcdoc bridge**: With
-  `"local"` (default), PyVis embeds `<script src="lib/bindings/utils.js">` in
-  the HTML. That relative URL causes a 404. With `"in_line"`, all JS is
-  embedded in the HTML.
-
-- **`create_unified_entity` return type inconsistency** (from prior session):
-  risk/mitigation return `str`, context nodes return `dict`. Branch on
-  `isinstance(new_item, str)` vs `dict` at all call sites.
+- **`create_unified_entity` return type inconsistency**: risk/mitigation → `str`,
+  context nodes → `dict`. Branch on `isinstance(new_item, str)` at all call sites.
 
 ---
 
@@ -134,24 +106,18 @@
 
 - **`pydantic` and `openpyxl` must be installed via venv** — always run tests
   with `source venv/Scripts/activate && python -m pytest tests/` (378 pass).
-  Running outside the venv causes 8 import failures.
-
-- **`schemas/default/schema.yaml` was edited by user** in the same commit as
-  v2.20.1 (removed impact_levels from `impacts_tpo` context edge, changed line
-  style to solid, added null default to `capability_level`). Tracked in git.
 
 ---
 
 ## 📋 Open Questions Pending User Decision
 
-1. **F31 start**: Ready to plan Scope-Driven Simulation & Results Storage when user confirms.
-
-2. **Branch hygiene**: Push `feature/work_stream_AB` to remote when ready.
+_None._
 
 ---
 
 ## 🔁 Resumption Prompt (copy-paste to start next session)
 ```
 Resume RIM development. Read tasks/SESSION_STATE.md first, then continue where we left off.
-Current task: F31 Scope-Driven Simulation & Results Storage (Iteration 4).
+F31 is complete and merged. Next task: TBD from ROADMAPv2.md Future Horizons section.
+Branch: main (after merge).
 ```

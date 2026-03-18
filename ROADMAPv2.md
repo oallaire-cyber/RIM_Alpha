@@ -107,15 +107,15 @@ The following 4 iterations address features F25–F31, grouped to minimize conte
 
 ---
 
-### 🔁 Iteration 4 — Simulation Grounding (F31)
+### ✅ Iteration 4 — Simulation Grounding (F31) — COMPLETE v2.24.0
 **Target features:** F31
 **Streams:** C (Algorithmic) — self-contained to `pages/2_🎲_Simulation.py`
 **Prerequisites:** None (independent of Iterations 1–3)
 
 | Task | File(s) | Details |
 |------|---------|---------|
-| **F31a** Scope-driven simulation mode | `pages/2_🎲_Simulation.py` | Add a new simulation mode: **"Scope-Based (Real Data)"** alongside the existing Random/Path modes. In this mode: connect to DB via session state credentials, load risks and influences for the active scope (or full graph if no scope), use real `likelihood`/`impact`/`strength` values, run the same mitigation variation logic on real node topology. Requires sidebar DB connection reuse (read from `st.session_state.manager` if available, else prompt). |
-| **F31b** Simulation results storage | `pages/2_🎲_Simulation.py`, new `utils/simulation_store.py` | After any simulation run, offer **"💾 Save Results"** button. Saved results stored in `st.session_state.saved_simulations` as a list of `SimulationRecord` (timestamp, mode, params, key metrics, full DataFrame). A **"📊 Saved Results"** tab shows all saved runs in a comparison table (delta metrics vs. first saved run). Export all saved results as a single Excel file with one sheet per run. |
+| ✅ **F31a** Scope-driven simulation mode | `pages/2_🎲_Simulation.py` | "Scope-Based (Real Data)" mode added. Loads real risks/influences/mitigations; parameter mode toggle (real L×I vs random L×I); mitigation variance slider. |
+| ✅ **F31b** Simulation results storage | `pages/2_🎲_Simulation.py`, `utils/simulation_store.py` | 💾 Save Results on all modes; 📊 Saved Results tab with delta comparison table; per-run expanders; Excel export; clear with confirmation. |
 
 **Testing scope:** Scope-based mode loads real risks from DB. Simulation completes without error on demo dataset. Results can be saved, listed, and compared. Export produces valid Excel.
 

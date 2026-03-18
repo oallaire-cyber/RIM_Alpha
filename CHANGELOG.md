@@ -4,6 +4,34 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.24.0] - 2026-03-18
+
+### Iteration 4 — Scope-Driven Simulation & Results Storage (F31)
+
+**New Features:**
+
+- **[F31a] Scope-Based (Real Data) simulation mode**: A third simulation mode that loads the live graph from the active DB connection and scope, then runs Monte Carlo variation over the real topology.
+  - DB connection status shown in sidebar (reuses `get_active_manager()`); run button disabled if no connection.
+  - Active scope label displayed; falls back to "Full Graph" if no scope is active.
+  - **Parameter mode toggle**: "Real L×I values" uses actual `probability`/`impact` values from the DB each run; "Random L×I (calibration)" randomises likelihood/impact within configurable ranges while keeping the real node/edge structure.
+  - Mitigation variance slider (0–100%) controls how much coverage varies around the real coverage ratio per run.
+  - Results rendered with summary metrics + Distributions / Scatter Clouds / Data tabs.
+
+- **[F31b] Simulation Results Storage**: Session-state results store for all three simulation modes.
+  - **💾 Save Results** button added after every simulation run (Monte Carlo, Mitigation Path, Scope-Based).
+  - **📊 Saved Results** top-level tab shows all saved runs in a comparison table: mean residual %, std dev, risk score, max exposure, coverage %, N sims — with **Δ delta columns** (vs. run #1) coloured red (worse) / green (better).
+  - Per-run expandable sections with params JSON + first 50 rows of the DataFrame.
+  - **📥 Export All Runs (Excel)** generates a `.xlsx` with one sheet per run (via `openpyxl`).
+  - **🗑️ Clear All** with confirmation checkbox.
+  - Page wrapped in top-level `["🎲 Simulator", "📊 Saved Results"]` tabs.
+
+**Files Modified:**
+- `pages/2_🎲_Simulation.py` — Added F31a + F31b; wrapped in top-level tabs; `_render_about_expander()` extracted; `_render_save_results_button()` + `_render_saved_results_tab()` added; `_load_scope_data()`, `run_scope_based_monte_carlo()`, `run_scope_based_simulation_ui()` added.
+- `utils/simulation_store.py` — **New file.** `SimulationRecord` dataclass (id, timestamp, mode, scope_label, params, key_metrics, df).
+- `utils/state_manager.py` — Added `SIMULATION_DEFAULTS` (`saved_simulations: None`) and `init_simulation_state()`.
+
+---
+
 ## [v2.23.0] - 2026-03-15
 
 ### Iteration 3 — Interactive Scope Sandbox (F29)
