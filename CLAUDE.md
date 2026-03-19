@@ -5,7 +5,6 @@
 Risk Influence Map (RIM): a Streamlit + Neo4j graph-based risk management platform.
 Domain-agnostic, schema-driven (YAML), multi-domain (nuclear, space, cyber, aerospace).
 Demo case: Orbital Dynamics Technologies / HORIZON-LEO constellation.
-Current version: v2.17.0
 
 ## Non-Negotiable Architecture Rules
 
@@ -68,14 +67,14 @@ Editing these files affects the live help section — treat as user-facing conte
 
 ## Before ANY Code Task
 1. Check `tasks/SESSION_STATE.md` for current work-in-progress
-2. Read the relevant stream section of `ROADMAPv2.md` (not the whole file)
+2. Read the relevant stream section of `ROADMAPv3.md` (not the whole file)
 3. For entity logic: read relevant section of schema YAML, not the whole file
 
 ## Development Workflow
 1. Write plan to `tasks/todo.md` with checkable items
 2. Check in before implementing if architectural decisions involved
 3. Mark items complete as you go
-4. On task complete: run tests → update `walkthrough.md` → update `CHANGELOG.md` + `ROADMAPv2.md` → provide git commit text
+4. On task complete: run tests → update `walkthrough.md` → update `CHANGELOG.md` + `ROADMAPv3.md` → provide git commit text
 5. After any user correction: update `tasks/lessons.md`
 
 ## Environment
@@ -94,6 +93,6 @@ Top: Business Objectives → Middle: Business Risks (C-suite) → Bottom: Operat
 
 ## Full Reference Docs (load on demand, not by default)
 - `AGENT_RULES_AND_CONTEXT.md` — complete golden rules
-- `ROADMAPv2.md` — all features, streams, dependency map
+- `ROADMAPv3.md` — all features, streams, dependency map
 - `ROADMAP_ARCHITECTURAL_REFERENCE.md` — deep architecture & phase history
 - `tasks/SESSION_STATE.md` — current session state for handoff

@@ -1,249 +1,278 @@
-# Risk Influence Map (RIM) - Development Roadmap v3
+# Risk Influence Map (RIM) — Development Roadmap v3
 
 **Optimised for Multi-Agent Execution**
 
 **Context for Future AI Agents:**
-This `ROADMAPv3.md` supersedes `ROADMAPv2.md`. It incorporates three new architectural pillars decided following a methodology review in March 2026: **Risk Lifecycle Management** (6-state lifecycle with trigger-based activation), the **Dual-Metric Exposure Model** (Expected Loss + Tail Risk Indicator + quadrant classification), and the **Generic Risk Template architecture** (template/instance pattern for combinatorial risk domains). These are not optional enhancements — they are now mandatory components of the Phase 2 deliverable and affect the exposure calculator, schema YAML, and multiple UI surfaces.
+This `ROADMAPv3.md` supersedes `ROADMAPv2.md`. It incorporates **four** new architectural pillars decided following methodology reviews in March 2026:
 
-The parallel-streams philosophy is maintained. Agents must read this document fully before beginning work on any Phase 2 or later feature, as several features from ROADMAPv2 have been repositioned, renamed, or expanded.
+1. **Risk Lifecycle Management** — 6-state lifecycle with trigger-based activation
+2. **Dual-Metric Exposure Model** — Expected Loss (EL) + Tail Risk Indicator (TRI) + quadrant classification
+3. **Generic Risk Template architecture** — template/instance pattern for combinatorial risk domains
+4. **Severity-Based Exposure + Compound Loss Distribution** — `impact` renamed to `severity` as an intrinsic node property; graph exposure decoupled from financial magnitude; SPICE-calibrated compound Poisson loss model producing a Loss Exceedance Curve (LEC) with ALE as a derived summary statistic
+
+These are **mandatory** components. They affect the exposure calculator, schema YAML, Neo4j data model, and multiple UI surfaces. Agents must read this document fully before beginning work on any Phase 2 or later feature.
 
 ---
 
 ## Completed Phases (Reference Only)
 
-*   **Phase 1: Foundation, Architecture & Scope Completeness** — **COMPLETE**
-    *   U1–U3, U6–U11, F1–F3, F12–F13, F18–F29, F30 are **COMPLETE**.
-    *   The generic ContextNode architecture, computed levels, relationship semantics, scope completeness, schema-driven filter system, zone-aware layout, interactive scope sandbox, node property panel, loop detection, and UI performance enhancements are established.
-    *   Current version: **v2.23.0**
+*   **Phase 1: Foundation, Architecture & Scope Completeness** — **COMPLETE** (v2.23.0)
+    *   U1–U3, U6–U11, F1–F3, F12–F13, F18–F29, F30 are complete.
+    *   Generic ContextNode architecture, computed levels, relationship semantics, scope completeness, schema-driven filter system, zone-aware layout, interactive scope sandbox, node property panel, loop detection established.
+
+*   **Iteration 4 — Partial** (v2.24.0)
+    *   **F31a** Scope-Based Simulation mode — **COMPLETE** (v2.24.0). Files: `pages/2_🎲_Simulation.py`, `utils/simulation_store.py` (new), `utils/state_manager.py`.
+    *   **F31b** Simulation Results Storage — **COMPLETE** (v2.24.0). `SimulationRecord` dataclass; saved-results comparison table with Δ delta columns; Excel export.
+    *   Remaining Iteration 4 tasks (U13, U12, F7, F31c/d) pending — see Sprint Plan below.
 
 ---
 
 ## Architectural Pillars Added in v3
 
-Before reading the work streams below, agents must understand three new mandatory architectural concepts introduced in this version.
+### Pillar 1 — Risk Lifecycle Management
 
-### Pillar 1: Risk Lifecycle Management
+**Motivation:** As programmes scale, the analysis canvas becomes unmanageable. Target: ~100 active nodes on canvas at any time. All lifecycle states are preserved in Neo4j for audit and re-activation.
 
-**Motivation:** As risk programmes scale, the number of nodes on the analysis canvas becomes unmanageable. Accepted, closed, and low-exposure risks must be preserved for audit and re-activation purposes, but suppressed from the active canvas by default. The lifecycle framework is the mechanism that keeps the graph navigable at scale (target: ~100 active nodes on the canvas at any time).
-
-**The 6-state lifecycle:**
-
-| Status | Definition | Canvas Visibility | Exposure Calculation |
+| Status | Definition | Canvas Visibility | Exposure Calculated |
 |--------|-----------|-------------------|---------------------|
 | `active` | Currently tracked | Full opacity | Yes |
 | `accepted` | Formal owner decision | Hidden by default | No |
-| `watching` | Accepted + monitoring condition attached | Low opacity ghost | No (monitored) |
-| `suppressed` | Final exposure dropped below acceptance threshold via mitigation | Very low opacity | No |
+| `watching` | Accepted + monitoring condition | Low opacity ghost | No |
+| `suppressed` | Exposure dropped below threshold | Very low opacity | No |
 | `closed` | Risk condition no longer exists | Hidden (audit only) | No |
-| `archived` | Terminal state; configurable retention period elapsed | Excluded from all queries | No |
+| `archived` | Terminal state; retention elapsed | Excluded from all queries | No |
 
-**Trigger condition mechanism:**
-- Defined as a property `trigger_condition` (string) on `accepted` and `watching` risk nodes.
-- Evaluated by a lightweight trigger engine each time the exposure calculator runs.
-- When a condition fires, status transitions automatically: `watching` → `active`, `suppressed` → `active`.
-- Example expressions: `upstream_risk_X.final_exposure > 0.6`, `scenario_Y.activated == true`, `days_since_acceptance > 180`.
+**Trigger conditions:** string property `trigger_condition` on `accepted`/`watching` nodes, evaluated by `TriggerEngine` after each exposure run. Fires: `watching` → `active`, `suppressed` → `active`.
 
-**Auto-acceptance rules:**
-- Defined in the domain schema YAML under `risk_lifecycle_rules`.
-- Apply only to risks in the **Frequency** or **Marginal** quadrant (see Pillar 2).
-- **CRITICAL CONSTRAINT: Auto-acceptance is blocked for any risk with `impact >= severity_ceiling` (default: 7/10), regardless of final_exposure.** This protects black swans and low-probability/high-severity risks from being silently suppressed.
+**Auto-acceptance:** defined in schema YAML. Blocked for any risk with `severity >= severity_ceiling` (default 7/10) regardless of final exposure. Protects black swans.
 
-**Archiving:**
-- Trigger: risk in `accepted` or `closed` status for > `archive_retention_days` (configurable, default: 180) with no trigger fires and no linked open mitigations.
-- Surfaced as a housekeeping alert in the dashboard.
-- Archived nodes are retained in Neo4j with full property history; excluded from all active queries by default.
+**Archiving:** risks in `accepted`/`closed` for > `archive_retention_days` (default 180) with no trigger fires and no linked open mitigations → dashboard alert → archived on explicit user confirmation.
 
 ---
 
-### Pillar 2: Dual-Metric Exposure Model
+### Pillar 2 — Dual-Metric Exposure Model
 
-**Motivation:** A simple L×I score produces identical results for (L=0.8, I=2) — a frequent, absorb-able disruption — and (L=0.2, I=8) — a rare but potentially catastrophic event. These require fundamentally different management responses. The dual-metric model makes this distinction explicit and computable.
-
-**Two computed indicators (both produced by the exposure calculator):**
+**Motivation:** `L × S` produces identical scores for (L=0.8, S=2) and (L=0.2, S=8). Different management responses required.
 
 | Metric | Formula | Purpose |
 |--------|---------|---------|
-| **Expected Loss (EL)** | Base_Exposure × Effective_Factor (existing formula) | Budgeting, routine risk management, operational prioritisation |
-| **Tail Risk Indicator (TRI)** | Likelihood × Impact^α  (default α = 1.5, configurable per domain in YAML) | Surfaces severity risks disproportionately; signals black swan candidates |
+| **Expected Loss (EL)** | `Base_Exposure × Effective_Factor` | Budgeting, operational prioritisation |
+| **Tail Risk Indicator (TRI)** | `Likelihood × Severity^α` (default α=1.5) | Surfaces severity risks disproportionately |
 
-**Risk Quadrant Classification (computed property, not stored):**
+**Risk Quadrant Classification (computed, not stored in Neo4j):**
 
-| Quadrant | Condition (defaults) | Auto-Acceptance | Management Posture |
-|----------|---------------------|-----------------|-------------------|
-| `frequency` | L ≥ 6/10 AND I < 6/10 | Eligible | Manage routinely; EL drives decisions |
-| `severity` | L < 6/10 AND I ≥ 7/10 | **Blocked** | Black swan territory; explicit human decision required |
-| `critical` | L ≥ 6/10 AND I ≥ 6/10 | **Blocked** | Priority mitigation; both EL and TRI high |
-| `marginal` | L < 6/10 AND I < 6/10 | Eligible | Monitor or accept |
+| Quadrant | Condition | Auto-Accept | Posture |
+|----------|-----------|-------------|---------|
+| `frequency` | L ≥ 6/10 AND S < 6/10 | Eligible | Manage routinely |
+| `severity` | L < 6/10 AND S ≥ 7/10 | **Blocked** | Explicit human decision required |
+| `critical` | L ≥ 6/10 AND S ≥ 6/10 | **Blocked** | Priority mitigation |
+| `marginal` | L < 6/10 AND S < 6/10 | Eligible | Monitor or accept |
 
-**All thresholds are configurable per domain in the schema YAML** under `risk_lifecycle_rules.quadrant_thresholds`.
+All thresholds configurable per domain in schema YAML under `risk_lifecycle_rules.quadrant_thresholds`.
 
-**UI surfaces requiring update:**
-- Node Property Panel (section ② Exposure Metrics): add `TRI`, `risk_quadrant` fields.
-- Dashboard: add quadrant distribution widget.
-- Graph canvas: node border style encodes quadrant (optional visual layer, see F32).
-- Filter system: add quadrant filter to sidebar.
+**Portfolio-Level Metric — Weighted Risk Score (WRS):**
+
+| Metric | Formula | Purpose |
+|--------|---------|---------|
+| **WRS** | `WRS = Σ(FEᵢ × Sᵢ²) / Σ(Sᵢ²)` | Portfolio-level exposure summary with severity-squared weighting; high-severity risks contribute disproportionately to the headline score |
+
+WRS is a read-time derived statistic — not stored in Neo4j. Computed over the active scope (or full graph when no scope is active). Provides a single headline figure for executive dashboards, complementing per-risk EL and TRI values. Implementation: single-pass summation over `exposure_results`; no additional DB queries required.
 
 ---
 
-### Pillar 3: Generic Risk Template Architecture
+### Pillar 3 — Generic Risk Template Architecture
 
-**Motivation:** Combinatorial risk spaces (particularly cybersecurity entry_point × technical_target) cannot be managed as individual nodes without graph explosion. The template/instance pattern contains complexity while preserving full analytical coverage.
+**Motivation:** Combinatorial risk spaces (e.g. cybersecurity entry_point × technical_target) generate graph explosion. Template/instance pattern contains complexity while preserving full analytical coverage.
 
-**Data model:**
+- **`GenericRisk`** (`is_template: true`): risk class definition with baseline L and S. Excluded from all exposure calculations and canvas display by default.
+- **`SpecificRisk`**: contextual instantiation linked via `[:INSTANTIATES]`. Only specific instances participate in the exposure engine.
+- Templates are never subject to lifecycle transitions. They persist indefinitely.
 
-- **`GenericRisk` node** (`status: template`): Risk class definition with baseline L, I, and description. Excluded from exposure calculations and canvas display by default. Lives in Neo4j as a reference node.
-- **`SpecificRisk` node** (`status: active` or other lifecycle status): Contextual instantiation. Linked to its parent template via `[:INSTANTIATES]` relationship. Inherits baseline values, overrides with context-specific calibration. Exposure engine operates only on specific instances.
-- **Navigation**: from any `SpecificRisk`, analysts can navigate to the parent template to discover other potential instantiations.
+---
 
-**Schema YAML extension required:** Add `generic_risk_templates` block — a list of template node IDs or a flag `is_template: true` on `Risk` nodes.
+### Pillar 4 — Severity-Based Exposure and Compound Loss Distribution
 
-**Integration with lifecycle:** A `GenericRisk` template node is never subject to lifecycle transitions. Templates persist indefinitely and are managed separately from the active risk inventory.
+**Semantic correction — the rename:**
+The property `impact` was a conflation of two distinct concepts: the intrinsic intensity of a risk event, and the financial consequence it produces. These require different models. `impact` is renamed to `severity` on **all** risk node types (both OperationalRisk and BusinessRisk).
+
+- `severity` (1–10): intrinsic intensity of the risk event itself. Example: compromised admin account (S=8) > compromised user account (S=5), independently of which business objective is threatened.
+- This is a **property-level rename only**. The formula `Base_Exposure = Likelihood × Severity` is structurally identical to the previous `L × I`. The propagation engine, mitigation degradation, and influence limitation logic are **unchanged**.
+- Mitigations reduce **exposure** (the `L × S` graph score). They do **not** reduce financial magnitude. Magnitude reduction is modelled at the SPICE/financial layer through scenario adjustments.
+
+**Two-tier architecture:**
+
+*Tier 1 — Graph Exposure Layer:*
+Inputs: `Likelihood` and `Severity` per risk node. Process: five-step propagation pipeline (unchanged). Output: `final_exposure` (EL, dimensionless 0–100), `TRI`, `risk_quadrant`. No financial units at this layer.
+
+*Tier 2 — Financial Quantification Layer:*
+- **Frequency input:** Business Risk `final_exposure` → mapped to Poisson event rate λ via piecewise linear calibration function anchored to SPICE `annual_probability` values.
+- **Magnitude input:** SPICE three-point estimates (best / expected / worst-case <10%) → fitted lognormal (default) or GPD (heavy-tail option) loss distribution per Business Risk / Business Perimeter.
+- **Process:** compound Poisson Monte Carlo convolution (reusing existing Monte Carlo engine).
+- **Output:** aggregate annual loss distribution → **Loss Exceedance Curve (LEC)** → four derived summary statistics: **ALE** (area under complementary CDF = expected annual loss), **VaR** (loss threshold at specified percentile), **CVaR / Expected Shortfall** (mean loss in excess of VaR threshold — tail risk management, reinsurance pricing), and **TRI** (graph-layer tail signal carried forward for cross-layer comparison).
+
+**Why LEC as primary output (not ALE alone):**
+ALE = λ × Mean Magnitude collapses the distribution, masking tail behaviour. The LEC (`P(Annual Loss > x)`) is the standard output of catastrophe risk models in reinsurance, Basel operational risk, and cyber insurance. It naturally captures both EL (area under curve) and tail exposure (far-right portion). The Resilience State thresholds are redefined as exceedance probability thresholds on the LEC — more rigorous than absolute exposure numbers.
+
+**Regulatory alignment:** The LEC at the 99.5th percentile (VaR₉₉.₅) maps directly to the Solvency II Solvency Capital Requirement (SCR). The default `var_confidence_levels: [0.95, 0.99, 0.995]` in the schema YAML is already calibrated to this anchor. For Basel operational risk (Advanced Measurement Approach), the regulatory anchor is the 99.9th percentile — add `0.999` to the confidence level list in domain-specific schema overrides. Both connections are formally documented in the RIM Methodology Technical Reference (§C.2, §C.4, March 2026).
+
+**Business Risk severity post-SPICE:** once a Business Risk has at least one SPICE scenario with `fair_calibration_flag: true`, the financial layer takes precedence for monetary output. The `severity` score is retained as a plausibility-weighting input to scenario selection and continues to drive graph propagation to TPOs.
+
+**Open design questions for Phase 3/4:**
+
+| Question | Default Recommendation |
+|----------|----------------------|
+| Frequency mapping function | Piecewise linear, calibrated to SPICE `annual_probability` |
+| Magnitude distribution | Lognormal default; GPD option for nuclear/cyber |
+| Cross-risk aggregation | Independent Poisson (Phase 3); copula via SystemicFactor nodes (Phase 5) |
+| TRI alpha | Domain-configurable in YAML; validated via F31d calibration mode |
 
 ---
 
 ## Current Roadmap: Multi-Agent Parallel Execution
 
-### 🌊 Work Stream A: Visual & UI Enhancements (Frontend Focused)
+### 🌊 Work Stream A — Visual & UI Enhancements
 
-All Phase 1 visual features are **COMPLETE**. Remaining items:
+*   **[F5] Automated Risk Threshold Alerts** *(Iteration 4)*: EL-based and TRI-based alert flags surfaced distinctly. Configurable thresholds per domain. Scope-aware.
 
-*   **[F5] Automated Risk Threshold Alerts** _(Iteration 4)_: Visual flags when computed `final_exposure` or `TRI` exceeds predefined thresholds. Must surface both EL-based and TRI-based alerts distinctly (a risk can be within EL threshold but above TRI threshold). Must be scope-aware. Configurable thresholds per domain in schema YAML.
+*   **[F6] Mitigation Exposure View** *(Iteration 4)*: Business-focused view; lifecycle-filtered; EL + TRI delta per mitigation. Scope-aware.
 
-*   **[F6] Mitigation Exposure View (Business Focus)** _(Iteration 4)_: Dedicated view showing mitigations contributing to exposure reduction for selected Business Risks, filterable by lifecycle status. Must be scope-aware. Must show both EL and TRI delta from each mitigation.
-
-*   **[F32] Graph Visual Behaviour Panel** _(Iteration 5)_: Dedicated settings panel consolidating all visual toggles. New options:
-    - Node appearance: size strategy (flat / EL-scaled / TRI-scaled / degree-scaled); shape override per level; label verbosity.
-    - Edge appearance: thickness strategy; arrow style; curvature.
-    - **Lifecycle visibility controls**: opacity per status (active=1.0, watching=configurable, suppressed=configurable); toggle to show/hide accepted and archived nodes.
-    - **Quadrant visual encoding**: optional border style or secondary colour overlay encoding quadrant classification.
-    - Scope Sandbox visuals: out-of-scope opacity, in-scope size multiplier, border colour.
-    - Presets: "Clean Presentation", "Analysis Deep-Dive", "Lifecycle Audit", "Sandbox Edit".
-    - Settings persisted to `schema.yaml` under `graph_visual_config` block.
-    - Supersedes: F20 (Exposure-Driven Opacity), F21 (Lifecycle Ghosting), all scatter-shot visual toggles.
+*   **[F32] Graph Visual Behaviour Panel** *(Iteration 5)*: Consolidated visual settings. Lifecycle opacity controls per status. Quadrant border encoding. Presets: Clean / Analysis Deep-Dive / Lifecycle Audit / Sandbox Edit. Persisted to `schema.yaml` under `graph_visual_config`. Supersedes F20, F21, all scatter-shot toggles.
 
 ---
 
-### 🌊 Work Stream B: Schema & Context Data Management (Backend/Fullstack)
+### 🌊 Work Stream B — Schema & Data Management
 
-*   **[U12] Risk Lifecycle Engine** _(Iteration 4 — MANDATORY before F7)_: Core backend implementation of Pillar 1.
-    - Extend `Risk` node schema with new status values: `accepted`, `watching`, `suppressed`, `closed`, `archived`.
-    - Add `trigger_condition` (string), `acceptance_date`, `acceptance_owner`, `archive_date` properties to `Risk` nodes.
-    - Implement `TriggerEngine` class in `services/trigger_engine.py`: evaluates trigger conditions post-exposure calculation; transitions node status; logs transitions with timestamp and reason.
-    - Implement `AutoAcceptanceEngine` in `services/auto_acceptance.py`: applies domain YAML rules; enforces severity ceiling constraint (never auto-accept if `impact >= severity_ceiling`).
-    - Implement `ArchiveEngine` in `services/archive_engine.py`: identifies archivable nodes; surfaces them as dashboard alerts; executes archive transitions on explicit user confirmation.
-    - Add `risk_lifecycle_rules` block to domain schema YAML: `acceptance_threshold`, `severity_ceiling`, `archive_retention_days`, `quadrant_thresholds`.
-    - **Testing gate**: trigger condition evaluates correctly; auto-acceptance respects severity ceiling; archived nodes excluded from all graph queries.
+*   **[U12] Risk Lifecycle Engine** *(Iteration 4 — MANDATORY before F7)*:
+    New status values; `trigger_condition`, `acceptance_date`, `acceptance_owner`, `archive_date` properties; `TriggerEngine`, `AutoAcceptanceEngine`, `ArchiveEngine` services; `risk_lifecycle_rules` YAML block.
+    **Testing gate:** trigger conditions evaluate; auto-acceptance blocks severity-ceiling risks; archived nodes excluded from all queries.
 
-*   **[U13] Dual-Metric Exposure Model** _(Iteration 4 — MANDATORY)_: Core backend implementation of Pillar 2.
-    - Extend `exposure_calculator.py`: after computing `final_exposure` (EL), compute `tail_risk_indicator = likelihood * impact ** alpha` where `alpha` is read from schema YAML (default 1.5).
-    - Compute `risk_quadrant` classification (frequency / severity / critical / marginal) from L, I, and schema YAML thresholds.
-    - Store `tri` and `risk_quadrant` as computed properties in `exposure_results` session state (not persisted to Neo4j — recomputed on each run).
-    - Update Node Property Panel section ② to display `tri`, `risk_quadrant`, and both metrics side-by-side.
-    - Update dashboard statistics to include quadrant distribution.
-    - Update filter system: add `risk_quadrant` multiselect filter (schema-driven).
-    - **Testing gate**: TRI computed correctly; quadrant boundaries match YAML thresholds; severity quadrant risks flagged correctly.
+*   **[U13] Severity Rename + Dual-Metric Exposure** *(Iteration 4 — FIRST TASK in iteration)*:
+    - Rename `impact` → `severity` in: schema YAML, all Neo4j node property keys (migration Cypher script required), `exposure_calculator.py`, all UI labels, Node Property Panel, Excel import/export templates, JSON backup schema, all test datasets TC01–TC07, all demo datasets.
+    - Migration script: `MATCH (r:Risk) WHERE r.impact IS NOT NULL SET r.severity = r.impact REMOVE r.impact`
+    - Extend `exposure_calculator.py`: compute `tail_risk_indicator = likelihood * severity ** alpha` and `risk_quadrant` after EL; stored in `exposure_results` session state only (not persisted to Neo4j).
+    - Update Node Property Panel section ②: display `severity`, `tri`, `risk_quadrant`.
+    - Update dashboard: quadrant distribution widget. Update filter system: `risk_quadrant` multiselect.
+    **Testing gate:** zero residual `impact` references in codebase; TC01–TC07 pass with renamed property; TRI and quadrant correct.
 
-*   **[U14] Generic Risk Template Architecture** _(Iteration 5)_: Core backend implementation of Pillar 3.
-    - Add `is_template: true` flag to Risk node schema (YAML-driven).
-    - Implement `[:INSTANTIATES]` relationship type in schema YAML.
-    - Extend CRUD UI: template creation/editing form (separate from active risk form); instantiation workflow (select template → override fields → create SpecificRisk linked via `INSTANTIATES`).
-    - Exposure calculator: skip all `is_template: true` nodes.
-    - Graph visualisation: template nodes rendered with distinct visual marker (dashed border) when visible; hidden from canvas by default.
-    - Node Property Panel: for SpecificRisk nodes, add section showing parent template and sibling instances.
-    - **Testing gate**: templates excluded from EL and TRI calculation; INSTANTIATES traversal works correctly; instantiation workflow creates correctly linked nodes.
+*   **[U14] Generic Risk Template Architecture** *(Iteration 5)*:
+    `is_template: true` flag; `[:INSTANTIATES]` relationship; template CRUD; instantiation workflow; exclusion from exposure engine; dashed-border visual; parent/sibling section in Node Property Panel.
+    **Testing gate:** templates excluded from EL and TRI; INSTANTIATES traversal correct.
 
 ---
 
-### 🌊 Work Stream C: Analytical & Simulation Tools (Algorithmic)
+### 🌊 Work Stream C — Analytical & Simulation Tools
 
-*   **[F7] "What-If" Analysis Sandbox** _(Iteration 4)_: Toggle mitigations ON/OFF to live-preview downstream exposure changes without committing to DB. **Critical constraint**: must operate fully within the active scope. **New requirement**: What-If must compute and display both EL delta and TRI delta for each mitigation toggle — not just EL. This is essential for identifying mitigations that reduce EL but not TRI (i.e., mitigations that address frequency but not severity exposure).
+*   **[F7] "What-If" Analysis Sandbox** *(Iteration 4)*: Toggle mitigations ON/OFF; in-memory recompute; EL + TRI deltas displayed. Scope-constrained. Lifecycle-aware (suppressed/accepted nodes excluded by default; option to include).
 
-*   **[F31] Scope-Driven Simulation & Results Storage** _(Iteration 4)_:
-    - **F31a** Scope-based simulation mode: real DB data; real L/I/strength values; real topology.
-    - **F31b** Simulation results storage: save, compare, export. `SimulationRecord` now stores both EL and TRI distributions per run, enabling severity-tail comparison across scenarios.
-    - **New — F31c** Lifecycle-aware simulation: option to run simulation with all `accepted`/`watching` risks re-activated (best-case vs worst-case canvas). Surfaces latent tail exposure from currently-suppressed risks.
+*   **[F31] Scope-Driven Simulation & Results Storage**:
+    - ~~**F31a** *(v2.24.0 — COMPLETE)*: scope-based simulation mode with real DB data; real/random L×S toggle; mitigation variance slider.~~
+    - ~~**F31b** *(v2.24.0 — COMPLETE)*: `SimulationRecord` dataclass; saved-results comparison table with Δ delta columns; Excel export; `utils/simulation_store.py` (new).~~
+    - **F31c** *(Iteration 5)*: lifecycle-aware simulation — re-activate all accepted/watching risks to reveal latent tail exposure on worst-case canvas.
+    - **F31d** *(Iteration 5)*: TRI alpha calibration mode — vary α over configurable range; observe quadrant distribution shift; output calibration report for domain-appropriate α selection.
+
+*   **[F34] Compound Loss Model & LEC Engine** *(Iteration 6 — Phase 3)*:
+    Requires F8 (SPICE Scenario Manager) complete.
+    - F34a: frequency calibration (exposure → Poisson λ; SPICE-anchored; calibration UI).
+    - F34b: magnitude distribution fitting (lognormal/GPD from SPICE three-point estimates; goodness-of-fit display).
+    - F34c: Monte Carlo convolution (compound Poisson; 10,000 runs default; aggregate annual loss distribution).
+    - F34d: LEC output (`P(Loss > x)` curve; VaR at 95/99/99.5%; CVaR/Expected Shortfall at each VaR threshold; Resilience State thresholds overlaid as vertical lines; ALE annotated as area under complementary CDF).
+    - F34e: ALE derivation (summary statistic alongside LEC; mathematically equivalent to area under LEC).
+
+    **Implementation estimates** (~8–10 developer-days total, ~300 lines net new Python, ~80% reuse of existing MC engine):
+
+    | Sub-task | Effort | Lines net new | Notes |
+    |----------|--------|---------------|-------|
+    | F34a — frequency calibration | ~0.5 day | ~10 | SPICE anchor mapping via `np.interp` |
+    | F34b — magnitude distribution fitting | ~0.5 day | ~15 | Lognormal + GPD; SPICE three-point PERT fit |
+    | F34c — compound Poisson MC | ~2–3 days | ~100 | Main effort; reuses existing MC engine loops |
+    | F34d — LEC + CVaR visualisation | ~1 day | ~50 | Plotly trace; VaR/CVaR/ALE overlays |
+    | F34e — ALE derivation | ~0.5 day | ~15 | Area under complementary CDF |
+    | **F8 (SPICE Manager — blocker)** | ~1–2 days | ~30 Python + 5 Cypher | Must complete before F34; critical path |
+
+    F8 (SPICE Scenario Manager) is the critical path dependency — not the mathematics. Once SPICE data exists in the graph, the financial quantification pipeline is ~1 week of focused development.
 
 ---
 
-## 🗓️ Active Sprint Plan: Iterations for Next Development Cycle
+## 🗓️ Active Sprint Plan
 
-### 🔁 Iteration 4 — Lifecycle, Dual-Metric & What-If _(v2.24.0 → v2.26.0)_
-**Target features:** U12, U13, F7, F31a, F31b
-**Streams:** B (Backend — U12/U13 first), C (Algorithmic — F7/F31 depend on U13)
-**Prerequisites:** U12 must complete before F7 (lifecycle status affects Which nodes participate in What-If)
+### 🔁 Iteration 4 — Severity, Lifecycle, Dual-Metric & What-If *(v2.25.0 → v2.26.0)*
+
+**Critical ordering:** U13 severity rename must be the **first task** — it touches every codebase layer and all downstream tasks depend on the renamed property. F31a/b are already complete (v2.24.0).
+
+| Task | Version | File(s) | Details |
+|------|---------|---------|---------|
+| ~~**F31a/b** Scope Simulation~~ | ~~v2.24.0~~ | ~~`pages/2_🎲_Simulation.py`, `utils/simulation_store.py`~~ | ~~COMPLETE. Real-data mode; saved results; Excel export.~~ |
+| **U13 rename (first)** | v2.25.0 | `schema.yaml`, `models/risk.py`, `services/exposure_calculator.py`, all UI files, all test/demo datasets | Rename `impact` → `severity`. Run migration Cypher. Run full TC01–TC07 suite. |
+| **U12** Lifecycle Engine | v2.25.0 | `services/trigger_engine.py`, `services/auto_acceptance.py`, `services/archive_engine.py`, `schema.yaml`, `models/risk.py` | 6-state lifecycle; triggers; auto-acceptance with severity ceiling guard; archive alerts. |
+| **U13 cont.** Dual-Metric + WRS | v2.25.0 | `services/exposure_calculator.py`, `ui/panels/node_property_panel.py`, `ui/home.py` | TRI + quadrant computation; WRS portfolio metric; panel update; dashboard widgets; quadrant filter. |
+| **F7** What-If | v2.26.0 | `pages/3_🔬_Analysis.py`, `services/exposure_calculator.py` | In-memory mitigation toggle; EL + TRI deltas; scope + lifecycle constrained. |
+
+---
+
+### 🔁 Iteration 5 — Templates, Alerts & Visual Behaviour *(v2.27.0 → v2.30.0)*
+
+| Task | Version | File(s) | Details |
+|------|---------|---------|---------|
+| **U14** Templates | v2.27.0 | `models/risk.py`, `schema.yaml`, `ui/tabs/unified_crud_tab.py`, `services/exposure_calculator.py`, `ui/panels/node_property_panel.py` | Template flag; INSTANTIATES relationship; template CRUD; instantiation workflow; exclusion from engine. |
+| **F5** Alerts | v2.27.0 | `ui/home.py`, `schema.yaml` | EL + TRI threshold alerts; distinct display; configurable. |
+| **F6** Mitigation View | v2.28.0 | `pages/3_🔬_Analysis.py` | Business Risk mitigation view; lifecycle filter; EL+TRI delta. |
+| **F32** Visual Panel | v2.28.0 | `ui/panels/graph_visual_panel.py` (new), `schema.yaml` | Consolidated settings; lifecycle opacity; quadrant encoding; presets persisted to YAML. |
+| **F31c** Lifecycle-aware simulation | v2.29.0 | `pages/2_🎲_Simulation.py` | Re-activate all accepted/watching risks; reveal latent tail exposure on worst-case canvas. Requires U12 complete. |
+| **F31d** TRI alpha calibration | v2.30.0 | `pages/2_🎲_Simulation.py` | Vary α over configurable range; observe quadrant distribution shift; output calibration report for domain-appropriate α selection. Requires U13 TRI computation complete. |
+
+---
+
+### 🔁 Iteration 6 — SPICE, Financial Layer & LEC *(v2.30.0+, Phase 3)*
 
 | Task | File(s) | Details |
 |------|---------|---------|
-| **U12** Risk Lifecycle Engine | `services/trigger_engine.py` (new), `services/auto_acceptance.py` (new), `services/archive_engine.py` (new), `schema.yaml`, `models/risk.py` | See Pillar 1 spec above. Add 4 new status values. Add trigger_condition, acceptance_date, acceptance_owner, archive_date properties. |
-| **U13** Dual-Metric Exposure | `services/exposure_calculator.py`, `ui/panels/node_property_panel.py`, `ui/home.py`, `schema.yaml` | Compute TRI and risk_quadrant post-EL. Expose in panel and dashboard. Add quadrant filter. |
-| **F7** What-If Sandbox | `pages/3_🔬_Analysis.py` (new or existing), `services/exposure_calculator.py` | Toggle mitigations; recompute EL + TRI in-memory; display both deltas. Scope-constrained. |
-| **F31a/b** Scope Simulation | `pages/2_🎲_Simulation.py`, `utils/simulation_store.py` (new) | Real-data mode; SimulationRecord stores EL+TRI distributions; export to Excel. |
-
-**Testing scope:** Lifecycle transitions fire correctly. Auto-acceptance blocks severity-ceiling risks. TRI and quadrant computed correctly. What-If shows EL+TRI deltas. Simulation stores and compares results.
-
----
-
-### 🔁 Iteration 5 — Templates, Alerts & Visual Behaviour _(v2.27.0 → v2.29.0)_
-**Target features:** U14, F5, F6, F32
-**Streams:** B (U14), A (F5, F6, F32)
-**Prerequisites:** U13 complete (F5/F6 consume TRI; F32 encodes quadrant)
-
-| Task | File(s) | Details |
-|------|---------|---------|
-| **U14** Generic Risk Templates | `models/risk.py`, `schema.yaml`, `ui/tabs/unified_crud_tab.py`, `services/exposure_calculator.py`, `ui/panels/node_property_panel.py` | Template flag, INSTANTIATES relationship, template CRUD, instantiation workflow, template exclusion from exposure engine. |
-| **F5** Threshold Alerts | `ui/home.py`, `schema.yaml` | EL-based and TRI-based alert flags, distinct visual treatment, configurable thresholds. |
-| **F6** Mitigation Exposure View | `ui/tabs/analysis_tab.py` or `pages/3_🔬_Analysis.py` | Business Risk mitigation view; lifecycle filter; EL+TRI delta per mitigation. |
-| **F32** Graph Visual Behaviour Panel | `ui/panels/graph_visual_panel.py` (new), `schema.yaml` | Consolidated visual settings; lifecycle opacity controls; quadrant encoding; presets; persisted to schema YAML. |
-
-**Testing scope:** Templates excluded from all calculations. Instantiation creates correctly linked nodes. Alerts fire on EL and TRI thresholds independently. Visual panel presets apply correctly.
+| **F8** SPICE Manager | `pages/4_📊_Scenarios.py` (new), schema YAML | Scenario ContextNode CRUD; SCENARIO_ILLUSTRATES links; activation flag for triggers. |
+| **F34a–e** Loss Model | `services/loss_model.py` (new), `pages/5_📉_Loss_Model.py` (new) | Full compound Poisson pipeline: calibration → fitting → convolution → LEC → ALE. |
+| **F9** Resilience State | `services/resilience.py` | Thresholds redefined as LEC exceedance probabilities; TRI incorporated alongside EL. |
+| **F15** P&L Dashboard | dedicated page | EBIT-at-risk / FCF-at-risk per Business Perimeter; LEC per perimeter. |
 
 ---
 
 ## Future Horizons
 
-### 🌊 Work Stream D: SPICE Scenarios & Financial Anchoring (Depends on B completion)
+### 🌊 Work Stream D — Advanced Financial Modelling *(after Iteration 6)*
 
-*   **[F8] SPICE Scenario Manager**: Full UI for ContextNode-based scenario create/edit/link. Scenarios must also be linkable to `watching` risk nodes to serve as activation triggers (`scenario_Y.activated == true`).
-*   **[F9] Resilience State Modeling**: Classify into Robust/Resilient/Fragile based on SPICE exposure vs thresholds. **New requirement**: state model must incorporate TRI alongside EL — a portfolio dominated by Severity-quadrant risks may be RESILIENT on EL grounds while carrying latent FRAGILE exposure visible only through TRI.
-*   **[F15] P&L Exposure Dashboard**: Aggregate EBIT-at-risk and FCF-at-risk per `business_perimeter` context node.
+*   **[F14] FAIR-like Formalisation**: map F34 outputs to explicit FAIR terminology; ALE output alongside LEC; alignment documentation for Basel/Solvency II regulated environments.
+*   **[F10] Mitigation Budget Optimisation**: CAPEX/OPEX-constrained; LEC-derived ALE as objective function.
+*   **[F35] Copula Correlation Model** *(new)*: correlated loss events across Business Risks; correlation structure derived from SystemicFactor ContextNodes. Gaussian copula default; t-copula option for heavy-tail joint distributions.
 
-### 🌊 Work Stream E: FAIR Financials (Depends on D & C)
+### 🌊 Work Stream E — Advanced Architecture
 
-*   **[F14] FAIR Financial Quantification — SPICE-Calibrated**: ALE engine using TEF from SPICE, LM from SPICE impact ranges, Vulnerability from existing mitigation engine (V = 1 − Effective_Mitigation_Factor).
-*   **[F10] Mitigation Budget Management**: CAPEX/OPEX-constrained optimisation (Depends on U5) using FAIR ALE as objective function.
+*   **[F16] SubGraph Promotion**: `AnalysisScopeConfig` → `SubGraphConfig` with hierarchy and boundary policies. Generic Risk Templates inheritable by child SubGraphs.
+*   **[F17] External Graph Ingestion**: YAML adapters; imported edges always `semantic:context`.
+*   **[F11] Historical Versioning**: graph state at any past date; lifecycle transitions versioned.
 
-### 🌊 Work Stream F: Advanced Architecture
+### 🌊 Work Stream F — Advanced Graphical Interaction
 
-*   **[F16] SubGraph Promotion and System of Systems**: Promote `AnalysisScopeConfig` to `SubGraphConfig` with hierarchy and policies (isolated / permeable / transparent). **Note**: Generic Risk Templates defined at SubGraph level should be inheritable by child SubGraphs — design the inheritance model during F16.
-*   **[F17] External Graph Ingestion (Import Adapters)**: YAML-defined adapters mapping external node/edge types to ContextNode types (e.g., IT architecture, Supply Chain, STIX threat intelligence). Imported nodes always land as Context Nodes; imported edges always semantic:context — they never participate in exposure propagation until a risk node is manually linked.
-*   **[F11] Historical Timeline / Versioning**: Render graph state "as it was" at any previous date. **Note**: lifecycle status transitions must be versioned — the timeline must be able to show when risks were accepted, triggered back to active, suppressed, and archived.
-
-### 🌊 Work Stream G: Advanced Graphical Interaction (BIG Features)
-
-*   **[F24] Interactive Canvas Editing**: Direct graphical manipulation of nodes and edges on the canvas. Must respect lifecycle status — archived and closed nodes cannot be reactivated by canvas drag; only through the lifecycle management UI.
-*   **[F33] Lifecycle Management UI** _(new)_: Dedicated page or modal for lifecycle operations — bulk accept, bulk archive, trigger condition editor, lifecycle history timeline per risk node. Provides the formal workflow for risk owners to process acceptance decisions with audit trail.
+*   **[F24] Interactive Canvas Editing**: lifecycle-aware (archived/closed nodes not re-activatable via canvas drag).
+*   **[F33] Lifecycle Management UI**: bulk accept/archive; trigger condition editor; lifecycle history timeline per risk; full audit trail.
 
 ---
 
-## Open Questions — Multi-Agent Coordination
+## Open Questions
 
-**Q1 — Cross-Stream Dependency Management**
-When an agent in Stream A requires backend modifications (e.g., a new field added by Stream B) to complete a UI task, what is the protocol for pausing and handing over the task without causing a merge conflict or logic fragmentation?
+**Q1** Cross-stream dependency handover protocol to prevent merge conflicts during parallel execution.
 
-**Q2 — Agent Testing Sandboxes**
-Are there dedicated, isolated database instances or namespaces for agents to run the mandatory Testing Gateways without overwriting each other's test data during parallel execution?
+**Q2** Isolated database namespaces for agent testing gateways.
 
-**Q3 — Schema Context Limits**
-As the YAML schema grows to accommodate risk_lifecycle_rules, TRI alpha, quadrant_thresholds, and template configurations, how will AI agents maintain the full schema in their context window efficiently?
+**Q3** Schema context management as YAML grows to include lifecycle rules, loss model parameters, and template configurations.
 
-**Q4 — Dynamic Tracking of Computational Node Types**
-Currently, `BusinessRisk` and `OperationalRisk` are the only node types carrying mathematical weight. Generic Risk Templates (`is_template: true`) must be explicitly excluded. Should the YAML schema include a `computational: true` flag (default: true for Risk nodes, false for template nodes) to make this exclusion declarative rather than hardcoded?
+**Q4** Should `is_template: true` nodes carry `computational: false` to make exclusion from the exposure engine declarative?
 
-**Q5 — Trigger Condition Security**
-Trigger condition expressions are stored as strings in Neo4j and evaluated at runtime. What is the appropriate sandboxing approach to prevent injection or infinite-loop conditions in the trigger engine? Consider a restricted expression DSL rather than arbitrary Python eval.
+**Q5** Trigger condition sandboxing — restricted DSL vs arbitrary Python eval; what is the approved approach?
 
-**Q6 — TRI Alpha Calibration**
-The default α = 1.5 for TRI has not been validated against real programme data. The Monte Carlo simulation (F31) should include a TRI calibration mode — varying α and observing the resulting quadrant distribution — to help practitioners choose domain-appropriate values. This should be added as a sub-task of F31c.
+**Q6** TRI alpha default (1.5) unvalidated against real data. Calibration path: F31d (TRI alpha calibration mode, Iteration 5) produces a calibration report showing quadrant distribution shift across the α range — domain owner reviews and approves a domain-specific α value stored in `exposure_model.tri_alpha` in the domain's schema YAML. Open question: what governance gate (if any) is required before overriding the default in a production schema?
+
+**Q7** Frequency mapping calibration: who provides and validates initial Poisson λ anchor points per domain schema, and what is the override mechanism for domains without SPICE scenario data?
+
+**Q8** Business Risk severity post-SPICE: proposed rule is that once a Business Risk has a SPICE scenario with `fair_calibration_flag: true`, `severity` drives graph propagation only (not financial output). Is this the right clean separation rule?
+
+**Q9** WRS (Weighted Risk Score) UI integration: should WRS replace or supplement the existing portfolio-level exposure summary on the executive dashboard? If supplement, what is the display priority relative to mean EL and peak TRI? Should the WRS be scope-aware only (computed over active scope) or always available on the full graph?
 
 ---
 
@@ -251,45 +280,41 @@ The default α = 1.5 for TRI has not been validated against real programme data.
 
 ```mermaid
 graph TD
-    %% Base Layer (Completed)
     U7[U7: Computed levels] --> F13
     U9[U9: Scope completeness] --> F7
     U9 --> F8
 
-    %% New Pillars (Iteration 4–5)
+    U13[U13: Severity + Dual-Metric] --> F5
+    U13 --> F6
+    U13 --> F7
+    U13 --> F31
+    U13 --> F32
+    U13 --> F34
+
     U12[U12: Lifecycle Engine] --> F7
     U12 --> U14
-    U12 --> F33[F33: Lifecycle UI]
-    U13[U13: Dual-Metric Exposure] --> F5[F5: Threshold Alerts]
-    U13 --> F6[F6: Mitigation Exposure View]
-    U13 --> F7[F7: What-If Sandbox]
-    U13 --> F31[F31: Scope Simulation]
-    U13 --> F32[F32: Visual Behaviour Panel]
-    U14[U14: Generic Templates] --> F32
-
-    %% Stream B
-    F12[F12: Generic CRUD UI] --> F8[F8: SPICE Manager]
-    F12 --> F17[F17: Import Adapters]
-    U5[U5: CAPEX/OPEX] --> F10[F10: Budget Optimisation]
-
-    %% Stream D
-    F8 --> F9[F9: Resilience State]
-    F8 --> F15[F15: P&L Dashboard]
-    F8 --> F14[F14: FAIR Engine]
-    U13 --> F9
-
-    %% Stream E
-    F14 --> F10
-    F14 --> F15
-    F14 --> F11[F11: Versioning]
+    U12 --> F33
     U12 --> F11
 
-    %% Stream F
-    F16[F16: SubGraph] --> F17
+    U14[U14: Templates] --> F32
     U14 --> F16
 
-    %% Stream G
-    F19 --> F24[F24: Interactive Canvas]
+    F12 --> F8
+    F12 --> F17
+    U5 --> F10
+
+    F8 --> F34
+    F34 --> F9
+    F34 --> F15
+    F34 --> F14
+    F34 --> F10
+    F34 --> F35
+    U13 --> F9
+
+    F16 --> F17
+    F14 --> F11
+
+    F19 --> F24
     F23 --> F24
     U12 --> F24
     F33 --> F24
@@ -299,28 +324,42 @@ graph TD
 
 ## Schema YAML Extensions Required (Summary)
 
-The following blocks must be added to the domain schema YAML as part of Iterations 4–5. They are documented here as a reference for agents working on U12, U13, and U14.
-
 ```yaml
-# Lifecycle rules (U12)
-risk_lifecycle_rules:
-  acceptance_threshold: 20          # final_exposure below which auto-acceptance is eligible
-  severity_ceiling: 7               # impact >= this value blocks all auto-acceptance
-  archive_retention_days: 180       # days in accepted/closed before archiving alert fires
-  quadrant_thresholds:              # (U13)
-    likelihood_threshold: 6         # L >= this → high likelihood
-    impact_threshold_frequency: 6   # I < this (with high L) → frequency quadrant
-    impact_threshold_severity: 7    # I >= this (with low L) → severity quadrant
+# Severity rename (U13) — Cypher migration:
+# MATCH (r:Risk) WHERE r.impact IS NOT NULL
+# SET r.severity = r.impact REMOVE r.impact
 
-# TRI configuration (U13)
+# Lifecycle rules (U12 + U13)
+risk_lifecycle_rules:
+  acceptance_threshold: 20
+  severity_ceiling: 7
+  archive_retention_days: 180
+  quadrant_thresholds:
+    likelihood_threshold: 6
+    severity_threshold_frequency: 6
+    severity_threshold_severity: 7
+
+# Dual-Metric (U13) — includes portfolio WRS
 exposure_model:
-  tri_alpha: 1.5                    # exponent for Tail Risk Indicator; calibrate per domain
+  tri_alpha: 1.5
+  wrs_enabled: true          # Weighted Risk Score: Σ(FEᵢ × Sᵢ²) / Σ(Sᵢ²) — severity-squared portfolio metric
+
+# Loss model (F34)
+loss_model:
+  frequency_mapping: piecewise_linear
+  magnitude_distribution: lognormal   # lognormal (default) or gpd (heavy-tail: nuclear, large-scale cyber)
+  monte_carlo_runs: 10000
+  var_confidence_levels: [0.95, 0.99, 0.995]   # 0.995 = Solvency II SCR anchor; add 0.999 for Basel AMA
+  cvar_enabled: true                  # Compute Expected Shortfall (CVaR) at each VaR confidence level
+  resilience_thresholds:
+    robust_exceedance_probability: 0.20
+    fragile_exceedance_probability: 0.05
 
 # Graph visual defaults (F32)
 graph_visual_config:
   lifecycle_opacity:
     watching: 0.35
     suppressed: 0.15
-  quadrant_border_encoding: true    # show quadrant as border style on nodes
-  default_preset: "analysis"        # clean | analysis | lifecycle_audit | sandbox
+  quadrant_border_encoding: true
+  default_preset: "analysis"
 ```

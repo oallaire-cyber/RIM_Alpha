@@ -118,6 +118,7 @@ _None._
 ## 🔁 Resumption Prompt (copy-paste to start next session)
 ```
 Resume RIM development. Read tasks/SESSION_STATE.md first, then continue where we left off.
-F31 is complete and merged. Next task: TBD from ROADMAPv2.md Future Horizons section.
-Branch: main (after merge).
+F31a/b complete (v2.24.0). ROADMAPv3.md is now the authoritative roadmap (supersedes ROADMAPv2.md).
+Next task: Iteration 4 — U13 severity rename (first), then U12 Lifecycle Engine (v2.25.0).
+Branch: main (after merge of feature/work_stream_C).
 ```
