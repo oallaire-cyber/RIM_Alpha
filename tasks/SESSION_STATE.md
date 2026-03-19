@@ -6,37 +6,44 @@
 ---
 
 ## Current Version
-`v2.24.0` — Iteration 4 complete. Branch: feature/work_stream_C (not yet merged).
+`v2.25.0` — U13 Severity Rename + Dual-Metric complete. Branch: feature/iteration_4.
 
 ## Last Updated
-2026-03-18 — F31 fully implemented and tested (378 tests pass).
+2026-03-19 — U13 fully implemented and tested (378 tests pass).
 
 ---
 
 ## 🔴 Active Work In Progress
-<!-- No task is mid-implementation. F31 complete, ready for user commit + merge. -->
+<!-- No task is mid-implementation. U13 complete, ready for user commit. -->
 
-**Feature**: None — F31 complete.
-**Stream**: C
-**Status**: 100% — awaiting user git commit and merge to main.
+**Feature**: None — U13 complete.
+**Stream**: All (cross-stream rename)
+**Status**: 100% — awaiting user git commit.
 
 **Next immediate step**:
-> User to commit + merge feature/work_stream_C → main.
-> Next feature TBD — consult ROADMAPv2.md Future Horizons section.
+> User to commit feature/iteration_4 (or merge to main).
+> Next feature: **U12 Lifecycle Engine** (v2.25.0) — see ROADMAPv3.md Iteration 4 sprint table.
 
 ---
 
 ## ✅ Recently Completed (last 2 sessions)
 
-### Session N-1 (v2.22.0)
-- **v2.22.0** — **F28 Advanced Scope Filter UI** (Iteration 3):
-  - Created `ui/panels/scope_filter_panel.py` — `_render_filter_table` shared core,
-    `render_scope_filter_panel` (home.py / FilterManager), `render_scope_node_editor`
-    (config page / caller-supplied callbacks).
-  - Modified `ui/tabs/unified_crud_tab.py`, `ui/panels/__init__.py`,
-    `pages/1_⚙️_Configuration.py`.
+### Session N+2 (this session — v2.25.0)
+- **v2.25.0** — **U13 Severity Rename + Dual-Metric Exposure** (Iteration 4):
+  - `Risk.impact` → `Risk.severity` across all layers: schemas, model, queries, manager,
+    backup service, exposure calculator, simulation page, UI panels, all tests/fixtures.
+  - `_compute_risk_quadrant()` helper + `TRI = likelihood × severity^1.5` in `exposure_calculator.py`.
+  - `RiskExposureResult` gains `tail_risk_indicator: float` + `risk_quadrant: str` (defaults at end).
+  - Node Property Panel: Severity metric, TRI row, quadrant row with emoji labels.
+  - `ui/home.py`: `_render_quadrant_distribution()` dashboard widget; quadrant multiselect sidebar filter.
+  - 5 root-level cypher files moved to `scripts/` with `impact:` → `severity:` updated.
+  - `docs/New Space/ODT_RIM_SpaceUseCase.cypher`: 52 Risk property references updated.
+  - `scripts/migrate_impact_to_severity.cypher`: new idempotent migration script.
+  - Legacy fallbacks: `r.get("severity") or r.get("impact")` in exposure calc + simulation load;
+    `d.get("severity") or d.get("impact")` in backup `_risk_kwargs`.
+  - Tests: 378 pass.
 
-### Session N+1 (this session — v2.24.0)
+### Session N+1 (v2.24.0)
 - **v2.24.0** — **F31 Scope-Driven Simulation & Results Storage** (Iteration 4):
   - `utils/simulation_store.py`: new file — `SimulationRecord` dataclass.
   - `utils/state_manager.py`: added `SIMULATION_DEFAULTS` + `init_simulation_state()`.
@@ -118,7 +125,7 @@ _None._
 ## 🔁 Resumption Prompt (copy-paste to start next session)
 ```
 Resume RIM development. Read tasks/SESSION_STATE.md first, then continue where we left off.
-F31a/b complete (v2.24.0). ROADMAPv3.md is now the authoritative roadmap (supersedes ROADMAPv2.md).
-Next task: Iteration 4 — U13 severity rename (first), then U12 Lifecycle Engine (v2.25.0).
-Branch: main (after merge of feature/work_stream_C).
+U13 complete (v2.25.0). ROADMAPv3.md is the authoritative roadmap.
+Next task: Iteration 4 — U12 Lifecycle Engine (v2.25.0), then F7 What-If.
+Branch: feature/iteration_4 (commit pending or already committed).
 ```

@@ -92,7 +92,7 @@ class RiskGraphManager:
         activation_decision_date: str = None,
         owner: str = "",
         probability: float = None,
-        impact: float = None,
+        severity: float = None,
         origin: str = "New",
         subtype: str = None,
         ext_fields: dict = None,
@@ -100,7 +100,7 @@ class RiskGraphManager:
         """Create a new risk node. Returns the created node ID or None."""
         result = risks.create_risk(
             self._connection, name, level, categories, description, status,
-            origin, owner, probability, impact, activation_condition,
+            origin, owner, probability, severity, activation_condition,
             activation_decision_date, subtype=subtype, ext_fields=ext_fields
         )
         return result
@@ -138,7 +138,7 @@ class RiskGraphManager:
         activation_decision_date: str,
         owner: str,
         probability: float,
-        impact: float,
+        severity: float,
         origin: str = "New",
         subtype: str = None,
         ext_fields: dict = None,
@@ -146,7 +146,7 @@ class RiskGraphManager:
         """Update an existing risk."""
         return risks.update_risk(
             self._connection, risk_id, name, level, categories, description,
-            status, origin, owner, probability, impact, activation_condition,
+            status, origin, owner, probability, severity, activation_condition,
             activation_decision_date, subtype=subtype, ext_fields=ext_fields
         )
     
@@ -1695,7 +1695,7 @@ class RiskGraphManager:
                 activation_decision_date=data.get("activation_decision_date"),
                 owner=data.get("owner", ""),
                 probability=data.get("probability"),
-                impact=data.get("impact"),
+                severity=data.get("severity"),
                 origin=data.get("origin", "New"),
                 subtype=data.get("subtype"),
                 ext_fields=data.get("ext_fields", {})
@@ -1749,7 +1749,7 @@ class RiskGraphManager:
                 activation_decision_date=data.get("activation_decision_date"),
                 owner=data.get("owner", ""),
                 probability=data.get("probability"),
-                impact=data.get("impact"),
+                severity=data.get("severity"),
                 origin=data.get("origin", "New"),
                 subtype=data.get("subtype"),
                 ext_fields=data.get("ext_fields", {})

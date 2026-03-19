@@ -89,7 +89,7 @@ def _render_exposure(
         st.metric("Likelihood", f"{r.get('likelihood', 0):.1f}")
         st.metric("Base Exposure", f"{r.get('base_exposure', 0):.1f}")
     with c2:
-        st.metric("Impact", f"{r.get('impact', 0):.1f}")
+        st.metric("Severity", f"{r.get('severity', 0):.1f}")
         st.metric("Final Exposure", f"{r.get('final_exposure', 0):.1f}")
     with c3:
         base = r.get("base_exposure", 0)
@@ -99,6 +99,24 @@ def _render_exposure(
         mit_factor = r.get("mitigation_factor", 1.0)
         coverage_pct = round((1 - mit_factor) * 100)
         st.metric("Mit. Coverage", f"{coverage_pct}%")
+
+    # U13 dual-metric row
+    tri = r.get("tail_risk_indicator")
+    quadrant = r.get("risk_quadrant")
+    if tri is not None or quadrant is not None:
+        q1, q2 = st.columns(2)
+        with q1:
+            st.metric("TRI", f"{tri:.2f}" if tri is not None else "—",
+                      help="Tail Risk Indicator = Likelihood × Severity^1.5")
+        with q2:
+            quadrant_labels = {
+                "critical": "🔴 Critical",
+                "frequency": "🟠 Frequency",
+                "severity": "🟡 Severity",
+                "marginal": "🟢 Marginal",
+            }
+            st.metric("Quadrant", quadrant_labels.get(quadrant, quadrant or "—"),
+                      help="Risk quadrant based on likelihood/severity thresholds")
 
     if r.get("trace"):
         with st.expander("Calculation trace", expanded=False):

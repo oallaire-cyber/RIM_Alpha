@@ -28,7 +28,7 @@ def sample_risk_data():
         "description": "A test risk for unit testing",
         "owner": "Test Owner",
         "probability": 5.0,
-        "impact": 8.0,
+        "severity": 8.0,
         "exposure": 40.0,
         "activation_condition": None,
         "activation_decision_date": None,
@@ -49,7 +49,7 @@ def sample_operational_risk_data():
         "description": "An operational risk for testing",
         "owner": "Ops Team",
         "probability": 7.0,
-        "impact": 4.0,
+        "severity": 4.0,
         "exposure": 28.0,
     }
 
@@ -143,7 +143,7 @@ def sample_risk_network():
             "categories": ["Programme"],
             "status": "Active",
             "probability": 6.0,
-            "impact": 8.0,
+            "severity": 8.0,
             "exposure": 48.0,
         },
         {
@@ -154,7 +154,7 @@ def sample_risk_network():
             "categories": ["Industriel"],
             "status": "Active",
             "probability": 7.0,
-            "impact": 5.0,
+            "severity": 5.0,
             "exposure": 35.0,
         },
         {
@@ -165,7 +165,7 @@ def sample_risk_network():
             "categories": ["Supply Chain"],
             "status": "Active",
             "probability": 4.0,
-            "impact": 6.0,
+            "severity": 6.0,
             "exposure": 24.0,
         },
     ]

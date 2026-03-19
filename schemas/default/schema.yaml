@@ -77,11 +77,11 @@ entities:
       required: false
       default: null
       description: Likelihood rating (1-10)
-    - name: impact
+    - name: severity
       type: float
       required: false
       default: null
-      description: Impact rating (1-10)
+      description: Severity rating (1-10) — intrinsic intensity of the risk event
     - name: activation_condition
       type: string
       required: false
@@ -447,7 +447,7 @@ relationships:
       description: Near-complete risk elimination
 analysis:
   exposure:
-    base_formula: likelihood * impact
+    base_formula: likelihood * severity
     max_base_value: 100.0
     propagation_decay: 0.85
     convergence_multiplier: 0.2

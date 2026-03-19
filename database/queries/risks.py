@@ -23,7 +23,7 @@ def create_risk(
     origin: str = "New",
     owner: str = "",
     probability: Optional[float] = None,
-    impact: Optional[float] = None,
+    severity: Optional[float] = None,
     activation_condition: Optional[str] = None,
     activation_decision_date: Optional[str] = None,
     subtype: Optional[str] = None,
@@ -31,7 +31,7 @@ def create_risk(
 ) -> Optional[str]:
     """
     Create a new Risk node.
-    
+
     Args:
         conn: Database connection
         name: Risk name
@@ -42,7 +42,7 @@ def create_risk(
         origin: "New" or "Legacy"
         owner: Risk owner
         probability: Probability score (0-10)
-        impact: Impact score (0-10)
+        severity: Severity score (0-10)
         activation_condition: Condition for contingent risks
         activation_decision_date: Decision date for contingent risks
         subtype: Risk subtype ID (e.g., "generic", "cyber_entry_point")
@@ -54,8 +54,8 @@ def create_risk(
     # Calculate exposure
     exposure = None
     current_score_type = "None"
-    if probability is not None and impact is not None:
-        exposure = probability * impact
+    if probability is not None and severity is not None:
+        exposure = probability * severity
         current_score_type = "Qualitative_4x4"
     
     # Review dates
@@ -84,7 +84,7 @@ def create_risk(
         owner: $owner,
         current_score_type: $current_score_type,
         probability: $probability,
-        impact: $impact,
+        severity: $severity,
         exposure: $exposure,
         subtype: $subtype,
         created_at: datetime(),
@@ -108,7 +108,7 @@ def create_risk(
         "owner": owner,
         "current_score_type": current_score_type,
         "probability": probability,
-        "impact": impact,
+        "severity": severity,
         "exposure": exposure,
         "subtype": subtype or "generic",
         "last_review_date": last_review_date,
@@ -179,7 +179,7 @@ def get_all_risks(
            r.activation_condition as activation_condition,
            r.activation_decision_date as activation_decision_date,
            r.owner as owner, r.probability as probability,
-           r.impact as impact, r.exposure as exposure,
+           r.severity as severity, r.exposure as exposure,
            r.current_score_type as current_score_type,
            properties(r) as all_props,
            computed_distance,
@@ -229,12 +229,12 @@ def get_risk_by_id(conn: Neo4jConnection, risk_id: str) -> Optional[Dict[str, An
            r.activation_condition as activation_condition,
            r.activation_decision_date as activation_decision_date,
            r.owner as owner, r.probability as probability,
-           r.impact as impact, r.exposure as exposure,
+           r.severity as severity, r.exposure as exposure,
            properties(r) as all_props,
            computed_distance,
            CASE WHEN computed_distance = -1 THEN true ELSE false END as is_orphan
     """
-    
+
     result = conn.execute_query(query, {"id": risk_id})
     if not result:
         return None
@@ -272,7 +272,7 @@ def get_risk_by_name(conn: Neo4jConnection, name: str) -> Optional[Dict[str, Any
            r.categories as categories, r.description as description,
            r.status as status, r.origin as origin,
            r.owner as owner, r.probability as probability,
-           r.impact as impact, r.exposure as exposure,
+           r.severity as severity, r.exposure as exposure,
            computed_distance,
            CASE WHEN computed_distance = -1 THEN true ELSE false END as is_orphan
     """
@@ -385,7 +385,7 @@ def update_risk(
     origin: str = "New",
     owner: str = "",
     probability: Optional[float] = None,
-    impact: Optional[float] = None,
+    severity: Optional[float] = None,
     activation_condition: Optional[str] = None,
     activation_decision_date: Optional[str] = None,
     subtype: Optional[str] = None,
@@ -393,7 +393,7 @@ def update_risk(
 ) -> bool:
     """
     Update an existing risk.
-    
+
     Args:
         conn: Database connection
         risk_id: Risk UUID to update
@@ -405,7 +405,7 @@ def update_risk(
         origin: Updated origin
         owner: Updated owner
         probability: Updated probability
-        impact: Updated impact
+        severity: Updated severity
         activation_condition: Updated activation condition
         activation_decision_date: Updated decision date
         subtype: Risk subtype ID
@@ -414,7 +414,7 @@ def update_risk(
     Returns:
         True if successful, False otherwise
     """
-    exposure = (probability * impact) if (probability and impact) else None
+    exposure = (probability * severity) if (probability and severity) else None
     
     # Build extension field SET and REMOVE clauses
     ext_set_parts = []
@@ -445,7 +445,7 @@ def update_risk(
         r.activation_decision_date = $activation_decision_date,
         r.owner = $owner,
         r.probability = $probability,
-        r.impact = $impact,
+        r.severity = $severity,
         r.exposure = $exposure,
         r.subtype = $subtype,
         r.updated_at = datetime(){ext_set_clause}
@@ -465,7 +465,7 @@ def update_risk(
         "activation_decision_date": activation_decision_date,
         "owner": owner,
         "probability": probability,
-        "impact": impact,
+        "severity": severity,
         "exposure": exposure,
         "subtype": subtype or "generic",
     }

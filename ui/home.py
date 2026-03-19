@@ -317,7 +317,7 @@ def render_exposure_dashboard(manager):
                 st.metric(
                     f"{health_color} Risk Score",
                     f"{weighted_score:.1f}/100",
-                    help=f"Impact-weighted risk score. Status: {health_label}"
+                    help=f"Severity-weighted risk score. Status: {health_label}"
                 )
             
             with col3:
@@ -349,7 +349,10 @@ def render_exposure_dashboard(manager):
                 risks_with_data = exposure_results.get("risks_with_data", 0)
                 total_risks = exposure_results.get("total_risks", 0)
                 st.metric("📋 With Data", f"{risks_with_data}/{total_risks}")
-            
+
+            # U13 — Quadrant distribution widget
+            _render_quadrant_distribution(exposure_results)
+
             # Details expander
             with st.expander("📋 Detailed Risk Exposures", expanded=False):
                 risk_results = exposure_results.get("risk_results", [])
@@ -391,6 +394,38 @@ def render_exposure_dashboard(manager):
                                         st.text(message)
                 else:
                     st.info("No risk exposure data available.")
+
+
+def _render_quadrant_distribution(exposure_results: dict) -> None:
+    """U13 — Render a compact quadrant distribution bar for the exposure panel."""
+    risk_results = exposure_results.get("risk_results", [])
+    if not risk_results:
+        return
+
+    quadrant_counts = {"critical": 0, "frequency": 0, "severity": 0, "marginal": 0}
+    for r in risk_results:
+        q = r.get("risk_quadrant", "marginal")
+        if q in quadrant_counts:
+            quadrant_counts[q] += 1
+
+    total = sum(quadrant_counts.values())
+    if total == 0:
+        return
+
+    labels = {
+        "critical": ("🔴 Critical", "#e74c3c"),
+        "frequency": ("🟠 Frequency", "#e67e22"),
+        "severity": ("🟡 Severity", "#f39c12"),
+        "marginal": ("🟢 Marginal", "#27ae60"),
+    }
+
+    st.markdown("**Quadrant Distribution (U13)**")
+    cols = st.columns(4)
+    for i, (q, (label, color)) in enumerate(labels.items()):
+        count = quadrant_counts[q]
+        pct = count / total * 100
+        with cols[i]:
+            st.metric(label, f"{count}", help=f"{pct:.0f}% of risks in this quadrant")
 
 
 def render_visualization_filters(manager: RiskGraphManager):
@@ -501,6 +536,39 @@ def render_visualization_filters(manager: RiskGraphManager):
                             label_visibility="collapsed"
                         )
                         st.session_state["filter_risk_subtypes"] = selected_subtypes
+
+                    # U13 — Quadrant filter (only shown when exposure has been calculated)
+                    _exp = st.session_state.get("exposure_results")
+                    if _exp and _exp.get("risk_results"):
+                        all_quadrants = ["critical", "frequency", "severity", "marginal"]
+                        quadrant_labels_map = {
+                            "critical": "🔴 Critical",
+                            "frequency": "🟠 Frequency",
+                            "severity": "🟡 Severity",
+                            "marginal": "🟢 Marginal",
+                        }
+                        # Only list quadrants that are actually present
+                        present_quadrants = list({
+                            r.get("risk_quadrant", "marginal")
+                            for r in _exp["risk_results"]
+                            if r.get("risk_quadrant") in all_quadrants
+                        })
+                        if present_quadrants:
+                            st.markdown("**Quadrant (U13)**")
+                            current_q = st.session_state.get("filter_risk_quadrants", present_quadrants)
+                            selected_quadrants = st.multiselect(
+                                "Quadrant filter",
+                                options=[quadrant_labels_map[q] for q in all_quadrants if q in present_quadrants],
+                                default=[quadrant_labels_map[q] for q in current_q if q in present_quadrants],
+                                key="filter_risk_quadrants_ms",
+                                label_visibility="collapsed"
+                            )
+                            # Reverse-map labels back to IDs
+                            label_to_qid = {v: k for k, v in quadrant_labels_map.items()}
+                            st.session_state["filter_risk_quadrants"] = [
+                                label_to_qid[lbl] for lbl in selected_quadrants
+                                if lbl in label_to_qid
+                            ]
 
     def _render_relationship_filter(rel_id, rel_type):
         """Render filter controls for a single relationship type."""
@@ -989,6 +1057,30 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
                             and e.get("target") not in removed_ids
                         ]
         
+        # ── Apply quadrant filter (U13) ───────────────────────────────────
+        selected_quadrants = st.session_state.get("filter_risk_quadrants")
+        if selected_quadrants is not None and exposure_results and "risk_results" in exposure_results:
+            q_lookup = {r["risk_id"]: r.get("risk_quadrant", "marginal") for r in exposure_results["risk_results"]}
+            all_q = {"critical", "frequency", "severity", "marginal"}
+            filtered_q = set(selected_quadrants)
+            if filtered_q != all_q:
+                removed_ids = set()
+                filtered_nodes = []
+                for n in nodes:
+                    if n.get("node_type") == "Risk":
+                        q = q_lookup.get(n.get("id"), "marginal")
+                        if q not in filtered_q:
+                            removed_ids.add(n.get("id"))
+                            continue
+                    filtered_nodes.append(n)
+                if removed_ids:
+                    nodes = filtered_nodes
+                    edges = [
+                        e for e in edges
+                        if e.get("source") not in removed_ids
+                        and e.get("target") not in removed_ids
+                    ]
+
         # Load positions if layout selected
         positions = None
         if "selected_layout_name" in st.session_state:

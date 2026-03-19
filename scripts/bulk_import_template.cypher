@@ -57,7 +57,7 @@ UNWIND [
     categories: ['Programme', 'Produit'],  // Programme | Produit | Industriel | Supply Chain
     owner: 'Risk Owner Name',
     probability: 5.0,  // 0.0 to 10.0
-    impact: 7.0,       // 0.0 to 10.0
+    severity: 7.0,       // 0.0 to 10.0
     activation_condition: null,      // Only for Contingent risks
     activation_decision_date: null   // Only for Contingent risks (format: 'YYYY-MM-DD')
   },
@@ -70,7 +70,7 @@ UNWIND [
     categories: ['Programme'],
     owner: 'Owner Name',
     probability: 6.0,
-    impact: 8.0,
+    severity: 8.0,
     activation_condition: 'If decision X is taken in Q3 2026',
     activation_decision_date: '2026-09-30'
   }
@@ -86,11 +86,11 @@ CREATE (r:Risk {
   categories: COALESCE(row.categories, ['Programme']),
   owner: COALESCE(row.owner, ''),
   probability: row.probability,
-  impact: row.impact,
-  exposure: CASE WHEN row.probability IS NOT NULL AND row.impact IS NOT NULL 
-                 THEN row.probability * row.impact 
+  severity: row.severity,
+  exposure: CASE WHEN row.probability IS NOT NULL AND row.severity IS NOT NULL 
+                 THEN row.probability * row.severity 
                  ELSE null END,
-  current_score_type: CASE WHEN row.probability IS NOT NULL AND row.impact IS NOT NULL 
+  current_score_type: CASE WHEN row.probability IS NOT NULL AND row.severity IS NOT NULL 
                            THEN 'Qualitative_4x4' 
                            ELSE 'None' END,
   activation_condition: row.activation_condition,
@@ -116,7 +116,7 @@ UNWIND [
     categories: ['Supply Chain', 'Industriel'],
     owner: 'Risk Owner Name',
     probability: 5.0,
-    impact: 6.0
+    severity: 6.0
   },
   {
     id: 'RO-002',
@@ -127,7 +127,7 @@ UNWIND [
     categories: ['Produit'],
     owner: 'Owner Name',
     probability: 4.0,
-    impact: 7.0
+    severity: 7.0
   }
   // === ADD MORE OPERATIONAL RISKS ABOVE THIS LINE ===
 ] AS row
@@ -141,11 +141,11 @@ CREATE (r:Risk {
   categories: COALESCE(row.categories, ['Programme']),
   owner: COALESCE(row.owner, ''),
   probability: row.probability,
-  impact: row.impact,
-  exposure: CASE WHEN row.probability IS NOT NULL AND row.impact IS NOT NULL 
-                 THEN row.probability * row.impact 
+  severity: row.severity,
+  exposure: CASE WHEN row.probability IS NOT NULL AND row.severity IS NOT NULL 
+                 THEN row.probability * row.severity 
                  ELSE null END,
-  current_score_type: CASE WHEN row.probability IS NOT NULL AND row.impact IS NOT NULL 
+  current_score_type: CASE WHEN row.probability IS NOT NULL AND row.severity IS NOT NULL 
                            THEN 'Qualitative_4x4' 
                            ELSE 'None' END,
   activation_condition: null,
@@ -281,7 +281,7 @@ MATCH (r:Risk {id: row.risk_id, level: 'Strategic'})
 MATCH (t:TPO {id: row.tpo_id})
 CREATE (r)-[:IMPACTS_TPO {
   id: row.id,
-  impact_level: row.impact_level,
+  impact_level: row.severity_level,
   description: COALESCE(row.description, ''),
   created_at: datetime()
 }]->(t);

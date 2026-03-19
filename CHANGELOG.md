@@ -4,6 +4,55 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.25.0] - 2026-03-19
+
+### Iteration 4 — Severity Rename + Dual-Metric Exposure (U13)
+
+**Breaking schema change**: `Risk.impact` property renamed to `Risk.severity` across all layers.
+Run `scripts/migrate_impact_to_severity.cypher` once on existing Neo4j databases.
+
+**New Features:**
+
+- **[U13a] `Risk.impact` → `Risk.severity` rename**: Intrinsic event intensity score (1–10) renamed
+  across schema YAML, Python models, database queries, manager, backup service, exposure engine,
+  simulation page, UI panels, and all test/demo Cypher datasets.
+  - Legacy JSON backups still restore correctly (`_risk_kwargs` falls back to `"impact"` key).
+  - Legacy Neo4j data still loads correctly (exposure calculator falls back to `r.impact` if
+    `r.severity` is absent — until migration Cypher is run).
+
+- **[U13b] TRI — Tail Risk Indicator**: New computed metric (session-state only, not stored in Neo4j).
+  - Formula: `TRI = likelihood × severity^1.5` (α = 1.5, emphasises rare-but-catastrophic risks).
+  - Surfaced in Node Property Panel (§ Exposure section) and `to_dict()` output.
+
+- **[U13c] Risk Quadrant Classification**: Four-class computed label per risk.
+  - `critical`: L ≥ 6 AND S ≥ 6 | `frequency`: L ≥ 6 AND S < 6
+  - `severity`: L < 6 AND S ≥ 7 | `marginal`: all others
+  - Quadrant distribution widget added to dashboard (4-column metric row).
+  - Quadrant multiselect filter added to sidebar (visible when exposure is computed).
+
+- **Cypher file reorganisation**: All root-level `.cypher` scripts moved to `scripts/` folder.
+  - `demo_data_loader_en.cypher`, `demo_tc_dataset.cypher`, `SNR_demo_data_loader_en.cypher`,
+    `bulk_import_template.cypher`, `data_cleanup.cypher` → `scripts/`
+  - `docs/New Space/ODT_RIM_SpaceUseCase.cypher` updated in place.
+  - Path references in `pages/1_⚙️_Configuration.py` updated accordingly.
+
+**Files Modified:**
+- `schemas/default/schema.yaml`, `schemas/it_security/schema.yaml` — attribute `impact` → `severity`; `base_formula` updated.
+- `models/risk.py` — field, `__post_init__`, `calculate_exposure()`, `to_dict()`, `from_dict()`.
+- `services/exposure_calculator.py` — `MAX_SEVERITY`, `TRI_ALPHA`; `_compute_risk_quadrant()` helper; `RiskExposureResult` gains `tail_risk_indicator` + `risk_quadrant`; Step 6 TRI/quadrant computation.
+- `database/queries/risks.py`, `database/manager.py` — all `impact` param/Cypher references.
+- `config/schema_loader.py` — `base_formula` default.
+- `pages/2_🎲_Simulation.py` — `SimulatedRisk.severity`, `severity_range` params, UI labels.
+- `ui/panels/node_property_panel.py` — Severity metric + TRI + quadrant display.
+- `ui/home.py` — Quadrant distribution widget; quadrant sidebar filter.
+- `services/backup_service.py` — `_risk_kwargs` legacy fallback.
+- `pages/1_⚙️_Configuration.py` — test data generator; demo file paths.
+- `scripts/` — 5 cypher files moved + updated; `migrate_impact_to_severity.cypher` (new).
+- `docs/New Space/ODT_RIM_SpaceUseCase.cypher` — `impact:` → `severity:` on all Risk nodes.
+- `tests/` — `conftest.py`, `test_risk.py`, `test_exposure_calculator.py`, `test_scopes.py`, `test_helpers.py`, `test_core/test_attribute.py`.
+
+---
+
 ## [v2.24.0] - 2026-03-18
 
 ### Iteration 4 — Scope-Driven Simulation & Results Storage (F31)

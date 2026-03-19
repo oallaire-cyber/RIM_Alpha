@@ -176,8 +176,8 @@ class TestCalculateExposure:
         """Test None probability returns None."""
         assert calculate_exposure(None, 8.0) is None
     
-    def test_calculate_exposure_none_impact(self):
-        """Test None impact returns None."""
+    def test_calculate_exposure_none_severity(self):
+        """Test None severity returns None."""
         assert calculate_exposure(5.0, None) is None
     
     def test_calculate_exposure_both_none(self):

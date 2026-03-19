@@ -2,7 +2,7 @@
 RIM Exposure Model Calibration Simulator
 
 Monte Carlo simulation tool to validate and calibrate the exposure calculation model.
-Generates random scenarios with varying likelihood, impact, and influence values
+Generates random scenarios with varying likelihood, severity, and influence values
 to visualize how risk exposure evolves along different mitigation paths.
 
 Run with: streamlit run calibration_simulator.py
@@ -65,11 +65,11 @@ class SimulatedRisk:
     name: str
     level: str  # Strategic or Operational
     likelihood: float
-    impact: float
+    severity: float
     base_exposure: float = field(init=False)
-    
+
     def __post_init__(self):
-        self.base_exposure = self.likelihood * self.impact
+        self.base_exposure = self.likelihood * self.severity
 
 
 @dataclass
@@ -187,10 +187,10 @@ def calculate_scenario_exposures(scenario: SimulationScenario) -> SimulationScen
     
     # Weighted score
     weighted_sum = sum(
-        scenario.risk_exposures[r.id] * (r.impact ** 2) 
+        scenario.risk_exposures[r.id] * (r.severity ** 2)
         for r in scenario.risks
     )
-    max_weighted = sum(100 * (r.impact ** 2) for r in scenario.risks)
+    max_weighted = sum(100 * (r.severity ** 2) for r in scenario.risks)
     scenario.global_risk_score = (weighted_sum / max_weighted * 100) if max_weighted > 0 else 0
     
     scenario.max_exposure = max(scenario.risk_exposures.values()) if scenario.risk_exposures else 0
@@ -207,11 +207,11 @@ def generate_risk_network(
     n_strategic: int,
     influence_density: float,
     likelihood_range: Tuple[float, float],
-    impact_range: Tuple[float, float]
+    severity_range: Tuple[float, float]
 ) -> Tuple[List[SimulatedRisk], List[SimulatedInfluence]]:
     """Generate a random risk network."""
     risks = []
-    
+
     # Generate operational risks
     for i in range(n_operational):
         risks.append(SimulatedRisk(
@@ -219,9 +219,9 @@ def generate_risk_network(
             name=f"Operational Risk {i+1}",
             level="Operational",
             likelihood=random.uniform(*likelihood_range),
-            impact=random.uniform(*impact_range)
+            severity=random.uniform(*severity_range)
         ))
-    
+
     # Generate strategic risks
     for i in range(n_strategic):
         risks.append(SimulatedRisk(
@@ -229,7 +229,7 @@ def generate_risk_network(
             name=f"Strategic Risk {i+1}",
             level="Strategic",
             likelihood=random.uniform(*likelihood_range),
-            impact=random.uniform(*impact_range)
+            severity=random.uniform(*severity_range)
         ))
     
     # Generate influences
@@ -383,22 +383,22 @@ def run_monte_carlo(
     n_strategic: int,
     influence_density: float,
     likelihood_range: Tuple[float, float],
-    impact_range: Tuple[float, float],
+    severity_range: Tuple[float, float],
     mitigation_coverage_range: Tuple[float, float],
     progress_callback=None
 ) -> pd.DataFrame:
     """
     Run Monte Carlo simulation with random parameters.
-    
+
     Returns DataFrame with results for each simulation.
     """
     results = []
-    
+
     for i in range(n_simulations):
         # Generate random network
         risks, influences = generate_risk_network(
             n_operational, n_strategic, influence_density,
-            likelihood_range, impact_range
+            likelihood_range, severity_range
         )
         
         # Generate scenario with random mitigations
@@ -450,7 +450,7 @@ def run_monte_carlo(
             "weighted_risk_score": scenario.global_risk_score,
             "max_single_exposure": scenario.max_exposure,
             "avg_likelihood": np.mean([r.likelihood for r in risks]),
-            "avg_impact": np.mean([r.impact for r in risks]),
+            "avg_severity": np.mean([r.severity for r in risks]),
         })
         
         if progress_callback and (i + 1) % 100 == 0:
@@ -466,21 +466,21 @@ def run_mitigation_path_simulation(
     n_strategic: int,
     influence_density: float,
     likelihood_range: Tuple[float, float],
-    impact_range: Tuple[float, float],
+    severity_range: Tuple[float, float],
     progress_callback=None
 ) -> pd.DataFrame:
     """
     Run simulation of mitigation paths.
-    
+
     Returns DataFrame with results for each step of each path.
     """
     results = []
-    
+
     for path_id in range(n_paths):
         # Generate random network (fixed for this path)
         risks, influences = generate_risk_network(
             n_operational, n_strategic, influence_density,
-            likelihood_range, impact_range
+            likelihood_range, severity_range
         )
         
         # Generate mitigation path
@@ -585,8 +585,8 @@ def main():
             "Parameter mode",
             ["Real L×I values", "Random L×I (calibration)"],
             help=(
-                "Real L×I: use actual likelihood/impact from the DB each run. "
-                "Random L×I: randomise likelihood/impact within ranges while keeping real topology."
+                "Real L×I: use actual likelihood/severity from the DB each run. "
+                "Random L×I: randomise likelihood/severity within ranges while keeping real topology."
             )
         )
 
@@ -606,15 +606,15 @@ def main():
             col1, col2 = st.sidebar.columns(2)
             with col1:
                 sb_likelihood_min = st.number_input("Likelihood Min", 1.0, 10.0, 1.0, key="sb_lmin")
-                sb_impact_min = st.number_input("Impact Min", 1.0, 10.0, 1.0, key="sb_imin")
+                sb_severity_min = st.number_input("Severity Min", 1.0, 10.0, 1.0, key="sb_imin")
             with col2:
                 sb_likelihood_max = st.number_input("Likelihood Max", 1.0, 10.0, 10.0, key="sb_lmax")
-                sb_impact_max = st.number_input("Impact Max", 1.0, 10.0, 10.0, key="sb_imax")
+                sb_severity_max = st.number_input("Severity Max", 1.0, 10.0, 10.0, key="sb_imax")
             sb_likelihood_range = (sb_likelihood_min, sb_likelihood_max)
-            sb_impact_range = (sb_impact_min, sb_impact_max)
+            sb_severity_range = (sb_severity_min, sb_severity_max)
         else:
             sb_likelihood_range = (1.0, 10.0)
-            sb_impact_range = (1.0, 10.0)
+            sb_severity_range = (1.0, 10.0)
 
         st.sidebar.markdown("---")
         run_button = st.sidebar.button(
@@ -628,7 +628,7 @@ def main():
                     manager, scope_ids, scope_label,
                     n_simulations_sb, coverage_variance,
                     param_mode == "Random L×I (calibration)",
-                    sb_likelihood_range, sb_impact_range
+                    sb_likelihood_range, sb_severity_range
                 )
             elif not run_button:
                 st.info("👈 Configure parameters in the sidebar and click **Run Simulation** to start.")
@@ -656,13 +656,13 @@ def main():
     col1, col2 = st.sidebar.columns(2)
     with col1:
         likelihood_min = st.number_input("Likelihood Min", 1.0, 10.0, 1.0)
-        impact_min = st.number_input("Impact Min", 1.0, 10.0, 1.0)
+        severity_min = st.number_input("Severity Min", 1.0, 10.0, 1.0)
     with col2:
         likelihood_max = st.number_input("Likelihood Max", 1.0, 10.0, 10.0)
-        impact_max = st.number_input("Impact Max", 1.0, 10.0, 10.0)
+        severity_max = st.number_input("Severity Max", 1.0, 10.0, 10.0)
 
     likelihood_range = (likelihood_min, likelihood_max)
-    impact_range = (impact_min, impact_max)
+    severity_range = (severity_min, severity_max)
 
     if sim_mode == "Monte Carlo (Random)":
         st.sidebar.markdown("---")
@@ -695,12 +695,12 @@ def main():
             if sim_mode == "Monte Carlo (Random)":
                 run_monte_carlo_simulation(
                     n_simulations, n_operational, n_strategic, influence_density,
-                    likelihood_range, impact_range, mitigation_coverage_range
+                    likelihood_range, severity_range, mitigation_coverage_range
                 )
             else:
                 run_mitigation_path_simulation_ui(
                     n_paths, n_steps, n_operational, n_strategic, influence_density,
-                    likelihood_range, impact_range
+                    likelihood_range, severity_range
                 )
         else:
             # Show instructions
@@ -719,7 +719,7 @@ def _render_about_expander():
 
         The model calculates risk exposure through three factors:
 
-        **1. Base Exposure** = `Likelihood × Impact` (scale 1-100)
+        **1. Base Exposure** = `Likelihood × Severity` (scale 1-100)
 
         **2. Mitigation Factor** = `∏(1 - Effectiveness)` (multiplicative, diminishing returns)
 
@@ -760,7 +760,7 @@ def _render_about_expander():
 
 def run_monte_carlo_simulation(
     n_simulations, n_operational, n_strategic, influence_density,
-    likelihood_range, impact_range, mitigation_coverage_range
+    likelihood_range, severity_range, mitigation_coverage_range
 ):
     """Run and display Monte Carlo simulation results."""
 
@@ -779,7 +779,7 @@ def run_monte_carlo_simulation(
 
     df = run_monte_carlo(
         n_simulations, n_operational, n_strategic, influence_density,
-        likelihood_range, impact_range, mitigation_coverage_range,
+        likelihood_range, severity_range, mitigation_coverage_range,
         progress_callback=update_progress
     )
 
@@ -815,7 +815,7 @@ def run_monte_carlo_simulation(
         params={
             "n_simulations": n_simulations, "n_operational": n_operational,
             "n_strategic": n_strategic, "influence_density": influence_density,
-            "likelihood_range": likelihood_range, "impact_range": impact_range,
+            "likelihood_range": likelihood_range, "severity_range": severity_range,
             "mitigation_coverage_range": mitigation_coverage_range,
         },
         button_key="save_mc",
@@ -1021,7 +1021,7 @@ def render_heatmaps(df: pd.DataFrame):
 
 def run_mitigation_path_simulation_ui(
     n_paths, n_steps, n_operational, n_strategic, influence_density,
-    likelihood_range, impact_range
+    likelihood_range, severity_range
 ):
     """Run and display mitigation path simulation results."""
     
@@ -1040,7 +1040,7 @@ def run_mitigation_path_simulation_ui(
     
     df = run_mitigation_path_simulation(
         n_paths, n_steps, n_operational, n_strategic, influence_density,
-        likelihood_range, impact_range,
+        likelihood_range, severity_range,
         progress_callback=update_progress
     )
     
@@ -1068,7 +1068,7 @@ def run_mitigation_path_simulation_ui(
             "n_paths": n_paths, "n_steps": n_steps,
             "n_operational": n_operational, "n_strategic": n_strategic,
             "influence_density": influence_density,
-            "likelihood_range": likelihood_range, "impact_range": impact_range,
+            "likelihood_range": likelihood_range, "severity_range": severity_range,
         },
         button_key="save_path",
     )
@@ -1287,7 +1287,7 @@ def _load_scope_data(
             name=r["name"],
             level="Strategic" if r.get("level") == "Business" else "Operational",
             likelihood=float(r.get("probability") or 5.0),
-            impact=float(r.get("impact") or 5.0),
+            severity=float(r.get("severity") or r.get("impact") or 5.0),  # impact fallback for legacy data
         )
         for r in risks_raw
     ]
@@ -1322,14 +1322,14 @@ def run_scope_based_monte_carlo(
     coverage_variance: float,
     randomize_params: bool,
     likelihood_range: Tuple[float, float],
-    impact_range: Tuple[float, float],
+    severity_range: Tuple[float, float],
     progress_callback=None,
 ) -> pd.DataFrame:
     """Monte Carlo over a fixed real topology.
 
     Each run varies mitigation coverage by ±coverage_variance around the
     real coverage ratio.  When randomize_params is True, likelihood and
-    impact are also sampled randomly per run; otherwise real values are used.
+    severity are also sampled randomly per run; otherwise real values are used.
 
     Returns a DataFrame with the same schema as run_monte_carlo(), plus a
     'param_mode' column.
@@ -1352,7 +1352,7 @@ def run_scope_based_monte_carlo(
                 SimulatedRisk(
                     id=r.id, name=r.name, level=r.level,
                     likelihood=random.uniform(*likelihood_range),
-                    impact=random.uniform(*impact_range),
+                    severity=random.uniform(*severity_range),
                 )
                 for r in real_risks
             ]
@@ -1414,7 +1414,7 @@ def run_scope_based_monte_carlo(
             "weighted_risk_score": scenario.global_risk_score,
             "max_single_exposure": scenario.max_exposure,
             "avg_likelihood": np.mean([r.likelihood for r in run_risks]),
-            "avg_impact": np.mean([r.impact for r in run_risks]),
+            "avg_severity": np.mean([r.severity for r in run_risks]),
             "param_mode": "Random L×I" if randomize_params else "Real L×I",
         })
 
@@ -1432,7 +1432,7 @@ def run_scope_based_simulation_ui(
     coverage_variance: float,
     randomize_params: bool,
     likelihood_range: Tuple[float, float],
-    impact_range: Tuple[float, float],
+    severity_range: Tuple[float, float],
 ):
     """Run and display a scope-based simulation."""
 
@@ -1462,7 +1462,7 @@ def run_scope_based_simulation_ui(
     df = run_scope_based_monte_carlo(
         real_risks, real_influences, real_mitigations,
         n_simulations, coverage_variance, randomize_params,
-        likelihood_range, impact_range,
+        likelihood_range, severity_range,
         progress_callback=update_progress,
     )
     elapsed = (datetime.now() - start_time).total_seconds()
@@ -1499,7 +1499,7 @@ def run_scope_based_simulation_ui(
             "coverage_variance": coverage_variance,
             "param_mode": "Random L×I" if randomize_params else "Real L×I",
             "likelihood_range": likelihood_range if randomize_params else "real",
-            "impact_range": impact_range if randomize_params else "real",
+            "severity_range": severity_range if randomize_params else "real",
             "scope_label": scope_label,
         },
         button_key="save_sb",

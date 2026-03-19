@@ -282,7 +282,7 @@ class MitigatesRelConfig:
 @dataclass
 class ExposureConfig:
     """Exposure calculation configuration."""
-    base_formula: str = "likelihood * impact"
+    base_formula: str = "likelihood * severity"
     max_base_value: float = 100.0
     propagation_decay: float = 0.85
     convergence_multiplier: float = 0.2
@@ -841,7 +841,7 @@ class SchemaLoader:
         """Parse analysis configuration."""
         exposure_data = data.get("exposure", {})
         exposure = ExposureConfig(
-            base_formula=exposure_data.get("base_formula", "likelihood * impact"),
+            base_formula=exposure_data.get("base_formula", "likelihood * severity"),
             max_base_value=exposure_data.get("max_base_value", 100.0),
             propagation_decay=exposure_data.get("propagation_decay", 0.85),
             convergence_multiplier=exposure_data.get("convergence_multiplier", 0.2),

@@ -187,12 +187,12 @@ class TestAttributeValidator:
         """Test getting engine-required attributes."""
         definitions = [
             AttributeDefinition(name="probability", type=AttributeType.FLOAT, engine_required=True),
-            AttributeDefinition(name="impact", type=AttributeType.FLOAT, engine_required=True),
+            AttributeDefinition(name="severity", type=AttributeType.FLOAT, engine_required=True),
             AttributeDefinition(name="notes", type=AttributeType.STRING),
         ]
         validator = AttributeValidator(definitions)
-        
+
         engine_attrs = validator.get_engine_required_attributes()
         assert "probability" in engine_attrs
-        assert "impact" in engine_attrs
+        assert "severity" in engine_attrs
         assert "notes" not in engine_attrs

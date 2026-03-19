@@ -23,7 +23,7 @@ class TestRiskExposureResult:
             risk_name="Test Risk",
             level="Business",
             likelihood=5.0,
-            impact=8.0,
+            severity=8.0,
             base_exposure=40.0,
             mitigation_factor=0.7,
             mitigated_exposure=28.0,
@@ -34,11 +34,11 @@ class TestRiskExposureResult:
             final_exposure=30.4,
             trace=["Test trace"],
         )
-        
+
         assert result.risk_id == "risk-001"
         assert result.base_exposure == 40.0
         assert result.final_exposure == 30.4
-    
+
     def test_to_dict(self):
         """Test to_dict serialization."""
         result = RiskExposureResult(
@@ -46,7 +46,7 @@ class TestRiskExposureResult:
             risk_name="Test Risk",
             level="Business",
             likelihood=5.0,
-            impact=8.0,
+            severity=8.0,
             base_exposure=40.0,
             mitigation_factor=0.7,
             mitigated_exposure=28.0,
@@ -57,13 +57,16 @@ class TestRiskExposureResult:
             final_exposure=30.4,
             trace=["Test trace"],
         )
-        
+
         data = result.to_dict()
-        
+
         assert data["risk_id"] == "risk-001"
         assert data["risk_name"] == "Test Risk"
         assert data["base_exposure"] == 40.0
         assert data["final_exposure"] == 30.4
+        assert "severity" in data
+        assert "tail_risk_indicator" in data
+        assert "risk_quadrant" in data
 
 
 class TestGlobalExposureResult:
@@ -199,7 +202,7 @@ class TestExposureCalculatorCalculations:
     """Tests for ExposureCalculator calculation methods."""
     
     def test_calculate_base_exposure(self, sample_risk_network):
-        """Test base exposure calculation (likelihood × impact)."""
+        """Test base exposure calculation (likelihood × severity)."""
         calc = ExposureCalculator(
             risks=sample_risk_network["risks"],
             influences=sample_risk_network["influences"],
@@ -207,7 +210,7 @@ class TestExposureCalculatorCalculations:
             mitigates_relationships=sample_risk_network["mitigates_relationships"]
         )
         
-        # Test with strat-001: probability=6, impact=8 => base=48
+        # Test with strat-001: probability=6, severity=8 => base=48
         risk = calc.risks.get("strat-001")
         if risk:
             base = calc._calculate_base_exposure(risk)
@@ -222,8 +225,8 @@ class TestExposureCalculatorCalculations:
             mitigates_relationships=[]
         )
         
-        # Risk with missing probability/impact
-        risk = {"id": "test", "name": "Test", "probability": None, "impact": 5.0}
+        # Risk with missing probability/severity
+        risk = {"id": "test", "name": "Test", "probability": None, "severity": 5.0}
         base = calc._calculate_base_exposure(risk)
         
         assert base == 0.0
@@ -274,6 +277,13 @@ class TestExposureCalculatorCalculations:
         assert isinstance(results, GlobalExposureResult)
         assert results.total_risks == 3
         assert len(results.risk_results) > 0
+
+        # U13: every result has TRI and risk_quadrant
+        for r in results.risk_results:
+            d = r.to_dict()
+            assert "tail_risk_indicator" in d
+            assert d["tail_risk_indicator"] > 0
+            assert d["risk_quadrant"] in {"critical", "frequency", "severity", "marginal"}
     
     def test_calculate_all_empty_risks(self):
         """Test calculate_all handles empty risks."""

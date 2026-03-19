@@ -25,8 +25,8 @@ class Risk:
         description: Detailed risk description
         owner: Risk owner/responsible party
         probability: Probability score (0-10)
-        impact: Impact score (0-10)
-        exposure: Calculated exposure (probability × impact)
+        severity: Severity score (0-10) — intrinsic intensity of the risk event
+        exposure: Calculated exposure (probability × severity)
         activation_condition: Condition for contingent risks
         activation_decision_date: Decision date for contingent risks
         current_score_type: Type of scoring used
@@ -45,7 +45,7 @@ class Risk:
     description: str = ""
     owner: str = ""
     probability: Optional[float] = None
-    impact: Optional[float] = None
+    severity: Optional[float] = None
     exposure: Optional[float] = None
     activation_condition: Optional[str] = None
     activation_decision_date: Optional[str] = None
@@ -70,8 +70,8 @@ class Risk:
             self.origin = RiskOrigin(self.origin)
         
         # Calculate exposure if not provided
-        if self.exposure is None and self.probability and self.impact:
-            self.exposure = self.probability * self.impact
+        if self.exposure is None and self.probability and self.severity:
+            self.exposure = self.probability * self.severity
     
     @property
     def is_business(self) -> bool:
@@ -112,8 +112,8 @@ class Risk:
     
     def calculate_exposure(self) -> Optional[float]:
         """Calculate and return exposure score."""
-        if self.probability is not None and self.impact is not None:
-            self.exposure = self.probability * self.impact
+        if self.probability is not None and self.severity is not None:
+            self.exposure = self.probability * self.severity
             return self.exposure
         return None
     
@@ -129,7 +129,7 @@ class Risk:
             "description": self.description,
             "owner": self.owner,
             "probability": self.probability,
-            "impact": self.impact,
+            "severity": self.severity,
             "exposure": self.exposure,
             "activation_condition": self.activation_condition,
             "activation_decision_date": self.activation_decision_date,
@@ -149,7 +149,7 @@ class Risk:
             description=data.get("description", ""),
             owner=data.get("owner", ""),
             probability=data.get("probability"),
-            impact=data.get("impact"),
+            severity=data.get("severity"),
             exposure=data.get("exposure"),
             activation_condition=data.get("activation_condition"),
             activation_decision_date=data.get("activation_decision_date"),

@@ -378,8 +378,8 @@ class TestCalculateExposureScoping:
         # Create a mock manager with the real calculate_exposure method bound
         manager = MagicMock(spec=RiskGraphManager)
         manager.get_all_risks.return_value = [
-            {"id": "r1", "name": "R1", "level": "Business", "probability": 5, "impact": 5, "exposure": 25},
-            {"id": "r2", "name": "R2", "level": "Operational", "probability": 3, "impact": 3, "exposure": 9},
+            {"id": "r1", "name": "R1", "level": "Business", "probability": 5, "severity": 5, "exposure": 25},
+            {"id": "r2", "name": "R2", "level": "Operational", "probability": 3, "severity": 3, "exposure": 9},
         ]
         manager.get_all_influences.return_value = [
             {"source_id": "r1", "target_id": "r2", "strength": "Moderate"},
