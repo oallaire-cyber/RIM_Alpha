@@ -204,7 +204,7 @@ ALE = λ × Mean Magnitude collapses the distribution, masking tail behaviour. T
 |------|---------|---------|---------|
 | ~~**F31a/b** Scope Simulation~~ | ~~v2.24.0~~ | ~~`pages/2_🎲_Simulation.py`, `utils/simulation_store.py`~~ | ~~COMPLETE. Real-data mode; saved results; Excel export.~~ |
 | ~~**U13 rename (first)**~~ ✅ _(v2.25.0)_ | ~~v2.25.0~~ | ~~`schema.yaml`, `models/risk.py`, `services/exposure_calculator.py`, all UI files, all test/demo datasets~~ | ~~Rename `impact` → `severity`. Run migration Cypher. Run full TC01–TC07 suite.~~ |
-| **U12** Lifecycle Engine | v2.25.0 | `services/trigger_engine.py`, `services/auto_acceptance.py`, `services/archive_engine.py`, `schema.yaml`, `models/risk.py` | 6-state lifecycle; triggers; auto-acceptance with severity ceiling guard; archive alerts. |
+| ~~**U12** Lifecycle Engine~~ ✅ _(v2.25.0)_ | ~~v2.25.0~~ | ~~`services/trigger_engine.py`, `services/auto_acceptance_engine.py`, `services/archive_engine.py`, `schemas/default/schema.yaml`, `models/risk.py`, `models/enums.py`, `config/schema_loader.py`, `database/queries/risks.py`~~ | ~~6-state lifecycle; trigger review; auto-acceptance with severity ceiling guard; archive alerts; `exclude_inactive=True` on analytical queries; `get_archive_candidates()` query.~~ |
 | ~~**U13 cont.** Dual-Metric + WRS~~ ✅ _(v2.25.0)_ | ~~v2.25.0~~ | ~~`services/exposure_calculator.py`, `ui/panels/node_property_panel.py`, `ui/home.py`~~ | ~~TRI + quadrant computation; WRS portfolio metric; panel update; dashboard widgets; quadrant filter.~~ |
 | **F7** What-If | v2.26.0 | `pages/3_🔬_Analysis.py`, `services/exposure_calculator.py` | In-memory mitigation toggle; EL + TRI deltas; scope + lifecycle constrained. |
 

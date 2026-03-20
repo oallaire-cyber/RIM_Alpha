@@ -20,6 +20,7 @@ The **Risk Influence Map** transforms static risk registers into
 | 🛡️ Mitigation analysis | Coverage gaps, treatment effectiveness, high-priority flags |
 | 🎯 TPO tracking | Links risks to program objectives with impact levels |
 | 📊 Statistics | Live dashboard adapts to active scope |
+| ♻️ Lifecycle engine | 6-state risk lifecycle with auto-acceptance, trigger review, and archive alerts |
 
 ---
 

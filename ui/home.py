@@ -70,6 +70,7 @@ _HELP_FILES = {
     "Influence":   "help_influence.md",
     "Mitigations": "help_mitigations.md",
     "Layouts":     "help_layouts.md",
+    "Lifecycle":   "help_lifecycle.md",
 }
 
 

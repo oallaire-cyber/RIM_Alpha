@@ -31,6 +31,13 @@ class Section:
 # Section render helpers (private)
 # ---------------------------------------------------------------------------
 
+_LIFECYCLE_FIELDS = {
+    "trigger_condition", "acceptance_date", "acceptance_owner", "archive_date",
+}
+
+_INACTIVE_STATUSES = {"Accepted", "Watching", "Suppressed", "Closed", "Archived"}
+
+
 def _render_identity(entity_data: Dict[str, Any], entity_type_id: Optional[str]) -> None:
     """Section 1 — basic node properties."""
     if not entity_data:
@@ -55,7 +62,25 @@ def _render_identity(entity_data: Dict[str, Any], entity_type_id: Optional[str])
             st.markdown(f"**{key.replace('_', ' ').title()}:** {val}")
             shown.add(key)
 
-    # Remaining fields (skip internal)
+    # Lifecycle section (risk nodes only, shown when any lifecycle field is populated)
+    if entity_type_id == "risk":
+        lifecycle_vals = {k: entity_data.get(k) for k in _LIFECYCLE_FIELDS if entity_data.get(k)}
+        if lifecycle_vals:
+            st.markdown("---")
+            st.markdown("**Lifecycle Details**")
+            lifecycle_labels = {
+                "trigger_condition": "Trigger Condition",
+                "acceptance_date": "Accepted On",
+                "acceptance_owner": "Accepted By",
+                "archive_date": "Archived On",
+            }
+            for key in ("trigger_condition", "acceptance_date", "acceptance_owner", "archive_date"):
+                val = lifecycle_vals.get(key)
+                if val:
+                    st.markdown(f"**{lifecycle_labels[key]}:** {val}")
+        shown.update(_LIFECYCLE_FIELDS)
+
+    # Remaining fields (skip internal and already-shown)
     skip = {"id", "_element_id", "name", "node_type"} | shown
     for key, val in entity_data.items():
         if key not in skip and val:
@@ -66,6 +91,7 @@ def _render_exposure(
     node_id: str,
     entity_type_id: Optional[str],
     exposure_results: Optional[Dict],
+    entity_data: Optional[Dict] = None,
 ) -> None:
     """Section 2 — exposure metrics (risk nodes only)."""
     if entity_type_id != "risk":
@@ -81,7 +107,19 @@ def _render_exposure(
     }
     r = exp_lookup.get(node_id)
     if not r:
-        st.caption("This node was not included in the last exposure calculation.")
+        status = (entity_data or {}).get("status", "")
+        if status in _INACTIVE_STATUSES:
+            status_messages = {
+                "Accepted": "This risk has been **formally accepted** and is excluded from active exposure analysis. Use the Lifecycle Engine in Data Management to review or re-open it.",
+                "Watching": "This risk is in **Watching** state — it was accepted and is being monitored for trigger re-activation. It is excluded from exposure calculations.",
+                "Suppressed": "This risk is **Suppressed** — its exposure dropped below the acceptance threshold. It is excluded from exposure calculations.",
+                "Closed": "This risk is **Closed** — the risk condition no longer exists. It is retained for audit but excluded from exposure calculations.",
+                "Archived": "This risk has been **Archived** and is excluded from all active analysis.",
+            }
+            msg = status_messages.get(status, f"This risk has lifecycle status **{status}** and is excluded from exposure calculations.")
+            st.info(msg)
+        else:
+            st.caption("This node was not included in the last exposure calculation.")
         return
 
     c1, c2, c3 = st.columns(3)
@@ -300,7 +338,7 @@ def render_node_property_panel(
         Section(
             id="exposure",
             title="📊 Exposure Metrics",
-            render_fn=lambda: _render_exposure(node_id, entity_type_id, exposure_results),
+            render_fn=lambda: _render_exposure(node_id, entity_type_id, exposure_results, entity_data),
         ),
         Section(
             id="position",

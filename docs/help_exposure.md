@@ -65,3 +65,5 @@ Final = Base × Effective_Mitigation_Factor
 > **Scope-aware:** When a scope is active, exposure only
 > considers in-scope risks and their connected mitigations.
 > Toggle "Show connected neighbors" to include adjacent risks.
+
+> **Lifecycle-aware:** Risks with status **Accepted**, **Watching**, **Suppressed**, **Closed**, or **Archived** are automatically excluded from all exposure calculations. Use the Lifecycle Engine in Data Management to review or re-open them.

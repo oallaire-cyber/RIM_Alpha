@@ -82,6 +82,14 @@ SIMULATION_DEFAULTS: Dict[str, Any] = {
     "saved_simulations": None,
 }
 
+LIFECYCLE_DEFAULTS: Dict[str, Any] = {
+    "lifecycle_trigger_result": None,       # TriggerEvaluationResult | None
+    "lifecycle_acceptance_result": None,    # AutoAcceptanceResult | None
+    "lifecycle_archive_alerts": None,       # ArchiveAlertResult | None
+    "lifecycle_last_run": None,             # datetime | None
+    "show_accepted_risks": False,           # toggle for accepted-risk review table
+}
+
 
 # ---------------------------------------------------------------------------
 # Generic initializer
@@ -153,6 +161,11 @@ def init_simulation_state() -> None:
     init_defaults(SIMULATION_DEFAULTS)
 
 
+def init_lifecycle_state() -> None:
+    """Initialise lifecycle engine cache keys."""
+    init_defaults(LIFECYCLE_DEFAULTS)
+
+
 def init_all() -> None:
     """Initialise every registered key.  Useful in test harnesses."""
     init_connection_state()
@@ -161,6 +174,7 @@ def init_all() -> None:
     init_config_page_state()
     init_analysis_cache_state()
     init_simulation_state()
+    init_lifecycle_state()
 
 
 # ---------------------------------------------------------------------------

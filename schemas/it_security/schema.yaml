@@ -59,7 +59,19 @@ entities:
         label: "Closed"
         description: "Resolved or inactive risks"
         is_active: false
-    
+      - id: "accepted"
+        label: "Accepted"
+        description: "Formally accepted; excluded from active exposure analysis"
+        is_active: false
+      - id: "watching"
+        label: "Watching"
+        description: "Accepted risk monitored for trigger re-activation"
+        is_active: false
+      - id: "suppressed"
+        label: "Suppressed"
+        description: "Exposure dropped below acceptance threshold"
+        is_active: false
+
     origins:
       - id: "internal"
         label: "Internal"

@@ -6,29 +6,46 @@
 ---
 
 ## Current Version
-`v2.25.0` — U13 Severity Rename + Dual-Metric complete. Branch: feature/iteration_4.
+`v2.25.0` — U12 Risk Lifecycle Engine complete. Branch: feature/iteration_4.
 
 ## Last Updated
-2026-03-19 — U13 fully implemented and tested (378 tests pass).
+2026-03-20 — U12 fully implemented; tests pending run.
 
 ---
 
 ## 🔴 Active Work In Progress
-<!-- No task is mid-implementation. U13 complete, ready for user commit. -->
+<!-- No task is mid-implementation. U12 complete, ready for user test run + commit. -->
 
-**Feature**: None — U13 complete.
-**Stream**: All (cross-stream rename)
-**Status**: 100% — awaiting user git commit.
+**Feature**: None — U12 complete.
+**Stream**: B + C (cross-stream)
+**Status**: 100% — awaiting test run + git commit.
 
 **Next immediate step**:
-> User to commit feature/iteration_4 (or merge to main).
-> Next feature: **U12 Lifecycle Engine** (v2.25.0) — see ROADMAPv3.md Iteration 4 sprint table.
+> Run `.\venv\Scripts\activate; py -m pytest tests/` to verify all tests pass.
+> Then commit feature/iteration_4 and run `scripts/migrate_activation_to_lifecycle.cypher` against live DB.
+> Next feature: **F7 What-If Analysis** (v2.26.0) — see ROADMAPv3.md Iteration 4 sprint table.
 
 ---
 
 ## ✅ Recently Completed (last 2 sessions)
 
-### Session N+2 (this session — v2.25.0)
+### Session N+3 (this session — v2.25.0 U12)
+- **v2.25.0** — **U12 Risk Lifecycle Engine** (Iteration 4):
+  - `models/enums.py`: 4 new `RiskStatus` members (ACCEPTED, WATCHING, SUPPRESSED, CLOSED) + `LIFECYCLE_INACTIVE_STATUSES` frozenset.
+  - `models/risk.py`: `activation_condition` → `trigger_condition`, `activation_decision_date` → `acceptance_date`; new fields `acceptance_owner`, `archive_date`; new `is_inactive` property; migration-safe `from_dict` fallbacks.
+  - `schemas/default/schema.yaml`: 4 new statuses, renamed attributes, `risk_lifecycle_rules` block.
+  - `schemas/it_security/schema.yaml`: 3 new statuses (accepted, watching, suppressed; closed already existed).
+  - `config/schema_loader.py`: `QuadrantThresholdsConfig` + `LifecycleRulesConfig` dataclasses; `_parse_lifecycle_rules`; `_lifecycle_rules_to_dict`; `SchemaConfig.lifecycle_rules` field.
+  - `database/queries/risks.py`: `_INACTIVE_STATUSES` constant; `exclude_inactive=True` param on `get_all_risks` + `get_risks_with_filters`; COALESCE fallbacks in RETURN clauses; renamed params in `create_risk` + `update_risk` with legacy aliases; new `get_archive_candidates()`.
+  - `services/trigger_engine.py`: NEW — `TriggerEngine` (human-review, no auto-eval).
+  - `services/auto_acceptance_engine.py`: NEW — `AutoAcceptanceEngine` with 3 eligibility guards.
+  - `services/archive_engine.py`: NEW — `ArchiveEngine`, alert generation only.
+  - `utils/state_manager.py`: `LIFECYCLE_DEFAULTS` + `init_lifecycle_state()`.
+  - `pages/2_💾_Data_Management.py`: Lifecycle Engine expander + Accepted Risks toggle.
+  - `scripts/migrate_activation_to_lifecycle.cypher`: NEW idempotent rename migration.
+  - `tests/test_lifecycle.py`: NEW — 25 test cases covering all 3 testing gates.
+
+### Session N+2 (v2.25.0 U13)
 - **v2.25.0** — **U13 Severity Rename + Dual-Metric Exposure** (Iteration 4):
   - `Risk.impact` → `Risk.severity` across all layers: schemas, model, queries, manager,
     backup service, exposure calculator, simulation page, UI panels, all tests/fixtures.
@@ -71,6 +88,18 @@
 ---
 
 ## 🧠 Key Decisions Made (not in docs yet)
+
+- **U12 field renames are migration-safe**: `from_dict` in `models/risk.py` reads new key first,
+  falls back to old key. `get_all_risks`/`get_risk_by_id` use COALESCE in Cypher RETURN.
+  Migration script (`scripts/migrate_activation_to_lifecycle.cypher`) is idempotent; run after deploy.
+
+- **U12 `exclude_inactive=True` default on analytical DB queries**: `get_all_risks` and
+  `get_risks_with_filters` exclude Accepted/Watching/Suppressed/Closed/Archived by default.
+  Callers needing the full list (CRUD forms, lifecycle UI) pass `exclude_inactive=False`.
+  `get_graph_data` (canvas) was NOT changed — keeps showing all risks; F32 handles opacity.
+
+- **U12 `TriggerEngine` is manual-review only**: trigger_condition is free text; no `eval()`.
+  Future programmatic evaluation: use `simpleeval` library (safe sandboxed evaluator).
 
 - **`render_scope_node_editor` callback pattern**: Config page can't use FilterManager
   (home.py singleton). Uses caller-supplied `on_add`/`on_remove` callbacks instead.

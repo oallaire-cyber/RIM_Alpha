@@ -4,6 +4,66 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.25.0] - 2026-03-20 (U12 Risk Lifecycle Engine)
+
+### Iteration 4 — Risk Lifecycle Engine (U12)
+
+**Breaking schema change**: `activation_condition` renamed to `trigger_condition`;
+`activation_decision_date` renamed to `acceptance_date` across all layers.
+Run `scripts/migrate_activation_to_lifecycle.cypher` once on existing Neo4j databases.
+Application works correctly before and after migration (fallback reads both property names).
+
+**New Features:**
+
+- **[U12a] 6-State Risk Lifecycle**: Four new statuses added (`Accepted`, `Watching`,
+  `Suppressed`, `Closed`) alongside existing `Active`, `Contingent`, `Archived`.
+  - `models/enums.py`: New `RiskStatus` members + `LIFECYCLE_INACTIVE_STATUSES` constant.
+  - `schemas/default/schema.yaml` + `schemas/it_security/schema.yaml`: New status entries.
+
+- **[U12b] New Risk Model Fields**: `trigger_condition`, `acceptance_date`,
+  `acceptance_owner`, `archive_date` in `models/risk.py` and `database/queries/risks.py`.
+  - `from_dict` uses migration-safe fallbacks for old property names.
+  - `models/risk.py`: New `is_inactive` property replaces `is_contingent` semantically
+    (is_contingent retained for backward compatibility).
+
+- **[U12c] `risk_lifecycle_rules` YAML Block**: New configurable block in schema YAML.
+  - Fields: `acceptance_threshold` (20), `severity_ceiling` (7),
+    `archive_retention_days` (180), `quadrant_thresholds`.
+  - `config/schema_loader.py`: New `LifecycleRulesConfig` + `QuadrantThresholdsConfig`
+    dataclasses; `_parse_lifecycle_rules()`; `_lifecycle_rules_to_dict()` for roundtrip;
+    `SchemaConfig.lifecycle_rules` field.
+
+- **[U12d] Three New Lifecycle Services** (pure computation, no DB calls):
+  - `services/trigger_engine.py`: `TriggerEngine` — surfaces Watching/Suppressed risks
+    with their trigger conditions for human review. No auto-evaluation (free-text strings).
+  - `services/auto_acceptance_engine.py`: `AutoAcceptanceEngine` — evaluates Active risks
+    for acceptance eligibility; guards: severity ceiling, critical/severity quadrant,
+    exposure threshold.
+  - `services/archive_engine.py`: `ArchiveEngine` — generates archive alerts for risks
+    past the retention window.
+
+- **[U12e] Analytical Query Exclusion**: `database/queries/risks.py` gains
+  `exclude_inactive=True` on `get_all_risks` and `get_risks_with_filters`. Inactive
+  statuses (Accepted/Watching/Suppressed/Closed/Archived) are excluded from all
+  exposure and analysis computations by default. CRUD forms and lifecycle UI pass
+  `exclude_inactive=False` explicitly.
+
+- **[U12f] `get_archive_candidates` Query**: New DB query finds Accepted/Closed risks
+  past the retention window with no open mitigations.
+
+- **[U12g] Data Management Lifecycle Panel**: New "⚙️ Lifecycle Engine" expander in
+  `pages/2_💾_Data_Management.py`. On-demand run button; trigger review table;
+  auto-acceptance eligible/blocked tables; archive alert section. "Show Accepted Risks"
+  toggle for reviewing accepted risks independently.
+
+- **[U12h] Migration Script**: `scripts/migrate_activation_to_lifecycle.cypher` —
+  idempotent renames for `activation_condition` → `trigger_condition` and
+  `activation_decision_date` → `acceptance_date`.
+
+**Tests:** `tests/test_lifecycle.py` — 25 new test cases; all 3 testing gates covered.
+
+---
+
 ## [v2.25.0] - 2026-03-19
 
 ### Iteration 4 — Severity Rename + Dual-Metric Exposure (U13)
