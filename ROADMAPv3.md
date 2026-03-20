@@ -24,7 +24,8 @@ These are **mandatory** components. They affect the exposure calculator, schema 
     *   **F31a** Scope-Based Simulation mode — **COMPLETE** (v2.24.0). Files: `pages/2_🎲_Simulation.py`, `utils/simulation_store.py` (new), `utils/state_manager.py`.
     *   **F31b** Simulation Results Storage — **COMPLETE** (v2.24.0). `SimulationRecord` dataclass; saved-results comparison table with Δ delta columns; Excel export.
     *   **U13** Severity Rename + Dual-Metric Exposure — **COMPLETE** (v2.25.0). `Risk.impact` → `Risk.severity`; TRI (likelihood × severity^1.5) + risk quadrant computed metrics; quadrant dashboard widget + sidebar filter; cypher scripts reorganised to `scripts/`.
-    *   Remaining Iteration 4 tasks (U12, F7, F31c/d) pending — see Sprint Plan below.
+    *   **U12** Risk Lifecycle Engine — **COMPLETE** (v2.25.1). 6-state lifecycle; `TriggerEngine`; `AutoAcceptanceEngine` with 3 guards + Force Accept override; `ArchiveEngine`; `exclude_inactive=True` on analytical queries; scope-aware engine; lifecycle node property panel; help article.
+    *   Remaining Iteration 4 tasks (F7, F31c/d) pending — see Sprint Plan below.
 
 ---
 

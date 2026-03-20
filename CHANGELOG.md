@@ -4,6 +4,46 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.25.1] - 2026-03-20 (U12 Post-Implementation Fixes & Polish)
+
+### Bug Fixes
+
+- **`get_archive_candidates()` Cypher syntax error**: Replaced `WHERE NOT EXISTS { MATCH ... WHERE }`
+  subquery (Neo4j 5.x-only syntax) with `OPTIONAL MATCH` + `WITH r, COUNT(m) AS active_mitigations`
+  + `WHERE active_mitigations = 0` — compatible with all Neo4j ≥ 3.5. (`database/queries/risks.py`)
+
+- **Lifecycle Engine scope detection was always `None`**: Lifecycle Engine was reading
+  `st.session_state["active_scope"]` (key does not exist) instead of the correct
+  `st.session_state["filter_manager"].get_scope_node_ids()`. All three engines now receive
+  the correct `scope_node_ids` when a scope is active. (`pages/2_💾_Data_Management.py`)
+
+### New Features
+
+- **Force Accept for blocked risks**: Blocked auto-acceptance candidates now show a
+  **🔓 Force Accept** button per risk, allowing a human reviewer to override the auto-acceptance
+  guards (severity ceiling, critical quadrant) and formally accept the risk with explicit intent.
+  (`pages/2_💾_Data_Management.py`)
+
+- **Node Property Panel — lifecycle section**: `_render_identity()` now shows a dedicated
+  **Lifecycle Details** block (trigger condition, accepted on, accepted by, archived on)
+  when any lifecycle field is populated — risk nodes only; fields excluded from the generic
+  remaining-fields dump. (`ui/panels/node_property_panel.py`)
+
+- **Node Property Panel — lifecycle-aware exposure message**: When a risk has an inactive
+  lifecycle status (Accepted, Watching, Suppressed, Closed, Archived) and is absent from
+  exposure results, the Exposure Metrics section now shows a clear `st.info()` explanation
+  per status instead of the generic "not included" caption. (`ui/panels/node_property_panel.py`)
+
+### Documentation
+
+- **`docs/help_lifecycle.md`**: New runtime-loaded help article covering the 6-state lifecycle,
+  Trigger Review, Auto-Acceptance (including Force Accept), Archive Alerts, Accepted Risks toggle,
+  and YAML configuration. Registered as `"Lifecycle"` in `ui/home.py` `_HELP_FILES`.
+- **`docs/help_overview.md`**: Added Lifecycle Engine row to Core Capabilities table.
+- **`docs/help_exposure.md`**: Added lifecycle-aware note explaining inactive risk exclusion.
+
+---
+
 ## [v2.25.0] - 2026-03-20 (U12 Risk Lifecycle Engine)
 
 ### Iteration 4 — Risk Lifecycle Engine (U12)
