@@ -1,29 +1,22 @@
-# Utiliser l'image Python officielle
+# Utiliser l'image Python officielle (version stable)
 FROM python:3.11-slim
 
-# Empêcher Python de générer des fichiers .pyc
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Paramètres Python standards
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Dossier de travail dans le conteneur
 WORKDIR /app
 
-# Installer les dépendances système nécessaires
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    software-properties-common \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copier le fichier des dépendances
+# On saute l'étape apt-get qui bloque et on installe direct les libs Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copier tout le code du projet
+# On copie le reste du code
 COPY . .
 
-# Exposer le port par défaut de Streamlit
+# Port pour Cloud Run
 EXPOSE 8080
 
-# Commande pour lancer l'application
+# Lancement de l'app
 CMD ["streamlit", "run", "app.py", "--server.port=8080", "--server.address=0.0.0.0"]

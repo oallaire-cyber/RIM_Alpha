@@ -97,3 +97,6 @@ mnt/
 # AI Agents
 .claude/settings.json
 .claude/worktrees/
+
+# Secrets
+github-deployer-key.json
