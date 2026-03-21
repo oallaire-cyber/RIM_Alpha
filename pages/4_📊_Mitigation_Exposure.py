@@ -92,8 +92,8 @@ def _compute_mitigation_impacts() -> List[Dict[str, Any]]:
     mitigates_rels: List[Dict] = st.session_state.mitexp_raw_mitigates or []
     baseline: GlobalExposureResult = st.session_state.mitexp_baseline
 
-    baseline_tri = sum(r.tail_risk_indicator for r in baseline.risk_results)
     base_exposure = baseline.total_base_exposure
+    baseline_results_by_id = {r.risk_id: r for r in baseline.risk_results}
 
     results = []
     for mit in mitigations:
@@ -104,12 +104,19 @@ def _compute_mitigation_impacts() -> List[Dict[str, Any]]:
         active_rels = [r for r in mitigates_rels if r.get("mitigation_id") != mid]
 
         # Risks covered by this mitigation
-        risks_covered = len({r["risk_id"] for r in mitigates_rels if r.get("mitigation_id") == mid})
+        covered_risk_ids = {r["risk_id"] for r in mitigates_rels if r.get("mitigation_id") == mid}
+        risks_covered = len(covered_risk_ids)
 
         # Risk level(s) covered
-        covered_risk_ids = {r["risk_id"] for r in mitigates_rels if r.get("mitigation_id") == mid}
         risk_levels = {r.get("level", "") for r in risks if r["id"] in covered_risk_ids}
         level_label = _format_levels(risk_levels)
+
+        # Base exposure of covered risks (for per-coverage % metric)
+        covered_base_el = sum(
+            baseline_results_by_id[rid].base_exposure
+            for rid in covered_risk_ids
+            if rid in baseline_results_by_id
+        )
 
         # Counterfactual exposure without this mitigation
         without = calculate_exposure(
@@ -118,11 +125,10 @@ def _compute_mitigation_impacts() -> List[Dict[str, Any]]:
             mitigations=active_mits,
             mitigates_relationships=active_rels,
         )
-        without_tri = sum(r.tail_risk_indicator for r in without.risk_results)
 
         delta_el = without.total_final_exposure - baseline.total_final_exposure
-        delta_tri = without_tri - baseline_tri
         pct_portfolio = (delta_el / base_exposure * 100) if base_exposure > 0 else 0.0
+        pct_covered = (delta_el / covered_base_el * 100) if covered_base_el > 0 else 0.0
 
         results.append({
             "id": mid,
@@ -132,8 +138,8 @@ def _compute_mitigation_impacts() -> List[Dict[str, Any]]:
             "level": level_label,
             "risks_covered": risks_covered,
             "delta_el": delta_el,
-            "delta_tri": delta_tri,
             "pct_portfolio": pct_portfolio,
+            "pct_covered": pct_covered,
         })
 
     return sorted(results, key=lambda x: x["delta_el"], reverse=True)
@@ -212,8 +218,8 @@ def _render_table(results: List[Dict], level_filter: str) -> None:
             "Level": r["level"],
             "Risks Covered": r["risks_covered"],
             "EL Delta ↑": round(r["delta_el"], 2),
-            "TRI Delta ↑": round(r["delta_tri"], 2),
             "% Portfolio EL": round(r["pct_portfolio"], 1),
+            "% EL (Covered Risks)": round(r["pct_covered"], 1),
         })
 
     df = pd.DataFrame(rows)
@@ -228,15 +234,15 @@ def _render_table(results: List[Dict], level_filter: str) -> None:
                 format="%.2f",
                 help="Exposure increase if this mitigation were removed (higher = more critical).",
             ),
-            "TRI Delta ↑": st.column_config.NumberColumn(
-                "TRI Delta ↑",
-                format="%.2f",
-                help="TRI increase if this mitigation were removed.",
-            ),
             "% Portfolio EL": st.column_config.NumberColumn(
                 "% Portfolio EL",
                 format="%.1f%%",
-                help="EL Delta as a percentage of total base exposure.",
+                help="EL Delta as a percentage of total portfolio base exposure.",
+            ),
+            "% EL (Covered Risks)": st.column_config.NumberColumn(
+                "% EL (Covered Risks)",
+                format="%.1f%%",
+                help="EL Delta as a percentage of the base exposure of only the risks this mitigation covers. Shows how effective the mitigation is on its specific targets.",
             ),
         },
     )

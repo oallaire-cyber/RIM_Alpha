@@ -17,9 +17,10 @@ For each mitigation M in scope:
 1. A **baseline** portfolio exposure is computed with all mitigations active.
 2. A **counterfactual** is computed with M disabled (its relationships to risks are excluded).
 3. The **EL Delta** = counterfactual final exposure − baseline final exposure.
-4. The **TRI Delta** = counterfactual total TRI − baseline total TRI.
 
 A high EL Delta means the portfolio would be significantly more exposed without that mitigation — it is **critical to your risk posture**.
+
+> **Why no TRI Delta?** The Tail Risk Indicator (`TRI = likelihood × severity^1.5`) is a property of each risk's intrinsic parameters — mitigations reduce *exposure* (through the mitigation factor) but do not alter likelihood or severity directly. Therefore TRI is the same with or without a mitigation and a counterfactual TRI delta would always be zero.
 
 ---
 
@@ -33,8 +34,8 @@ A high EL Delta means the portfolio would be significantly more exposed without 
 | **Level** | Risk level(s) the mitigation addresses (Business / Operational / Mixed) |
 | **Risks Covered** | Number of in-scope risks this mitigation directly addresses |
 | **EL Delta ↑** | Exposure increase (EL units) if this mitigation is removed |
-| **TRI Delta ↑** | Tail Risk Indicator increase if this mitigation is removed |
-| **% Portfolio EL** | EL Delta as a percentage of total unmitigated base exposure |
+| **% Portfolio EL** | EL Delta as a percentage of total unmitigated base exposure across the whole portfolio |
+| **% EL (Covered Risks)** | EL Delta as a percentage of the base exposure of *only the risks this mitigation covers*. For focused mitigations (e.g., covering 1–2 high-severity risks) this is a more meaningful effectiveness signal than % Portfolio EL. |
 
 ---
 

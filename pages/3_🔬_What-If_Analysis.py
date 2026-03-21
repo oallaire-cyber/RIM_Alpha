@@ -141,16 +141,14 @@ def _render_summary(baseline: GlobalExposureResult, modified: GlobalExposureResu
             help="Severity²-weighted portfolio metric (0–100)",
         )
 
-    baseline_tri = sum(r.tail_risk_indicator for r in baseline.risk_results)
-    modified_tri = sum(r.tail_risk_indicator for r in modified.risk_results)
-    tri_delta = modified_tri - baseline_tri
+    max_delta = modified.max_single_exposure - baseline.max_single_exposure
     with c3:
         st.metric(
-            "Total TRI",
-            f"{modified_tri:.1f}",
-            delta=f"{tri_delta:+.1f}",
+            "Max Single Risk EL",
+            f"{modified.max_single_exposure:.2f}",
+            delta=f"{max_delta:+.2f}",
             delta_color="inverse",
-            help="Sum of Tail Risk Indicators (L × S^1.5) across all risks",
+            help="Highest final exposure of any single risk in the current scenario",
         )
 
     baseline_health, _ = baseline.get_health_status()
@@ -190,9 +188,6 @@ def _render_per_risk_table(
             "Baseline EL": round(b.final_exposure, 2),
             "Modified EL": round(m.final_exposure, 2),
             "Δ EL": round(m.final_exposure - b.final_exposure, 2),
-            "Baseline TRI": round(b.tail_risk_indicator, 2),
-            "Modified TRI": round(m.tail_risk_indicator, 2),
-            "Δ TRI": round(m.tail_risk_indicator - b.tail_risk_indicator, 2),
             "Quadrant": m.risk_quadrant,
         })
 
@@ -208,7 +203,6 @@ def _render_per_risk_table(
         hide_index=True,
         column_config={
             "Δ EL": st.column_config.NumberColumn("Δ EL", format="%.2f"),
-            "Δ TRI": st.column_config.NumberColumn("Δ TRI", format="%.2f"),
             "Baseline EL": st.column_config.NumberColumn("Baseline EL", format="%.2f"),
             "Modified EL": st.column_config.NumberColumn("Modified EL", format="%.2f"),
         },

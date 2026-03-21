@@ -4,6 +4,34 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.28.1] - 2026-03-21 (TRI Delta removal — Mitigation Exposure & What-If)
+
+### Bug Fixes / Improvements
+
+- **Removed TRI Delta from Mitigation Exposure table** (`pages/4_📊_Mitigation_Exposure.py`):
+  `TRI = likelihood × severity^1.5` is mitigation-independent, so the counterfactual TRI
+  delta was always zero — a misleading column. Removed from computation and display.
+
+- **Added "% EL (Covered Risks)" column** (`pages/4_📊_Mitigation_Exposure.py`):
+  Replaces TRI Delta ↑. Shows EL Delta as a percentage of the *base exposure of only the
+  risks this mitigation covers*, not the whole portfolio. For focused mitigations this
+  gives a far more meaningful effectiveness signal than % Portfolio EL alone.
+
+- **Replaced "Total TRI" summary metric on What-If page** (`pages/3_🔬_What-If_Analysis.py`):
+  The third summary card now shows **Max Single Risk EL** (highest final exposure of any
+  individual risk in the modified scenario, with baseline delta). This responds correctly
+  to mitigation toggles, unlike TRI which was always Δ=0.
+
+- **Removed TRI columns from What-If per-risk delta table** (`pages/3_🔬_What-If_Analysis.py`):
+  "Baseline TRI", "Modified TRI", and "Δ TRI" columns removed — all three were always
+  zero because TRI is not affected by mitigations.
+
+- **Workflow: manual-test gate added to CLAUDE.md**:
+  Development workflow now requires a manual testing checklist to be confirmed before
+  documentation and commit steps are executed.
+
+---
+
 ## [v2.28.0] - 2026-03-21 (F6 Mitigation Exposure View)
 
 ### New Features
