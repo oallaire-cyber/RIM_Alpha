@@ -81,6 +81,8 @@ streamlit run app.py
 | **Risk Lifecycle Engine** | 6-state lifecycle (Active / Watching / Accepted / Suppressed / Closed / Archived) with trigger review, auto-acceptance guards, and archive alerts |
 | **What-If Analysis** | Toggle mitigations ON/OFF in-memory; observe EL + TRI deltas at portfolio and per-risk level without any database changes |
 | **Dual-Metric Exposure** | TRI (Tail Risk Indicator = L × S^1.5) and Risk Quadrant alongside standard EL |
+| **Generic Risk Templates** | Define reusable risk archetypes (GenericRisk); instantiate into specific risks with one click; excluded from all exposure math |
+| **Threshold Alerts** | Configurable EL + TRI breach detection surfaced in the exposure dashboard; scope- and lifecycle-aware |
 
 ### Visualization
 
@@ -258,4 +260,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.26.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.27.1 | See [CHANGELOG.md](CHANGELOG.md) for history

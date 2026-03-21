@@ -325,6 +325,34 @@ Max Exposure = max(Final_i)
 
 **Purpose**: Alert metric for worst-case individual risk
 
+#### Tail Risk Indicator (TRI)
+
+```
+TRI = Likelihood × Severity^1.5
+```
+
+**Why non-linear severity?** Standard EL (L × S) treats severity linearly. TRI applies a
+1.5 exponent to severity, causing high-severity risks to disproportionately dominate the
+metric — reflecting the real-world reality that catastrophic outcomes are more important
+than an arithmetic average suggests.
+
+**Risk Quadrant**: Derived from TRI thresholds configured per domain in the schema. Risks
+are classified into four quadrants (e.g., Low/Medium/High/Critical) for distribution
+charting in the exposure dashboard.
+
+#### Threshold Alert Model
+
+Two independent breach thresholds are evaluated after exposure computation:
+
+| Threshold | Variable | Formula | Default |
+|-----------|----------|---------|---------|
+| EL Breach | `expected_loss_threshold` | `final_exposure > threshold` | 50.0 |
+| TRI Breach | `tail_risk_indicator_threshold` | `TRI > threshold` | 25.0 |
+
+Thresholds are configurable per domain in the schema `analysis.alert_thresholds` block.
+Breaches are surfaced as a panel in the exposure dashboard. Template risks and lifecycle-
+inactive risks cannot trigger alerts (they are excluded from exposure computation).
+
 ### Health Status Thresholds
 
 | Weighted Score | Status | Action |
@@ -516,4 +544,4 @@ The `calibration_simulator.py` tool validates the exposure model:
 
 ---
 
-*Last updated: February 2026 | Version 2.6.1*
+*Last updated: March 2026 | Version 2.27.1*

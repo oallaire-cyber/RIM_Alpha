@@ -17,8 +17,10 @@ Complete documentation for the Risk Influence Map application.
 9. [Analysis Tools](#analysis-tools)
 10. [What-If Analysis](#what-if-analysis)
 11. [Risk Lifecycle Engine](#risk-lifecycle-engine)
-12. [Import/Export](#importexport)
-13. [Filter System](#filter-system)
+12. [Risk Templates](#risk-templates)
+13. [Threshold Alerts](#threshold-alerts)
+14. [Import/Export](#importexport)
+15. [Filter System](#filter-system)
 
 ---
 
@@ -108,9 +110,12 @@ RIM includes a complete demo dataset covering the ODT New Space program and TC01
    - **Level**: Business or Operational
    - **Category**: Programme/Produit/Industriel/Supply Chain
    - **Likelihood**: 1-10 scale
-   - **Impact**: 1-10 scale
+   - **Severity**: 1-10 scale
    - **Origin**: New or Legacy
-3. Click **Create Risk**
+   - **Subtype**: Select the domain-specific subtype applicable to the risk level (e.g., Cyber, Supply Chain, Financial). Extension fields for the selected subtype appear automatically below.
+3. Click **Save**
+
+> **Subtype extension fields** are schema-defined per domain. They appear only when a non-Generic subtype is selected and differ by domain (e.g., CIA triad fields for IT Security, contract type for Supply Chain).
 
 ### Contingent Risks
 
@@ -581,6 +586,79 @@ of accepted risks and their acceptance metadata (date, owner).
 
 ---
 
+## Risk Templates
+
+### Overview
+
+Generic Risk Templates allow you to define reusable risk archetypes that can be instantiated
+into specific risks with pre-filled attributes.
+
+| Property | Behaviour |
+|----------|-----------|
+| `is_template = true` | Excluded from exposure calculations |
+| Canvas visibility | Hidden from graph canvas |
+| Lifecycle | Not subject to lifecycle engine |
+| INSTANTIATES rel | Links template → specific instance in Neo4j |
+
+### Creating a Template
+
+1. Go to **💾 Data Management → Risks** tab
+2. In the **Create New Risk** form, check **☑ Mark as template (GenericRisk)**
+3. Fill in likelihood, severity, subtype, categories, and description
+4. Save — the risk appears in the **📋 Risk Templates** expander
+
+### Instantiating a Template
+
+1. Open **📋 Risk Templates** expander in Data Management → Risks
+2. Find the template and click **➕ Instantiate**
+3. Adjust the pre-filled form (name, description, etc.) and save
+4. A new specific risk is created and linked to the template via `[:INSTANTIATES]`
+
+### Viewing Template Relationships
+
+In the **Node Property Panel** (click any risk on the canvas or in the list):
+- Template risks show an instance count and list of instance names
+- Instance risks show the parent template name
+
+---
+
+## Threshold Alerts
+
+### Overview
+
+Threshold Alerts automatically detect risks whose exposure scores exceed configured limits,
+surfaced in the **⚡ Exposure** dashboard after each computation.
+
+### Monitored Metrics
+
+| Metric | Formula | Default Threshold |
+|--------|---------|-------------------|
+| Expected Loss (EL) | Likelihood × Severity × mitigation factor × influence limitation | 50.0 |
+| Tail Risk Indicator (TRI) | Likelihood × Severity^1.5 | 25.0 |
+
+### Reading the Alert Panel
+
+After clicking **Compute** in the Exposure expander:
+- **⚠️ Threshold Alerts** panel appears below the quadrant distribution widget
+- Breach columns: **EL Breaches** and **TRI Breaches**, each listing risk name, level, and value
+- When all risks are within thresholds: **✅ All risks within thresholds** success indicator
+
+### Configuring Thresholds
+
+Edit the active schema YAML (Configuration page → Schema Editor):
+
+```yaml
+analysis:
+  alert_thresholds:
+    expected_loss_threshold: 50.0
+    tail_risk_indicator_threshold: 25.0
+    enabled: true
+```
+
+Set `enabled: false` to suppress alerts without removing the configuration.
+
+---
+
 ## Import/Export
 
 ### Excel Export
@@ -738,4 +816,4 @@ Each multi-select filter has **All** and **None** buttons for quick selection.
 
 ---
 
-*Last updated: March 2026 | Version 2.26.0*
+*Last updated: March 2026 | Version 2.27.1*

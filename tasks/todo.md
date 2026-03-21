@@ -1,44 +1,44 @@
-# Task: F7 — What-If Analysis Sandbox
-**Stream**: C + A (services + UI layer)
+# Task: v2.27.1 Post-Release Fixes + Subtype Selection
+**Stream**: A + B
 **Started**: 2026-03-21
-**Target version**: v2.26.0
+**Target version**: v2.27.1
 
 ## Plan
-- [x] Step 1: `utils/state_manager.py` — `WHATIF_DEFAULTS` + `init_whatif_state()` + `init_all()` registration
-- [x] Step 2: `pages/3_🔬_What-If_Analysis.py` — NEW page (mitigation toggles, EL + TRI deltas, scope + lifecycle constraints)
-- [ ] Step 3: Run full test suite
-- [ ] Step 4: Update `CHANGELOG.md` + `ROADMAPv3.md` + `SESSION_STATE.md`
-
-## Implementation Notes
-- Toggle state stored as `st.session_state[f"whatif_toggle_{mitigation_id}"]` per mitigation (standard Streamlit checkbox key pattern)
-- Raw data (risks, influences, mitigations, MITIGATES rels) cached in session at baseline time; in-memory recompute on every rerun — no DB round-trips for recomputation
-- Scope filter applied identically to `manager.calculate_exposure()` (whitelist by `scope_node_ids`, filter influences + MITIGATES accordingly)
-- `include_inactive` checkbox passed as `exclude_inactive=not include_inactive` to `database.queries.risks.get_all_risks()` (direct import, like Data Management page)
-- Reset button re-enables all toggle keys and calls `st.rerun()`
-
-## Testing Checklist
-- [ ] `.\venv\Scripts\activate; py -m pytest tests/` passes (409+)
-- [ ] Manual: page loads, Compute Baseline works, toggles recompute deltas
-- [ ] Manual: scope constraint respected (only in-scope mitigations shown)
-- [ ] Manual: "Include inactive risks" toggle changes risk count
-
-## Documentation Updates
-- [ ] `CHANGELOG.md`
-- [ ] `ROADMAPv3.md` (mark F7 complete)
-- [ ] `tasks/SESSION_STATE.md`
+- [x] Rename `expected_loss_threshold` → `high_exposure_threshold` throughout
+- [x] Fix YAML encoding (`charmap` error) in Configuration page YAML editor backup
+- [x] Fix `is_template` not rendering as checkbox (`boolean` alias in `core/attribute.py`)
+- [x] Fix graph `AssertionError` on INSTANTIATES edge (safety filter in `analysis.py`)
+- [x] Add Subtype selector to create/edit risk forms (`unified_crud_tab.py`)
+- [x] Full documentation pass (v2.27.0 + v2.27.1 features)
+- [x] Run full test suite → 445 passing
+- [x] Update CHANGELOG + ROADMAPv3 + SESSION_STATE + todo.md
 
 ## Git Commit
 ```
-feat(v2.26.0): F7 What-If Analysis Sandbox
+fix(v2.27.1): post-release fixes + risk subtype selection in forms
 
-- New page: pages/3_🔬_What-If_Analysis.py
-- Toggle mitigations ON/OFF in-memory; no DB writes
-- Recomputes EL + TRI on every toggle change using ExposureCalculator
-- Portfolio summary: Residual Risk %, Weighted Risk Score, Total TRI with Δ deltas
-- Per-risk delta table: Baseline vs Modified EL + TRI, sorted by largest EL increase
-- Scope-constrained: respects active filter_manager scope
-- Lifecycle-aware: exclude_inactive=True default; "Include inactive risks" checkbox for worst-case
-- utils/state_manager.py: WHATIF_DEFAULTS + init_whatif_state()
+- high_exposure_threshold: renamed from expected_loss_threshold throughout
+  (schema_loader, schema YAMLs, home.py, tests). Backward-compat parse
+  fallback accepts old key. EL terminology reserved for future financial model.
 
-Closes F7
+- YAML encoding: open() in Configuration page YAML editor now specifies
+  encoding='utf-8' for both backup read and write (Windows charmap fix).
+
+- is_template checkbox: core/attribute.py __post_init__ adds 'boolean'→'bool'
+  and 'integer'→'int' aliases before AttributeType() enum lookup. Without this,
+  schema attributes typed 'boolean' silently fell back to STRING widget.
+
+- Graph AssertionError: analysis.py get_graph_data now strips any edge whose
+  source or target is absent from the canvas node set, before scope filtering.
+  Prevents INSTANTIATES edges from crashing PyVis when template node is excluded.
+
+- Subtype selection: _render_risk_subtype_fields() in unified_crud_tab.py renders
+  a subtype selectbox (filtered by selected level) + extension fields after the
+  generic build_entity_form(). Applied to both create and edit forms for risks.
+
+445 tests passing.
+
+Documentation: help_templates.md + help_alerts.md (new); USER_GUIDE, ARCHITECTURE,
+METHODOLOGY, CONFIGURATION_MANAGER, help_overview, welcome, help_exposure, README
+all updated for v2.27.0 features. /finish skill enforces doc pass as mandatory step.
 ```

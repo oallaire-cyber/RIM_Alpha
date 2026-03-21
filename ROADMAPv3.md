@@ -20,13 +20,17 @@ These are **mandatory** components. They affect the exposure calculator, schema 
     *   U1–U3, U6–U11, F1–F3, F12–F13, F18–F29, F30 are complete.
     *   Generic ContextNode architecture, computed levels, relationship semantics, scope completeness, schema-driven filter system, zone-aware layout, interactive scope sandbox, node property panel, loop detection established.
 
-*   **Iteration 4 — Partial** (v2.25.0)
+*   **Iteration 4 — COMPLETE** (v2.26.0)
     *   **F31a** Scope-Based Simulation mode — **COMPLETE** (v2.24.0). Files: `pages/2_🎲_Simulation.py`, `utils/simulation_store.py` (new), `utils/state_manager.py`.
     *   **F31b** Simulation Results Storage — **COMPLETE** (v2.24.0). `SimulationRecord` dataclass; saved-results comparison table with Δ delta columns; Excel export.
     *   **U13** Severity Rename + Dual-Metric Exposure — **COMPLETE** (v2.25.0). `Risk.impact` → `Risk.severity`; TRI (likelihood × severity^1.5) + risk quadrant computed metrics; quadrant dashboard widget + sidebar filter; cypher scripts reorganised to `scripts/`.
     *   **U12** Risk Lifecycle Engine — **COMPLETE** (v2.25.1). 6-state lifecycle; `TriggerEngine`; `AutoAcceptanceEngine` with 3 guards + Force Accept override; `ArchiveEngine`; `exclude_inactive=True` on analytical queries; scope-aware engine; lifecycle node property panel; help article.
     *   **F7** What-If Analysis — **COMPLETE** (v2.26.0). `pages/3_🔬_What-If_Analysis.py`; in-memory mitigation toggle; EL + TRI + WRS deltas; scope + lifecycle constrained.
-    *   Remaining Iteration 4 tasks (F31c/d) pending — see Sprint Plan below.
+
+*   **Iteration 5 — Partial** (v2.27.1)
+    *   **U14** Templates — **COMPLETE** (v2.27.0). `is_template` flag; `INSTANTIATES` rel; template library UI + instantiation workflow in CRUD tab; exclusion from exposure engine + canvas; node property panel section.
+    *   **F5** Alerts — **COMPLETE** (v2.27.0). `AlertThresholdsConfig`; `high_exposure_threshold` + TRI threshold alerts in exposure expander; configurable per domain YAML.
+    *   **v2.27.1** Post-release fixes: `boolean`→`bool` attribute alias; YAML encoding fix; INSTANTIATES edge safety filter; `high_exposure_threshold` rename; Subtype selector in risk create/edit forms.
 
 ---
 
@@ -135,7 +139,7 @@ ALE = λ × Mean Magnitude collapses the distribution, masking tail behaviour. T
 
 ### 🌊 Work Stream A — Visual & UI Enhancements
 
-*   **[F5] Automated Risk Threshold Alerts** *(Iteration 4)*: EL-based and TRI-based alert flags surfaced distinctly. Configurable thresholds per domain. Scope-aware.
+*   **[F5] Automated Risk Threshold Alerts** *(Iteration 5 — **COMPLETE** v2.27.0)*: EL-based and TRI-based alert flags surfaced in exposure expander. `AlertThresholdsConfig` in schema YAML. `_render_threshold_alerts()` in `ui/home.py`.
 
 *   **[F6] Mitigation Exposure View** *(Iteration 4)*: Business-focused view; lifecycle-filtered; EL + TRI delta per mitigation. Scope-aware.
 
@@ -216,8 +220,8 @@ ALE = λ × Mean Magnitude collapses the distribution, masking tail behaviour. T
 
 | Task | Version | File(s) | Details |
 |------|---------|---------|---------|
-| **U14** Templates | v2.27.0 | `models/risk.py`, `schema.yaml`, `ui/tabs/unified_crud_tab.py`, `services/exposure_calculator.py`, `ui/panels/node_property_panel.py` | Template flag; INSTANTIATES relationship; template CRUD; instantiation workflow; exclusion from engine. |
-| **F5** Alerts | v2.27.0 | `ui/home.py`, `schema.yaml` | EL + TRI threshold alerts; distinct display; configurable. |
+| ~~**U14** Templates~~ ✅ _(v2.27.0)_ | ~~v2.27.0~~ | ~~`models/risk.py`, `schema.yaml`, `ui/tabs/unified_crud_tab.py`, `database/queries/risks.py`, `database/manager.py`, `ui/panels/node_property_panel.py`~~ | ~~`is_template` flag; `INSTANTIATES` rel; `get_all_templates()`, `create_instantiates_rel()`; template library UI in CRUD tab; instantiation workflow; exclusion from exposure engine + canvas.~~ |
+| ~~**F5** Alerts~~ ✅ _(v2.27.0)_ | ~~v2.27.0~~ | ~~`ui/home.py`, `schema.yaml`, `config/schema_loader.py`~~ | ~~`AlertThresholdsConfig`; EL + TRI threshold alerts; `_render_threshold_alerts()`; configurable per domain in YAML.~~ |
 | **F6** Mitigation View | v2.28.0 | `pages/3_🔬_Analysis.py` | Business Risk mitigation view; lifecycle filter; EL+TRI delta. |
 | **F32** Visual Panel | v2.28.0 | `ui/panels/graph_visual_panel.py` (new), `schema.yaml` | Consolidated settings; lifecycle opacity; quadrant encoding; presets persisted to YAML. |
 | **F31c** Lifecycle-aware simulation | v2.29.0 | `pages/2_🎲_Simulation.py` | Re-activate all accepted/watching risks; reveal latent tail exposure on worst-case canvas. Requires U12 complete. |

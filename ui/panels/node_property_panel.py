@@ -80,6 +80,8 @@ def _render_identity(entity_data: Dict[str, Any], entity_type_id: Optional[str])
                     st.markdown(f"**{lifecycle_labels[key]}:** {val}")
         shown.update(_LIFECYCLE_FIELDS)
 
+    shown.add("is_template")
+
     # Remaining fields (skip internal and already-shown)
     skip = {"id", "_element_id", "name", "node_type"} | shown
     for key, val in entity_data.items():
@@ -96,6 +98,11 @@ def _render_exposure(
     """Section 2 — exposure metrics (risk nodes only)."""
     if entity_type_id != "risk":
         st.caption("Not applicable for this node type.")
+        return
+
+    # U14: Templates are excluded from the exposure engine
+    if (entity_data or {}).get("is_template"):
+        st.info("📋 This is a **GenericRisk Template** — excluded from exposure calculations and canvas display. Use the Risk Templates section in Data Management to instantiate it.")
         return
 
     if not exposure_results or "risk_results" not in exposure_results:
@@ -297,6 +304,47 @@ def _render_mitigation_summary(
             st.caption(f"• **{m.get('name', '?')}** — {m.get('status', '?')}{eff_label}")
 
 
+def _render_template_info(
+    manager: RiskGraphManager,
+    node_id: str,
+    entity_data: Dict[str, Any],
+    entity_type_id: Optional[str],
+) -> None:
+    """U14 — Template / instance traceability section (risk nodes only)."""
+    if entity_type_id != "risk":
+        st.caption("Not applicable for this node type.")
+        return
+
+    is_template = (entity_data or {}).get("is_template", False)
+
+    if is_template:
+        st.info("📋 This risk is a **GenericRisk Template**. It is excluded from exposure calculations and canvas display.")
+        try:
+            instances = manager.get_instances_of_template(node_id)
+        except Exception:
+            instances = []
+        if instances:
+            st.markdown(f"**{len(instances)} instance(s):**")
+            for inst in instances:
+                st.markdown(
+                    f"- {inst.get('name', '?')} [{inst.get('level', '')}]"
+                    f" — {inst.get('status', 'Active')}"
+                )
+        else:
+            st.caption("No instances have been created from this template yet.")
+    else:
+        try:
+            tmpl = manager.get_template_of_instance(node_id)
+        except Exception:
+            tmpl = None
+        if tmpl:
+            st.info(
+                f"⬅️ Instantiated from template: **{tmpl.get('name', '?')}**"
+            )
+        else:
+            st.caption("This risk was not created from a template.")
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -354,6 +402,12 @@ def render_node_property_panel(
             id="mitigations",
             title="🛡️ Mitigation Summary",
             render_fn=lambda: _render_mitigation_summary(manager, node_id, entity_type_id),
+        ),
+        Section(
+            id="template",
+            title="📋 Template",
+            render_fn=lambda: _render_template_info(manager, node_id, entity_data, entity_type_id),
+            expanded=False,
         ),
         Section(
             id="edit",

@@ -577,13 +577,17 @@ Each consumer calls the narrowest init function it needs:
     description: String,
     level: "Business" | "Operational",
     category: String,
-    status: "Active" | "Archived",
+    status: "Active" | "Watching" | "Accepted" | "Suppressed" | "Closed" | "Archived",
     likelihood: Integer (1-10),
-    impact: Integer (1-10),
+    severity: Integer (1-10),
     origin: "New" | "Legacy",
     is_contingent: Boolean,
-    activation_condition: String,
+    trigger_condition: String,
     decision_date: Date,
+    is_template: Boolean,
+    acceptance_date: Date,
+    acceptance_owner: String,
+    archive_date: Date,
     created_at: DateTime,
     updated_at: DateTime
 })
@@ -634,6 +638,9 @@ Each consumer calls the narrowest init function it needs:
     description: String,
     created_at: DateTime
 }]->(r:Risk)
+
+// Risk Template instantiates specific Risk
+(t:Risk {is_template: true})-[:INSTANTIATES]->(r:Risk {is_template: false})
 ```
 
 ---
@@ -733,4 +740,4 @@ flake8>=6.0.0
 
 ---
 
-*Last updated: February 2026 | Version 2.10.4*
+*Last updated: March 2026 | Version 2.27.1*

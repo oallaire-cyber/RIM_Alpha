@@ -31,6 +31,7 @@ class Risk:
         acceptance_date: ISO date when risk was formally accepted
         acceptance_owner: Person who formally accepted the risk
         archive_date: ISO date when risk was archived
+        is_template: If True, this is a GenericRisk template — excluded from exposure engine and canvas
         current_score_type: Type of scoring used
         created_at: Creation timestamp
         updated_at: Last update timestamp
@@ -53,6 +54,7 @@ class Risk:
     acceptance_date: Optional[str] = None
     acceptance_owner: Optional[str] = None
     archive_date: Optional[str] = None
+    is_template: bool = False
     current_score_type: str = "None"
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -97,6 +99,11 @@ class Risk:
         """Check if risk is excluded from active exposure analysis."""
         from models.enums import LIFECYCLE_INACTIVE_STATUSES
         return self.status in LIFECYCLE_INACTIVE_STATUSES
+
+    @property
+    def is_generic_template(self) -> bool:
+        """Check if risk is a generic risk template (excluded from exposure engine)."""
+        return self.is_template
 
     @property
     def is_legacy(self) -> bool:
@@ -145,6 +152,7 @@ class Risk:
             "acceptance_date": self.acceptance_date,
             "acceptance_owner": self.acceptance_owner,
             "archive_date": self.archive_date,
+            "is_template": self.is_template,
             "current_score_type": self.current_score_type,
         }
 
@@ -168,6 +176,7 @@ class Risk:
             acceptance_date=data.get("acceptance_date") or data.get("activation_decision_date"),
             acceptance_owner=data.get("acceptance_owner"),
             archive_date=data.get("archive_date"),
+            is_template=bool(data.get("is_template", False)),
             current_score_type=data.get("current_score_type", "None"),
         )
 

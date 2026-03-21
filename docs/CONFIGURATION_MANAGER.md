@@ -40,7 +40,7 @@ Schemas are stored in `schemas/<schema_name>/schema.yaml` and define:
 | **relationships** | Influence types/strengths, impact levels, effectiveness levels |
 | **relationships.custom_relationships** | User-defined relationship types between any entities |
 | **scopes** | Named subsets of nodes for focused analysis |
-| **analysis** | Exposure formulas, decay rates, thresholds |
+| **analysis** | Exposure formulas, decay rates, thresholds, alert_thresholds, lifecycle_rules |
 | **ui** | App title, layout, tabs, filter presets |
 
 ### Included Schemas
@@ -89,6 +89,24 @@ Define named subsets of graph nodes for focused analysis:
 | **Delete Scope** | Remove scope from schema |
 
 Scopes are stored in `schema.yaml` and selected in the main RIM app sidebar.
+
+### ⚠️ Alert Thresholds
+
+Configure EL and TRI breach thresholds in the `analysis.alert_thresholds` YAML block:
+
+```yaml
+analysis:
+  alert_thresholds:
+    expected_loss_threshold: 50.0       # EL breach level (0–100 scale)
+    tail_risk_indicator_threshold: 25.0 # TRI breach level
+    enabled: true                       # Set false to suppress the panel
+```
+
+Breaches are shown in the **Exposure** dashboard after each computation. See **❓ Help → Alerts** in the main app for details.
+
+### 📋 Risk Templates
+
+The `is_template` attribute is a boolean flag on the Risk node.  Templates are defined and instantiated in **💾 Data Management → Risks → 📋 Risk Templates** — no schema YAML change is required to use templates. The `instantiates` context edge is registered in `context_edges:` to enable INSTANTIATES relationship display in the canvas if needed.
 
 **Editing Features:**
 - Form-based editors with live preview

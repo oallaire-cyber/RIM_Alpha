@@ -6,18 +6,24 @@ Feature context: $ARGUMENTS
    Execute: `.\venv\Scripts\activate; py -m pytest tests/ -v`
    If any tests fail, stop and fix them before proceeding.
 
-2. **Identify documentation to update**
-   - `CHANGELOG.md` — add entry for the new version
-   - `ROADMAPv2.md` — mark the feature complete with version tag (e.g., ~~[F18]~~ ✅ _(v2.18.0)_)
-   - `README.md` — update if user-facing features or project structure changed
-   - `docs/` files — update if the feature affects any help section content (remember: these are runtime-loaded into the live UI)
-   - Any affected files in `docs/` folder
+2. **Full documentation pass** — MANDATORY, not optional. Update ALL of:
+   - `CHANGELOG.md` — add version section at top
+   - `ROADMAPv3.md` — mark the feature complete with strikethrough + ✅ version tag; update ROADMAPv2.md if touching it
+   - `README.md` — add to Key Features table; bump "Current Version" line
+   - `docs/USER_GUIDE.md` — add feature section; update version footer
+   - `docs/ARCHITECTURE.md` — update Neo4j schema block if new nodes/relationships; update version footer
+   - `docs/METHODOLOGY.md` — add math/model subsection if new metrics/formulas; update version footer
+   - `docs/CONFIGURATION_MANAGER.md` — document any new schema YAML blocks
+   - `docs/help_overview.md` — add row to Core Capabilities table
+   - `docs/welcome.md` — add capability block
+   - `docs/help_exposure.md` — update if feature affects exposure or alerting
+   - If the feature has its own UX workflow: create `docs/help_<feature>.md` and register it in `ui/home.py` `_HELP_FILES`
 
-3. **Draft all documentation updates**
-   Show the exact text changes for each file that needs updating.
+3. **Apply all documentation updates**
+   Write or edit each file. Do not just draft — apply changes directly.
 
 4. **Update `tasks/SESSION_STATE.md`**
-   Mark the feature complete, clear the Active Work In Progress section, update Recently Completed.
+   Mark the feature complete, clear the Active Work In Progress section, update Recently Completed and Key Decisions.
 
 5. **Provide git commit text**
    Format:

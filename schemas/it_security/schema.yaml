@@ -114,7 +114,12 @@ entities:
         type: "string"
         required: false
         description: "Attack vector or method"
-    
+      - name: "is_template"
+        type: "boolean"
+        required: false
+        default: false
+        description: "If true, this is a GenericRisk template — excluded from exposure calculations and canvas display"
+
     custom_attributes:
       - id: "cvss_score"
         label: "CVSS Score"
@@ -435,6 +440,22 @@ analysis:
   cache_timeout_seconds: 30
   max_influence_depth: 10
   high_exposure_threshold_multiplier: 1.2
+  alert_thresholds:
+    high_exposure_threshold: 50.0
+    tail_risk_indicator_threshold: 25.0
+    enabled: true
+
+context_edges:
+  instantiates:
+    label: "Instantiates"
+    neo4j_type: "INSTANTIATES"
+    description: "Links a GenericRisk template to a specific risk instantiation"
+    from_node: "risk"
+    to_node: "risk"
+    color: "#9B59B6"
+    line_style: "dashed"
+    bidirectional: false
+    properties: []
 
 ui:
   app_title: "Security Risk Map (SRM)"

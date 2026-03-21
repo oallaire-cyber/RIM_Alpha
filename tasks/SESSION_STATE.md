@@ -6,24 +6,52 @@
 ---
 
 ## Current Version
-`v2.26.0` — F7 What-If Analysis complete. Branch: feature/iteration_4.
+`v2.27.1` — Post-release fixes + Subtype selection. Branch: feature/iteration_4.
 
 ## Last Updated
-2026-03-21 — F7 fully implemented + documentation pass complete. 409 tests passing.
+2026-03-21 — v2.27.1 fully implemented. 445 tests passing.
 
 ---
 
 ## 🔴 Active Work In Progress
 
-_None. F7 complete._
+_None. v2.27.1 complete._
 
-**Next feature**: **F31c** Lifecycle-Aware Simulation (v2.27.0) — see ROADMAPv3.md Iteration 5.
+**Next feature**: **F6** Mitigation Exposure View (v2.28.0) — see ROADMAPv3.md Iteration 5.
 
 ---
 
 ## ✅ Recently Completed (last 2 sessions)
 
-### Session N+6 (this session — v2.26.0 documentation pass)
+### Session N+8 (this session — v2.27.1 fixes + subtype selection)
+- **v2.27.1** — Post-release fixes + Subtype Selection:
+  - `config/schema_loader.py`: `expected_loss_threshold` → `high_exposure_threshold`; backward-compat parse fallback.
+  - `schemas/default/schema.yaml` + `schemas/it_security/schema.yaml`: key renamed.
+  - `ui/home.py`: display text "Expected Loss" → "High Exposure" throughout `_render_threshold_alerts`.
+  - `core/attribute.py`: `__post_init__` alias `"boolean"` → `"bool"`, `"integer"` → `"int"` before `AttributeType()` lookup.
+  - `pages/1_⚙️_Configuration.py`: YAML backup `open()` calls now specify `encoding='utf-8'`.
+  - `database/queries/analysis.py`: node-set safety filter strips edges whose source/target is absent from the canvas node list (fixes INSTANTIATES AssertionError).
+  - `ui/tabs/unified_crud_tab.py`: `_render_risk_subtype_fields()` — new helper renders subtype selectbox (filtered by level) + extension fields after generic form. Wired into both create form and edit card.
+  - `tests/test_alerts.py` + `tests/test_templates.py`: field name updated.
+  - Full documentation pass for v2.27.0 (help_templates.md, help_alerts.md, USER_GUIDE, ARCHITECTURE, METHODOLOGY, CONFIGURATION_MANAGER, help_overview, welcome, help_exposure, README).
+  - `/finish` skill + `tasks/lessons.md` updated to enforce doc pass.
+  - **445 tests passing.**
+
+### Session N+7 (v2.27.0 U14 + F5)
+- **v2.27.0** — **U14 Generic Risk Template Architecture** + **F5 Threshold Alerts**:
+  - `models/risk.py`: `is_template: bool = False` field + `is_generic_template` property; `to_dict`/`from_dict` updated.
+  - `database/queries/risks.py`: `create_risk(is_template)`, `update_risk(is_template)`, `get_all_risks(exclude_templates=True)`, `get_risks_with_filters(exclude_templates=True)`; NEW: `get_all_templates()`, `create_instantiates_rel()`, `get_instances_of_template()`, `get_template_of_instance()`.
+  - `database/manager.py`: `create_risk(is_template)`, `update_risk(is_template)`, `get_all_risks(exclude_templates)` wrappers; `create_unified_entity`/`update_unified_entity` pass `is_template` through; 4 new template method wrappers.
+  - `schemas/default/schema.yaml` + `schemas/it_security/schema.yaml`: `is_template` boolean attribute; `instantiates` context edge (INSTANTIATES, dashed); `alert_thresholds` block.
+  - `config/schema_loader.py`: `AlertThresholdsConfig` dataclass; `AnalysisConfig.alert_thresholds`; `_parse_analysis` + `_analysis_to_dict` updated.
+  - `ui/tabs/unified_crud_tab.py`: `_render_template_library()` — template expander with instance counts, instantiation form, delete button.
+  - `ui/panels/node_property_panel.py`: `_render_template_info()` new function; registered as `📋 Template` section in property panel; `_render_exposure()` shows info for templates.
+  - `ui/home.py`: `_render_threshold_alerts()` function; called after quadrant distribution in exposure expander.
+  - `tests/test_templates.py`: NEW — 25 tests.
+  - `tests/test_alerts.py`: NEW — 11 tests.
+  - **445 tests passing.**
+
+### Session N+6 (v2.26.0 documentation pass)
 - Documentation updates for F7 What-If Analysis + broader doc refresh:
   - `docs/help_whatif.md`: NEW in-app help article; registered in `ui/home.py` `_HELP_FILES`
   - `docs/help_overview.md`: What-If row added
@@ -85,6 +113,43 @@ _None. F7 complete._
 ---
 
 ## 🧠 Key Decisions Made (not in docs yet)
+
+- **`high_exposure_threshold` — not `expected_loss_threshold`**: The raw exposure score
+  is not an "Expected Loss" in the financial sense. EL will be introduced later with the
+  compound Poisson loss model (SPICE calibration, LEC). Until then, threshold alerts compare
+  against `high_exposure_threshold` (same 0-100 scale as `final_exposure`).
+
+- **`boolean` YAML type → `AttributeType.BOOL`**: `AttributeType` enum value is `"bool"`,
+  not `"boolean"`. The alias mapping is in `core/attribute.py` `__post_init__`. Any new
+  schema attribute type of `boolean` or `integer` will be correctly resolved.
+
+- **INSTANTIATES edge safety filter in `get_graph_data`**: After collecting all edges,
+  a `_node_ids` set filter strips any edge whose source or target is not in the canvas.
+  This is a general safety measure, not just for INSTANTIATES. Applied before scope filtering.
+
+- **Subtype selector rendered after `build_entity_form`**: `_render_risk_subtype_fields()`
+  mutates `form_data` in place. It reads `form_data["level"]` (set by the generic form)
+  to filter subtypes. Works for both create (existing_data={}) and edit (pre-fill from node dict).
+
+- **U14 `is_template` exclusion is a second independent axis** (orthogonal to lifecycle):
+  templates are excluded via `(r.is_template IS NULL OR r.is_template = false)` WHERE clause
+  in both `get_all_risks` and `get_risks_with_filters`. `exclude_templates=True` by default,
+  same pattern as `exclude_inactive`. CRUD forms pass both `exclude_inactive=False` and
+  `exclude_templates=False` to see everything.
+
+- **U14 `update_risk` uses COALESCE for is_template**: `r.is_template = COALESCE($is_template_val, r.is_template, false)`.
+  Caller passes `None` meaning "leave unchanged"; any boolean value overwrites the property.
+  Param key is `is_template_val` (not `is_template`) to avoid collision with existing code.
+
+- **Templates excluded from canvas via `get_risks_with_filters`**: `get_graph_data` in
+  `analysis.py` calls `get_risks_with_filters` which now defaults to `exclude_templates=True`.
+  No change needed to `get_graph_data` itself.
+
+- **Template library is a separate expander** in Data Management Risks tab, not mixed into
+  the main risk list. Main list = active specific risks only. Templates only appear in the
+  `📋 Risk Templates` expander for management and instantiation.
+
+
 
 - **U12 field renames are migration-safe**: `from_dict` in `models/risk.py` reads new key first,
   falls back to old key. `get_all_risks`/`get_risk_by_id` use COALESCE in Cypher RETURN.

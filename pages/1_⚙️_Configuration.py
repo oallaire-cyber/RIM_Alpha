@@ -1353,9 +1353,9 @@ def render_yaml_preview(schema: SchemaConfig):
                         # Backup existing
                         backup_path = schema_path.with_suffix('.yaml.bak')
                         if schema_path.exists():
-                            with open(schema_path, 'r') as f:
+                            with open(schema_path, 'r', encoding='utf-8') as f:
                                 backup_content = f.read()
-                            with open(backup_path, 'w') as f:
+                            with open(backup_path, 'w', encoding='utf-8') as f:
                                 f.write(backup_content)
                         
                         # Save new content

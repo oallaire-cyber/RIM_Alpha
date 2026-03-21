@@ -67,3 +67,20 @@ Final = Base × Effective_Mitigation_Factor
 > Toggle "Show connected neighbors" to include adjacent risks.
 
 > **Lifecycle-aware:** Risks with status **Accepted**, **Watching**, **Suppressed**, **Closed**, or **Archived** are automatically excluded from all exposure calculations. Use the Lifecycle Engine in Data Management to review or re-open them.
+
+> **Template-aware:** Risks marked as **Generic Risk Templates** (`is_template = true`) are excluded from all exposure calculations. Only specific instantiated risks contribute to EL and TRI.
+
+---
+
+**⚠️ Threshold Alerts**
+
+After computing exposure, a breach panel appears below the quadrant distribution widget:
+
+| Threshold | Default | Configures in |
+|-----------|---------|---------------|
+| Expected Loss (EL) | 50.0 | `analysis.alert_thresholds.expected_loss_threshold` |
+| Tail Risk Indicator (TRI) | 25.0 | `analysis.alert_thresholds.tail_risk_indicator_threshold` |
+
+Risks exceeding either threshold are listed by column (EL Breaches / TRI Breaches) with name, level, and actual value shown. When all risks are within thresholds, a green success indicator is displayed instead.
+
+Set `enabled: false` in the schema YAML to disable alerts entirely. See **❓ Help → Alerts** for full configuration details.

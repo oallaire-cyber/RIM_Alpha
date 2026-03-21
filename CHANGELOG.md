@@ -4,6 +4,106 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.27.1] - 2026-03-21 (Post-v2.27.0 Fixes + Subtype Selection)
+
+### Bug Fixes
+
+- **`expected_loss_threshold` → `high_exposure_threshold`** (`config/schema_loader.py`,
+  `schemas/default/schema.yaml`, `schemas/it_security/schema.yaml`, `ui/home.py`,
+  `tests/test_alerts.py`, `tests/test_templates.py`):
+  Renamed the alert threshold field throughout. The "Expected Loss" label was premature —
+  financial quantification (ALE/loss distribution) comes later; this metric tracks raw
+  exposure. Backward-compat parse fallback accepts old key in existing YAML files.
+
+- **YAML editor encoding error** (`pages/1_⚙️_Configuration.py`):
+  `open(schema_path, 'r')` and `open(backup_path, 'w')` in the raw YAML save path were
+  missing `encoding='utf-8'`. On Windows this caused `charmap` codec errors when the
+  schema contained non-ASCII characters (e.g. `≤`).
+
+- **`is_template` not rendering as checkbox** (`core/attribute.py`):
+  `AttributeType.__post_init__` called `AttributeType("boolean")` which raised `ValueError`
+  (enum value is `"bool"`) and silently fell back to `AttributeType.STRING`, rendering as
+  a text input. Added `"boolean"` → `"bool"` and `"integer"` → `"int"` alias mapping
+  before the enum lookup.
+
+- **Graph `AssertionError` after template instantiation** (`database/queries/analysis.py`):
+  The INSTANTIATES relationship (registered as a context edge) was fetched by
+  `get_all_relationships` and included in the edge list. The template source node is
+  intentionally excluded from the canvas, causing PyVis to assert `source in nodes`.
+  Fixed by adding a node-set safety filter immediately after all edges are collected:
+  any edge whose source or target is not in the canvas node set is dropped before scope
+  filtering.
+
+### New Features
+
+- **Risk Subtype selection in create and edit forms** (`ui/tabs/unified_crud_tab.py`):
+  New `_render_risk_subtype_fields()` helper renders after `build_entity_form()` for risk
+  entities. Shows a Subtype selectbox filtered by the selected level; when a typed subtype
+  is selected, renders its extension fields (string/enum/boolean/int/float). Pre-filled from
+  existing data in edit mode. Applied to both the ➕ New Risk create form and the ✏️ Edit
+  form in the risk card list.
+
+### Documentation
+
+- Full documentation pass for v2.27.0 features (templates, threshold alerts):
+  `README.md`, `docs/USER_GUIDE.md`, `docs/ARCHITECTURE.md`, `docs/METHODOLOGY.md`,
+  `docs/CONFIGURATION_MANAGER.md`, `docs/help_overview.md`, `docs/welcome.md`,
+  `docs/help_exposure.md`; new `docs/help_templates.md`, `docs/help_alerts.md`;
+  `ui/home.py` `_HELP_FILES` updated.
+- `CHANGELOG.md`, `ROADMAPv3.md`, `tasks/SESSION_STATE.md` updated.
+- `/finish` skill updated to enforce documentation pass as mandatory step.
+- `core/attribute.py`, `tasks/lessons.md` updated.
+
+---
+
+## [v2.27.0] - 2026-03-21 (U14 Templates + F5 Alerts)
+
+### New Features
+
+- **U14 Generic Risk Template Architecture** (`models/risk.py`, `database/queries/risks.py`,
+  `database/manager.py`, `ui/tabs/unified_crud_tab.py`, `ui/panels/node_property_panel.py`):
+  - `Risk.is_template: bool = False` — new field on the Risk dataclass; included in `to_dict`,
+    `from_dict`, and Neo4j CREATE/SET clauses.
+  - `Risk.is_generic_template` property — convenience alias for `is_template`.
+  - **Exclusion from engine**: `get_all_risks(exclude_templates=True)` and
+    `get_risks_with_filters(exclude_templates=True)` default to filtering out templates.
+    Canvas (`get_graph_data`) inherits this exclusion. Templates never appear in exposure
+    calculations or canvas display.
+  - **INSTANTIATES relationship**: `create_instantiates_rel(template_id, instance_id)` creates
+    a `[:INSTANTIATES]` edge linking a GenericRisk template to a specific instance.
+    Also: `get_instances_of_template(template_id)`, `get_template_of_instance(instance_id)`.
+  - **Template library UI**: `📋 Risk Templates` collapsible expander in Data Management →
+    Risks tab. Lists all templates with instance count; each has an `➕ Instantiate` button
+    that opens an inline form pre-filled with template L, S, subtype, categories.
+  - **Node Property Panel**: new `📋 Template` section. Shows instances list for templates;
+    shows parent template link for instances. Exposure section shows dedicated info message
+    for templates ("excluded from exposure engine").
+  - **Schema YAML**: `is_template` boolean attribute added to risk entity in both
+    `schemas/default/schema.yaml` and `schemas/it_security/schema.yaml`.
+    `instantiates` context edge (`INSTANTIATES`, dashed, purple) added to both schemas.
+
+- **F5 Automated Threshold Alerts** (`config/schema_loader.py`, `schemas/*/schema.yaml`,
+  `ui/home.py`):
+  - `AlertThresholdsConfig` dataclass: `expected_loss_threshold`, `tail_risk_indicator_threshold`,
+    `enabled`. Added to `AnalysisConfig`; parsed by `_parse_analysis`; serialized by
+    `_analysis_to_dict`.
+  - Both schema YAMLs default: EL threshold = 50.0, TRI threshold = 25.0, enabled = true.
+  - `_render_threshold_alerts(exposure_results)` in `ui/home.py`: displays a two-column
+    `⚠️ Threshold Alerts` panel after the quadrant distribution widget. EL breaches and TRI
+    breaches listed separately with risk name, level, and actual value. Shows
+    `✅ All risks within thresholds` when no breaches.
+
+### Tests
+
+- **`tests/test_templates.py`** (NEW — 25 tests): `is_template` model round-trip;
+  `is_generic_template` property; `AlertThresholdsConfig` defaults and parsing;
+  query function signatures; manager method existence.
+- **`tests/test_alerts.py`** (NEW — 11 tests): breach detection logic (EL/TRI); boundary
+  values; missing fields; schema integration (default and it_security schemas load correctly).
+- **445 tests passing** (up from 409).
+
+---
+
 ## [v2.26.0] - 2026-03-21 (F7 What-If Analysis Sandbox)
 
 ### New Features

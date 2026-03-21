@@ -71,6 +71,17 @@ and which program objectives are at stake.
 > *Use What-If to answer "what if this control fails?" or "which mitigation
 > delivers the most risk reduction?" in a live briefing.*
 
+**📋 Risk Templates**
+- Define Generic Risk archetypes as reusable templates
+- Instantiate a template to create a specific risk pre-filled with standard attributes
+- Templates are excluded from exposure calculations and the graph canvas
+- Traceable via `[:INSTANTIATES]` relationship in Neo4j
+
+**⚠️ Threshold Alerts**
+- Configurable EL and TRI thresholds per domain (set in schema YAML)
+- Breach panel surfaced in the Exposure dashboard after each computation
+- Scope-aware and lifecycle-aware — only active in-scope risks are evaluated
+
 **📊 Import/Export**
 - Full Excel import/export
 - Layout save/load for presentations

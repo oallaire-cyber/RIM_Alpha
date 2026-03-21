@@ -289,12 +289,21 @@ class ExposureConfig:
 
 
 @dataclass
+class AlertThresholdsConfig:
+    """Alert threshold configuration for high-exposure and TRI breach detection."""
+    high_exposure_threshold: float = 50.0
+    tail_risk_indicator_threshold: float = 25.0
+    enabled: bool = True
+
+
+@dataclass
 class AnalysisConfig:
     """Analysis configuration."""
     exposure: ExposureConfig = field(default_factory=ExposureConfig)
     cache_timeout_seconds: int = 30
     max_influence_depth: int = 10
     high_exposure_threshold_multiplier: float = 1.2
+    alert_thresholds: AlertThresholdsConfig = field(default_factory=AlertThresholdsConfig)
 
 
 # =============================================================================
@@ -876,11 +885,22 @@ class SchemaLoader:
             convergence_multiplier=exposure_data.get("convergence_multiplier", 0.2),
         )
         
+        at_data = data.get("alert_thresholds", {})
+        alert_thresholds = AlertThresholdsConfig(
+            high_exposure_threshold=float(
+                at_data.get("high_exposure_threshold",
+                at_data.get("expected_loss_threshold", 50.0))  # backward compat
+            ),
+            tail_risk_indicator_threshold=float(at_data.get("tail_risk_indicator_threshold", 25.0)),
+            enabled=bool(at_data.get("enabled", True)),
+        )
+
         return AnalysisConfig(
             exposure=exposure,
             cache_timeout_seconds=data.get("cache_timeout_seconds", 30),
             max_influence_depth=data.get("max_influence_depth", 10),
             high_exposure_threshold_multiplier=data.get("high_exposure_threshold_multiplier", 1.2),
+            alert_thresholds=alert_thresholds,
         )
 
     def _parse_lifecycle_rules(self, data: Dict[str, Any]) -> LifecycleRulesConfig:
@@ -1200,6 +1220,11 @@ class SchemaLoader:
             "cache_timeout_seconds": analysis.cache_timeout_seconds,
             "max_influence_depth": analysis.max_influence_depth,
             "high_exposure_threshold_multiplier": analysis.high_exposure_threshold_multiplier,
+            "alert_thresholds": {
+                "high_exposure_threshold": analysis.alert_thresholds.high_exposure_threshold,
+                "tail_risk_indicator_threshold": analysis.alert_thresholds.tail_risk_indicator_threshold,
+                "enabled": analysis.alert_thresholds.enabled,
+            },
         }
     
     def _lifecycle_rules_to_dict(self, rules: LifecycleRulesConfig) -> Dict[str, Any]:

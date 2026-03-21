@@ -157,6 +157,12 @@ def get_graph_data(
                 edge["edge_type"] = rel_type.neo4j_type
                 edges.append(edge)
     
+    # Safety: strip any edge whose source or target is not in the node set.
+    # This prevents AssertionError in PyVis when a relationship (e.g. INSTANTIATES)
+    # references a node that was intentionally excluded (e.g. a template risk).
+    _node_ids = {n["id"] for n in nodes}
+    edges = [e for e in edges if e.get("source") in _node_ids and e.get("target") in _node_ids]
+
     # Apply scope filtering — smart expansion from explicit active scopes
     active_scopes = filters.get("active_scopes")
     

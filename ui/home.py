@@ -72,6 +72,8 @@ _HELP_FILES = {
     "Layouts":     "help_layouts.md",
     "Lifecycle":   "help_lifecycle.md",
     "What-If":     "help_whatif.md",
+    "Templates":   "help_templates.md",
+    "Alerts":      "help_alerts.md",
 }
 
 
@@ -355,6 +357,9 @@ def render_exposure_dashboard(manager):
             # U13 — Quadrant distribution widget
             _render_quadrant_distribution(exposure_results)
 
+            # F5 — Threshold alerts
+            _render_threshold_alerts(exposure_results)
+
             # Details expander
             with st.expander("📋 Detailed Risk Exposures", expanded=False):
                 risk_results = exposure_results.get("risk_results", [])
@@ -428,6 +433,67 @@ def _render_quadrant_distribution(exposure_results: dict) -> None:
         pct = count / total * 100
         with cols[i]:
             st.metric(label, f"{count}", help=f"{pct:.0f}% of risks in this quadrant")
+
+
+def _render_threshold_alerts(exposure_results: dict) -> None:
+    """F5 — Render EL and TRI threshold breach alerts in the exposure panel."""
+    from config.settings import get_active_schema
+    schema = get_active_schema()
+    if schema is None:
+        return
+    cfg = schema.analysis.alert_thresholds
+    if not cfg.enabled:
+        return
+
+    risk_results = exposure_results.get("risk_results", [])
+    if not risk_results:
+        return
+
+    he_thresh = cfg.high_exposure_threshold
+    tri_thresh = cfg.tail_risk_indicator_threshold
+
+    he_breaches = [
+        r for r in risk_results
+        if r.get("final_exposure", 0) > he_thresh
+    ]
+    tri_breaches = [
+        r for r in risk_results
+        if r.get("tail_risk_indicator", 0) > tri_thresh
+    ]
+
+    if not he_breaches and not tri_breaches:
+        st.success(f"✅ All risks within thresholds (High Exposure ≤ {he_thresh:.0f}, TRI ≤ {tri_thresh:.1f})")
+        return
+
+    with st.container():
+        st.markdown("#### ⚠️ Threshold Alerts")
+        alert_col1, alert_col2 = st.columns(2)
+
+        with alert_col1:
+            if he_breaches:
+                st.warning(
+                    f"**High Exposure breaches** (threshold: {he_thresh:.0f})\n\n"
+                    + "\n".join(
+                        f"- {r.get('risk_name', r.get('risk_id', '?'))} "
+                        f"[{r.get('level', '')}]: **{r.get('final_exposure', 0):.1f}**"
+                        for r in sorted(he_breaches, key=lambda x: x.get("final_exposure", 0), reverse=True)
+                    )
+                )
+            else:
+                st.success(f"No High Exposure breaches (threshold: {he_thresh:.0f})")
+
+        with alert_col2:
+            if tri_breaches:
+                st.warning(
+                    f"**Tail Risk Index breaches** (threshold: {tri_thresh:.1f})\n\n"
+                    + "\n".join(
+                        f"- {r.get('risk_name', r.get('risk_id', '?'))} "
+                        f"[{r.get('level', '')}]: **{r.get('tail_risk_indicator', 0):.1f}**"
+                        for r in sorted(tri_breaches, key=lambda x: x.get("tail_risk_indicator", 0), reverse=True)
+                    )
+                )
+            else:
+                st.success(f"No TRI breaches (threshold: {tri_thresh:.1f})")
 
 
 def render_visualization_filters(manager: RiskGraphManager):

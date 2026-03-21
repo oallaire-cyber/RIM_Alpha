@@ -34,6 +34,7 @@ def create_risk(
     archive_date: Optional[str] = None,
     subtype: Optional[str] = None,
     ext_fields: Optional[Dict[str, Any]] = None,
+    is_template: bool = False,
     # Legacy parameter aliases (backward compat for callers not yet updated)
     activation_condition: Optional[str] = None,
     activation_decision_date: Optional[str] = None,
@@ -58,6 +59,7 @@ def create_risk(
         archive_date: ISO date when risk was archived
         subtype: Risk subtype ID (e.g., "generic", "cyber_entry_point")
         ext_fields: Extension field dict with ext_ prefixed keys
+        is_template: If True, marks this as a GenericRisk template (excluded from exposure engine)
     
     Returns:
         Created risk ID or None if failed
@@ -104,6 +106,7 @@ def create_risk(
         severity: $severity,
         exposure: $exposure,
         subtype: $subtype,
+        is_template: $is_template,
         created_at: datetime(),
         updated_at: datetime(),
         last_review_date: $last_review_date,
@@ -130,6 +133,7 @@ def create_risk(
         "severity": severity,
         "exposure": exposure,
         "subtype": subtype or "generic",
+        "is_template": is_template,
         "last_review_date": last_review_date,
         "next_review_date": next_review_date,
     }
@@ -151,6 +155,7 @@ def get_all_risks(
     status_filter: Optional[str] = None,
     origin_filter: Optional[str] = None,
     exclude_inactive: bool = True,
+    exclude_templates: bool = True,
 ) -> List[Dict[str, Any]]:
     """
     Retrieve all risks with optional filters.
@@ -163,6 +168,8 @@ def get_all_risks(
         origin_filter: Filter by origin
         exclude_inactive: When True (default), excludes Accepted/Watching/Suppressed/Closed/Archived
                           risks from results. Pass False for CRUD forms or lifecycle review.
+        exclude_templates: When True (default), excludes GenericRisk templates from results.
+                           Pass False for CRUD template management or template library UI.
 
     Returns:
         List of risk dictionaries
@@ -190,6 +197,9 @@ def get_all_risks(
         conditions.append("NOT r.status IN $inactive_statuses")
         params["inactive_statuses"] = _INACTIVE_STATUSES
 
+    if exclude_templates:
+        conditions.append("(r.is_template IS NULL OR r.is_template = false)")
+
     where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
 
     query = f"""
@@ -209,6 +219,7 @@ def get_all_risks(
            r.owner as owner, r.probability as probability,
            r.severity as severity, r.exposure as exposure,
            r.current_score_type as current_score_type,
+           COALESCE(r.is_template, false) as is_template,
            properties(r) as all_props,
            computed_distance,
            CASE WHEN computed_distance = -1 THEN true ELSE false END as is_orphan
@@ -332,6 +343,7 @@ def get_risks_with_filters(
     statuses: Optional[List[str]] = None,
     origins: Optional[List[str]] = None,
     exclude_inactive: bool = True,
+    exclude_templates: bool = True,
 ) -> List[Dict[str, Any]]:
     """
     Retrieve risks with multiple filter lists (for visualization).
@@ -344,6 +356,7 @@ def get_risks_with_filters(
         origins: List of origins to include
         exclude_inactive: When True (default), excludes Accepted/Watching/Suppressed/Closed/Archived
                           risks from results. Pass False for canvas display or lifecycle review.
+        exclude_templates: When True (default), excludes GenericRisk templates from canvas display.
 
     Returns:
         List of risk dictionaries
@@ -375,8 +388,11 @@ def get_risks_with_filters(
         conditions.append("NOT r.status IN $inactive_statuses")
         params["inactive_statuses"] = _INACTIVE_STATUSES
 
+    if exclude_templates:
+        conditions.append("(r.is_template IS NULL OR r.is_template = false)")
+
     where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
-    
+
     query = f"""
     MATCH (r:Risk)
     {where_clause}
@@ -429,6 +445,7 @@ def update_risk(
     archive_date: Optional[str] = None,
     subtype: Optional[str] = None,
     ext_fields: Optional[Dict[str, Any]] = None,
+    is_template: Optional[bool] = None,
     # Legacy parameter aliases (backward compat for callers not yet updated)
     activation_condition: Optional[str] = None,
     activation_decision_date: Optional[str] = None,
@@ -454,6 +471,7 @@ def update_risk(
         archive_date: Updated archive date
         subtype: Risk subtype ID
         ext_fields: Extension field dict with ext_ prefixed keys (None values = clear)
+        is_template: If provided, updates the template flag
 
     Returns:
         True if successful, False otherwise
@@ -498,6 +516,7 @@ def update_risk(
         r.severity = $severity,
         r.exposure = $exposure,
         r.subtype = $subtype,
+        r.is_template = COALESCE($is_template_val, r.is_template, false),
         r.updated_at = datetime(){ext_set_clause}
     {ext_remove_clause}
     RETURN r.id
@@ -520,6 +539,8 @@ def update_risk(
         "severity": severity,
         "exposure": exposure,
         "subtype": subtype or "generic",
+        # COALESCE: if caller passes None, preserve existing value (or default false)
+        "is_template_val": is_template,
     }
     params.update(ext_params)
     
@@ -662,3 +683,117 @@ def get_archive_candidates(
 
     result = conn.execute_query(query, params)
     return [dict(row) for row in result]
+
+
+# =============================================================================
+# TEMPLATE QUERIES (U14)
+# =============================================================================
+
+def get_all_templates(conn: Neo4jConnection) -> List[Dict[str, Any]]:
+    """
+    Retrieve all GenericRisk templates (is_template = true).
+
+    Returns the same field shape as get_all_risks for consistency.
+    """
+    query = """
+    MATCH (r:Risk)
+    WHERE r.is_template = true
+    RETURN r.id as id, r.name as name, r.level as level,
+           r.categories as categories, r.description as description,
+           r.status as status, r.origin as origin,
+           r.owner as owner, r.probability as probability,
+           r.severity as severity, r.exposure as exposure,
+           r.current_score_type as current_score_type,
+           COALESCE(r.is_template, false) as is_template,
+           properties(r) as all_props
+    ORDER BY r.name ASC
+    """
+    results = conn.execute_query(query)
+    processed = []
+    for row in results:
+        row_dict = dict(row)
+        all_props = row_dict.pop("all_props", {})
+        if all_props:
+            if "subtype" in all_props:
+                row_dict["subtype"] = all_props["subtype"]
+            for k, v in all_props.items():
+                if k.startswith("ext_") and k not in row_dict:
+                    row_dict[k] = v
+        row_dict.setdefault("subtype", None)
+        processed.append(row_dict)
+    return processed
+
+
+def create_instantiates_rel(
+    conn: Neo4jConnection,
+    template_id: str,
+    instance_id: str,
+) -> bool:
+    """
+    Create an INSTANTIATES relationship from a template risk to an instance risk.
+
+    Args:
+        conn: Database connection
+        template_id: UUID of the GenericRisk template
+        instance_id: UUID of the specific risk instance
+
+    Returns:
+        True if the relationship was created, False otherwise
+    """
+    query = """
+    MATCH (t:Risk {id: $template_id}), (i:Risk {id: $instance_id})
+    MERGE (t)-[:INSTANTIATES]->(i)
+    RETURN t.id AS template_id
+    """
+    result = conn.execute_query(query, {"template_id": template_id, "instance_id": instance_id})
+    return len(result) > 0
+
+
+def get_instances_of_template(
+    conn: Neo4jConnection,
+    template_id: str,
+) -> List[Dict[str, Any]]:
+    """
+    Return all specific risk instances linked from a template via INSTANTIATES.
+
+    Args:
+        conn: Database connection
+        template_id: UUID of the GenericRisk template
+
+    Returns:
+        List of risk dicts for each instance
+    """
+    query = """
+    MATCH (t:Risk {id: $template_id})-[:INSTANTIATES]->(i:Risk)
+    RETURN i.id as id, i.name as name, i.level as level,
+           i.status as status, i.probability as probability,
+           i.severity as severity, i.exposure as exposure
+    ORDER BY i.name ASC
+    """
+    result = conn.execute_query(query, {"template_id": template_id})
+    return [dict(row) for row in result]
+
+
+def get_template_of_instance(
+    conn: Neo4jConnection,
+    instance_id: str,
+) -> Optional[Dict[str, Any]]:
+    """
+    Return the GenericRisk template that this instance was instantiated from, if any.
+
+    Args:
+        conn: Database connection
+        instance_id: UUID of the specific risk instance
+
+    Returns:
+        Template risk dict or None if the risk has no template parent
+    """
+    query = """
+    MATCH (t:Risk)-[:INSTANTIATES]->(i:Risk {id: $instance_id})
+    RETURN t.id as id, t.name as name, t.level as level,
+           t.description as description, t.probability as probability,
+           t.severity as severity, t.is_template as is_template
+    LIMIT 1
+    """
+    result = conn.execute_query(query, {"instance_id": instance_id})
+    return dict(result[0]) if result else None
