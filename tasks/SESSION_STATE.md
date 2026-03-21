@@ -9,7 +9,7 @@
 `v2.26.0` — F7 What-If Analysis complete. Branch: feature/iteration_4.
 
 ## Last Updated
-2026-03-21 — F7 fully implemented, 409 tests passing.
+2026-03-21 — F7 fully implemented + documentation pass complete. 409 tests passing.
 
 ---
 
@@ -23,7 +23,18 @@ _None. F7 complete._
 
 ## ✅ Recently Completed (last 2 sessions)
 
-### Session N+5 (this session — v2.26.0 F7 What-If Analysis)
+### Session N+6 (this session — v2.26.0 documentation pass)
+- Documentation updates for F7 What-If Analysis + broader doc refresh:
+  - `docs/help_whatif.md`: NEW in-app help article; registered in `ui/home.py` `_HELP_FILES`
+  - `docs/help_overview.md`: What-If row added
+  - `docs/welcome.md`: What-If capability block added
+  - `docs/USER_GUIDE.md`: What-If + Lifecycle sections added; navigation updated; health thresholds corrected; version → v2.26.0
+  - `docs/ARCHITECTURE.md`: 5-page diagram; lifecycle services; WHATIF_DEFAULTS; init functions
+  - `README.md`: version v2.26.0; 3 new Key Features; Analysis Tools + nav updated; pages/services structure updated
+  - `CHANGELOG.md`: Documentation section added under v2.26.0
+  - **409 tests passing.**
+
+### Session N+5 (v2.26.0 F7 What-If Analysis)
 - **v2.26.0** — **F7 What-If Analysis Sandbox**:
   - `pages/3_🔬_What-If_Analysis.py`: NEW — mitigation toggle checkboxes (grouped by type); Compute Baseline button fetches + scopes data; recomputes `GlobalExposureResult` in-memory on every toggle change; portfolio summary (RR%, WRS, TRI) with `st.metric` delta indicators; health status change alert; per-risk delta table (Baseline vs Modified EL + TRI, sorted by Δ EL); Reset Scenario button; "Include inactive risks" worst-case toggle.
   - `utils/state_manager.py`: `WHATIF_DEFAULTS` + `init_whatif_state()`; registered in `init_all()`.
@@ -159,7 +170,7 @@ _None._
 ## 🔁 Resumption Prompt (copy-paste to start next session)
 ```
 Resume RIM development. Read tasks/SESSION_STATE.md first, then continue where we left off.
-F7 complete (v2.26.0), 409 tests passing. ROADMAPv3.md is the authoritative roadmap.
+F7 complete (v2.26.0) including documentation pass, 409 tests passing. ROADMAPv3.md is the authoritative roadmap.
 Next task: Iteration 5 — F31c Lifecycle-Aware Simulation (v2.27.0).
 Branch: feature/iteration_4.
 ```

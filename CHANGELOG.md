@@ -31,6 +31,25 @@ All notable changes to the Risk Influence Map (RIM) application.
   `whatif_raw_risks`, `whatif_raw_influences`, `whatif_raw_mitigations`,
   `whatif_raw_mitigates`, `whatif_include_inactive`.
 
+### Documentation
+
+- **`docs/help_whatif.md`**: NEW runtime-loaded in-app help article for What-If Analysis
+  (How It Works, Portfolio Metrics, Per-Risk Delta Table, Scope/Lifecycle constraints,
+  Typical Use Cases). Registered as `"What-If"` tab in `ui/home.py` `_HELP_FILES`.
+- **`docs/help_overview.md`**: What-If Analysis row added to Core Capabilities table.
+- **`docs/welcome.md`**: What-If Analysis capability block added.
+- **`docs/USER_GUIDE.md`**: New **What-If Analysis** section (step-by-step, portfolio
+  metrics, per-risk delta table, use-case table); new **Risk Lifecycle Engine** section;
+  Monte Carlo simulator subsection; Navigation table updated to all 5 pages; health status
+  thresholds corrected; version footer updated to v2.26.0.
+- **`docs/ARCHITECTURE.md`**: Pages diagram updated to 5 pages; `services/` package listing
+  updated with lifecycle engine modules; `WHATIF_DEFAULTS`/`SIMULATION_DEFAULTS`/
+  `LIFECYCLE_DEFAULTS` added to state manager table; new init functions documented.
+- **`README.md`**: Version bumped to v2.26.0; What-If Analysis, Risk Lifecycle Engine,
+  and Dual-Metric Exposure added to Key Features table; What-If added to Analysis Tools
+  and navigation instructions; `pages/` and `services/` structure updated; help_whatif.md
+  added to documentation table.
+
 ---
 
 ## [v2.25.1] - 2026-03-20 (U12 Post-Implementation Fixes & Polish)
