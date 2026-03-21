@@ -90,6 +90,16 @@ LIFECYCLE_DEFAULTS: Dict[str, Any] = {
     "show_accepted_risks": False,           # toggle for accepted-risk review table
 }
 
+WHATIF_DEFAULTS: Dict[str, Any] = {
+    "whatif_baseline": None,            # GlobalExposureResult | None — cached baseline
+    "whatif_modified": None,            # GlobalExposureResult | None — current scenario
+    "whatif_raw_risks": None,           # List[Dict] — risks snapshot at baseline time
+    "whatif_raw_influences": None,      # List[Dict] — influences snapshot
+    "whatif_raw_mitigations": None,     # List[Dict] — mitigations in scope
+    "whatif_raw_mitigates": None,       # List[Dict] — MITIGATES relationships snapshot
+    "whatif_include_inactive": False,   # bool — include lifecycle-inactive risks
+}
+
 
 # ---------------------------------------------------------------------------
 # Generic initializer
@@ -166,6 +176,11 @@ def init_lifecycle_state() -> None:
     init_defaults(LIFECYCLE_DEFAULTS)
 
 
+def init_whatif_state() -> None:
+    """Initialise What-If Analysis page keys."""
+    init_defaults(WHATIF_DEFAULTS)
+
+
 def init_all() -> None:
     """Initialise every registered key.  Useful in test harnesses."""
     init_connection_state()
@@ -175,6 +190,7 @@ def init_all() -> None:
     init_analysis_cache_state()
     init_simulation_state()
     init_lifecycle_state()
+    init_whatif_state()
 
 
 # ---------------------------------------------------------------------------

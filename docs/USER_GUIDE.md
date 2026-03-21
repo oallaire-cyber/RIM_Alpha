@@ -15,8 +15,10 @@ Complete documentation for the Risk Influence Map application.
 7. [Analysis Scopes](#analysis-scopes)
 8. [Visualization](#visualization)
 9. [Analysis Tools](#analysis-tools)
-10. [Import/Export](#importexport)
-11. [Filter System](#filter-system)
+10. [What-If Analysis](#what-if-analysis)
+11. [Risk Lifecycle Engine](#risk-lifecycle-engine)
+12. [Import/Export](#importexport)
+13. [Filter System](#filter-system)
 
 ---
 
@@ -38,7 +40,7 @@ Complete documentation for the Risk Influence Map application.
 
 ### Interface Overview
 
-The application has three main areas:
+The application has four pages plus the main dashboard:
 
 | Area | Location | Purpose |
 |------|----------|---------|
@@ -55,16 +57,15 @@ RIM allows users to toggle the interface complexity from the **top of the sideba
 
 ### Navigation
 
-The application uses a multi-page routing structure with data strictly managed in the `Data Management` page:
+The application uses a multi-page routing structure:
 
-| Area | Purpose |
-|-----|---------|
-| 📊 Home Page | Interactive risk visualization and analysis dashboard |
-| 🗃️ Core Nodes | Manage standard framework entities like Risks and Mitigations (Data Management) |
-| 🔌 Core Edges | Map relationships like Influences and Mitigates (Data Management) |
-| 🏷️ Context Nodes | Manage dynamic nodes like TPOs (Top Program Objectives) and Actors (Data Management) |
-| 🔗 Context Edges | Link custom edges such as TPO impacts (Data Management) |
-| 📥📤 Import/Export | Data exchange via Excel (Data Management) |
+| Page | Purpose |
+|------|---------|
+| 📊 **Home** | Interactive risk visualization and analysis dashboard |
+| 💾 **Data Management** | Full CRUD for all graph entities (Core Nodes/Edges, Context Nodes/Edges, Import/Export, Lifecycle Engine) |
+| ⚙️ **Configuration** | Schema and database management |
+| 🎲 **Simulation** | Monte Carlo calibration simulator (scope-based real-data mode) |
+| 🔬 **What-If Analysis** | In-memory mitigation toggle with EL + TRI delta reporting |
 
 ### Loading Demo Data (Quick Start)
 
@@ -292,10 +293,11 @@ The exposure calculation quantifies risk severity considering:
 
 | Score Range | Status | Color |
 |-------------|--------|-------|
-| 0-25 | Excellent | Green |
-| 26-50 | Good | Blue |
-| 51-75 | Attention Needed | Orange |
-| 76-100 | Critical | Red |
+| 0–10 | Excellent | Green |
+| 11–30 | Good | Light green |
+| 31–50 | Moderate | Orange |
+| 51–70 | Concerning | Dark orange |
+| 71–100 | Critical | Red |
 
 ### Using Exposure Calculation
 
@@ -476,6 +478,107 @@ Coverage gaps are flagged if the unmitigated risk is also:
 - A **Convergence Point** (multiple influences)
 - A **Bottleneck** (single point of failure)
 
+### Monte Carlo Simulator
+
+Access from the **🎲 Simulation** page.
+
+| Mode | Description |
+|------|-------------|
+| **Monte Carlo (Random)** | Random scenario generation for model validation |
+| **Mitigation Path** | Progressive mitigation scenario analysis |
+| **Scope-Based (Real Data)** | Real graph data from active DB connection; scope-aware |
+
+Scope-Based mode uses actual likelihood/severity values and respects the active scope.
+Saved simulation results can be compared with Δ delta columns and exported to Excel.
+
+---
+
+## What-If Analysis
+
+### Overview
+
+The **What-If Analysis** page (`🔬 What-If Analysis` in the sidebar) lets you
+explore mitigation scenarios **without touching the database**. All exploration
+is session-local and reversible.
+
+### Step-by-Step
+
+1. Navigate to the **🔬 What-If Analysis** page
+2. Verify the active scope shown in the sidebar (or leave it as Full Graph)
+3. Optionally check **"Include inactive risks (worst-case)"** to include
+   Accepted/Watching/Suppressed/Closed risks in the analysis
+4. Click **🔄 Compute Baseline** — the page fetches live data and computes
+   the reference exposure result
+5. Uncheck any mitigation in the **Mitigation Toggles** panel to disable it
+6. The **Portfolio Impact** summary and **Per-Risk Exposure Delta** table
+   update immediately with Δ values
+7. Click **↺ Reset Scenario** to re-enable all mitigations
+
+> Changing the scope or the "Include inactive risks" setting requires
+> re-running **Compute Baseline** to refresh the cached data.
+
+### Portfolio Metrics
+
+| Metric | Description |
+|--------|-------------|
+| **Residual Risk %** | Total final exposure / total base exposure × 100 |
+| **Weighted Risk Score** | Severity²-weighted aggregate (0–100 scale) |
+| **Total TRI** | Sum of Tail Risk Indicators (L × S^1.5) across all in-scope risks |
+
+Each metric shows a delta indicator — **red = worse, green = better**.
+A health status change banner appears when the scenario moves the portfolio
+between bands (Excellent / Good / Moderate / Concerning / Critical).
+
+### Per-Risk Delta Table
+
+The table lists every in-scope risk with:
+- **Baseline EL** and **Modified EL** (Final Exposure)
+- **Δ EL** — sorted descending so the most-impacted risks appear first
+- **Baseline TRI**, **Modified TRI**, **Δ TRI**
+- **Quadrant** (critical / frequency / severity / marginal)
+
+### Typical Use Cases
+
+| Question | How to use What-If |
+|----------|--------------------|
+| "What if this mitigation is delayed?" | Disable the mitigation; read Δ EL for its target risks |
+| "Which mitigation delivers the most coverage?" | Disable one at a time; compare Residual Risk % deltas |
+| "Worst-case unmitigated exposure?" | Disable all mitigations + enable "Include inactive risks" |
+| "Stakeholder briefing for a domain" | Activate a scope, compute baseline, toggle mitigations live |
+
+---
+
+## Risk Lifecycle Engine
+
+### Overview
+
+The Lifecycle Engine manages the 6-state risk lifecycle:
+
+| Status | Meaning |
+|--------|---------|
+| **Active** | Currently relevant, included in all analytics |
+| **Watching** | Elevated monitoring; excluded from exposure by default |
+| **Accepted** | Formally accepted by a decision-maker; excluded from exposure |
+| **Suppressed** | Temporarily deprioritised; excluded from exposure |
+| **Closed** | Risk has materialised or is no longer applicable |
+| **Archived** | Historical record only |
+
+### Using the Lifecycle Engine
+
+Access from **💾 Data Management** → **Lifecycle Engine** expander.
+
+- **Trigger Review**: lists risks whose `trigger_condition` text warrants human review
+- **Auto-Acceptance**: flags risks eligible for formal acceptance (below threshold,
+  not critical quadrant, not severity-ceiling) — includes a **🔓 Force Accept** button
+  to override guards when reviewer intent is explicit
+- **Archive Alerts**: lists risks with inactive status older than the configured
+  `archive_retention_days` threshold
+
+### Viewing Accepted Risks
+
+Enable **"Show Accepted Risks"** toggle in Data Management to review the full list
+of accepted risks and their acceptance metadata (date, owner).
+
 ---
 
 ## Import/Export
@@ -635,4 +738,4 @@ Each multi-select filter has **All** and **None** buttons for quick selection.
 
 ---
 
-*Last updated: March 2026 | Version 2.14.0*
+*Last updated: March 2026 | Version 2.26.0*

@@ -57,7 +57,7 @@ streamlit run app.py
 
 1. Open http://localhost:8501 in your browser
 2. Connect to Neo4j (default credentials: neo4j/password)
-3. Navigate between **Home**, **Data Management**, **Configuration**, and **Simulation** via the sidebar
+3. Navigate between **Home**, **Data Management**, **Configuration**, **Simulation**, and **What-If Analysis** via the sidebar
 4. Load demo data via **Data Management** page
 5. Explore the risk network in the **Visualization** tab on the Home page
 
@@ -78,6 +78,9 @@ streamlit run app.py
 | **Risk Subtypes** | Schema-driven domain-specific extension fields on risks (Cyber, Supply Chain, Financial, etc.) |
 | **Interactive Focus Mode** | Instantly fade out non-connected neighborhoods when clicking specific graph nodes |
 | **Unified Data Management** | Dedicated fully dynamic UI page capable of managing CRUD operations for any custom schema entity |
+| **Risk Lifecycle Engine** | 6-state lifecycle (Active / Watching / Accepted / Suppressed / Closed / Archived) with trigger review, auto-acceptance guards, and archive alerts |
+| **What-If Analysis** | Toggle mitigations ON/OFF in-memory; observe EL + TRI deltas at portfolio and per-risk level without any database changes |
+| **Dual-Metric Exposure** | TRI (Tail Risk Indicator = L × S^1.5) and Risk Quadrant alongside standard EL |
 
 ### Visualization
 
@@ -91,7 +94,8 @@ streamlit run app.py
 - **Influence Analysis**: Top propagators, convergence points, critical paths, bottlenecks, clusters (scope-aware)
 - **Mitigation Analysis**: Coverage gaps, treatment explorer, impact analysis (scope-aware)
 - **Exposure Calculation**: Quantitative scoring with influence limitation model (scope-aware with neighbor expansion)
-- **Monte Carlo Simulator**: Model validation and sensitivity analysis
+- **Monte Carlo Simulator**: Model validation and sensitivity analysis (scope-based real-data mode)
+- **What-If Analysis**: In-memory mitigation toggle sandbox — EL + TRI deltas, health status change alert, per-risk delta table (scope + lifecycle constrained)
 
 ## 📚 Documentation
 
@@ -104,6 +108,7 @@ streamlit run app.py
 | [Configuration Manager](docs/CONFIGURATION_MANAGER.md) | Schema management app |
 | [Calibration Simulator](docs/CALIBRATION_SIMULATOR.md) | Monte Carlo validation tool |
 | [Changelog](CHANGELOG.md) | Version history |
+| [What-If Help](docs/help_whatif.md) | In-app help for What-If Analysis |
 
 ## 🏗️ Project Structure
 
@@ -120,9 +125,12 @@ rim/
 │   └── queries/              # Cypher query modules
 ├── models/                   # Data models and enumerations
 ├── services/                 # Business logic
-│   ├── exposure_calculator.py
-│   ├── influence_analysis.py
-│   └── mitigation_analysis.py
+│   ├── exposure_calculator.py    # Exposure engine (EL, TRI, quadrant)
+│   ├── influence_analysis.py     # Graph algorithms
+│   ├── mitigation_analysis.py    # Coverage and gap analysis
+│   ├── trigger_engine.py         # Lifecycle trigger review
+│   ├── auto_acceptance_engine.py # Lifecycle auto-acceptance with guards
+│   └── archive_engine.py         # Lifecycle archive alerts
 ├── ui/                       # Streamlit UI components
 │   ├── home.py               # Home page rendering (dashboard, viz, analysis)
 │   ├── panels/               # Analysis panels
@@ -132,9 +140,10 @@ rim/
 │   ├── edge_styles.py        # Relationship visualization
 │   └── colors.py             # Color palette
 ├── pages/                    # Streamlit multi-page navigation
-│   ├── 1_⚙️_Configuration.py # Schema and database management
-│   ├── 2_💾_Data_Management.py # Unified CRUD Data Management hub
-│   └── 3_🎲_Simulation.py    # Monte Carlo calibration
+│   ├── 1_⚙️_Configuration.py    # Schema and database management
+│   ├── 2_💾_Data_Management.py  # Unified CRUD Data Management hub
+│   ├── 2_🎲_Simulation.py       # Monte Carlo calibration simulator
+│   └── 3_🔬_What-If_Analysis.py # In-memory mitigation toggle sandbox
 ├── utils/                    # Helper functions
 │   ├── state_manager.py      # Centralized session state management
 │   ├── db_manager.py         # Shared singleton connection
@@ -249,4 +258,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.17.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.26.0 | See [CHANGELOG.md](CHANGELOG.md) for history

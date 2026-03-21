@@ -25,7 +25,8 @@ These are **mandatory** components. They affect the exposure calculator, schema 
     *   **F31b** Simulation Results Storage — **COMPLETE** (v2.24.0). `SimulationRecord` dataclass; saved-results comparison table with Δ delta columns; Excel export.
     *   **U13** Severity Rename + Dual-Metric Exposure — **COMPLETE** (v2.25.0). `Risk.impact` → `Risk.severity`; TRI (likelihood × severity^1.5) + risk quadrant computed metrics; quadrant dashboard widget + sidebar filter; cypher scripts reorganised to `scripts/`.
     *   **U12** Risk Lifecycle Engine — **COMPLETE** (v2.25.1). 6-state lifecycle; `TriggerEngine`; `AutoAcceptanceEngine` with 3 guards + Force Accept override; `ArchiveEngine`; `exclude_inactive=True` on analytical queries; scope-aware engine; lifecycle node property panel; help article.
-    *   Remaining Iteration 4 tasks (F7, F31c/d) pending — see Sprint Plan below.
+    *   **F7** What-If Analysis — **COMPLETE** (v2.26.0). `pages/3_🔬_What-If_Analysis.py`; in-memory mitigation toggle; EL + TRI + WRS deltas; scope + lifecycle constrained.
+    *   Remaining Iteration 4 tasks (F31c/d) pending — see Sprint Plan below.
 
 ---
 
@@ -164,7 +165,7 @@ ALE = λ × Mean Magnitude collapses the distribution, masking tail behaviour. T
 
 ### 🌊 Work Stream C — Analytical & Simulation Tools
 
-*   **[F7] "What-If" Analysis Sandbox** *(Iteration 4)*: Toggle mitigations ON/OFF; in-memory recompute; EL + TRI deltas displayed. Scope-constrained. Lifecycle-aware (suppressed/accepted nodes excluded by default; option to include).
+*   **[F7] "What-If" Analysis Sandbox** *(Iteration 4 — **COMPLETE** v2.26.0)*: Toggle mitigations ON/OFF; in-memory recompute; EL + TRI + WRS deltas; health status change alert; per-risk delta table. Scope-constrained. Lifecycle-aware (suppressed/accepted nodes excluded by default; "Include inactive" checkbox for worst-case). `pages/3_🔬_What-If_Analysis.py`.
 
 *   **[F31] Scope-Driven Simulation & Results Storage**:
     - ~~**F31a** *(v2.24.0 — COMPLETE)*: scope-based simulation mode with real DB data; real/random L×S toggle; mitigation variance slider.~~
@@ -207,7 +208,7 @@ ALE = λ × Mean Magnitude collapses the distribution, masking tail behaviour. T
 | ~~**U13 rename (first)**~~ ✅ _(v2.25.0)_ | ~~v2.25.0~~ | ~~`schema.yaml`, `models/risk.py`, `services/exposure_calculator.py`, all UI files, all test/demo datasets~~ | ~~Rename `impact` → `severity`. Run migration Cypher. Run full TC01–TC07 suite.~~ |
 | ~~**U12** Lifecycle Engine~~ ✅ _(v2.25.0)_ | ~~v2.25.0~~ | ~~`services/trigger_engine.py`, `services/auto_acceptance_engine.py`, `services/archive_engine.py`, `schemas/default/schema.yaml`, `models/risk.py`, `models/enums.py`, `config/schema_loader.py`, `database/queries/risks.py`~~ | ~~6-state lifecycle; trigger review; auto-acceptance with severity ceiling guard; archive alerts; `exclude_inactive=True` on analytical queries; `get_archive_candidates()` query.~~ |
 | ~~**U13 cont.** Dual-Metric + WRS~~ ✅ _(v2.25.0)_ | ~~v2.25.0~~ | ~~`services/exposure_calculator.py`, `ui/panels/node_property_panel.py`, `ui/home.py`~~ | ~~TRI + quadrant computation; WRS portfolio metric; panel update; dashboard widgets; quadrant filter.~~ |
-| **F7** What-If | v2.26.0 | `pages/3_🔬_Analysis.py`, `services/exposure_calculator.py` | In-memory mitigation toggle; EL + TRI deltas; scope + lifecycle constrained. |
+| ~~**F7** What-If~~ ✅ _(v2.26.0)_ | ~~v2.26.0~~ | ~~`pages/3_🔬_What-If_Analysis.py`, `utils/state_manager.py`~~ | ~~In-memory mitigation toggle; EL + TRI + WRS deltas; health status change alert; per-risk delta table; scope + lifecycle constrained; Reset Scenario button.~~ |
 
 ---
 

@@ -21,6 +21,7 @@ The **Risk Influence Map** transforms static risk registers into
 | 🎯 TPO tracking | Links risks to program objectives with impact levels |
 | 📊 Statistics | Live dashboard adapts to active scope |
 | ♻️ Lifecycle engine | 6-state risk lifecycle with auto-acceptance, trigger review, and archive alerts |
+| 🔬 What-If Analysis | Toggle mitigations ON/OFF in-memory; observe EL + TRI deltas without DB writes |
 
 ---
 

@@ -62,6 +62,15 @@ and which program objectives are at stake.
 - ◇ Hollow diamond for potential/contingent risks
 - Decision timeline and activation conditions
 
+**🔬 What-If Analysis**
+- Toggle any mitigation ON/OFF in-memory — no database changes
+- Instantly see EL + TRI deltas at portfolio and per-risk level
+- Scope-constrained and lifecycle-aware
+- "Include inactive risks" option for worst-case scenario exploration
+
+> *Use What-If to answer "what if this control fails?" or "which mitigation
+> delivers the most risk reduction?" in a live briefing.*
+
 **📊 Import/Export**
 - Full Excel import/export
 - Layout save/load for presentations

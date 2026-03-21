@@ -71,6 +71,7 @@ _HELP_FILES = {
     "Mitigations": "help_mitigations.md",
     "Layouts":     "help_layouts.md",
     "Lifecycle":   "help_lifecycle.md",
+    "What-If":     "help_whatif.md",
 }
 
 

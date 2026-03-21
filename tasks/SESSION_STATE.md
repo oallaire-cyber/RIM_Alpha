@@ -6,24 +6,30 @@
 ---
 
 ## Current Version
-`v2.25.1` — U12 Risk Lifecycle Engine complete + post-implementation fixes. Branch: feature/iteration_4.
+`v2.26.0` — F7 What-If Analysis complete. Branch: feature/iteration_4.
 
 ## Last Updated
-2026-03-20 — U12 fully implemented, bugs fixed, docs written, 409 tests passing.
+2026-03-21 — F7 fully implemented, 409 tests passing.
 
 ---
 
 ## 🔴 Active Work In Progress
 
-_None. U12 complete and committed._
+_None. F7 complete._
 
-**Next feature**: **F7 What-If Analysis** (v2.26.0) — see ROADMAPv3.md Iteration 4 sprint table.
+**Next feature**: **F31c** Lifecycle-Aware Simulation (v2.27.0) — see ROADMAPv3.md Iteration 5.
 
 ---
 
 ## ✅ Recently Completed (last 2 sessions)
 
-### Session N+4 (this session — v2.25.1 U12 polish)
+### Session N+5 (this session — v2.26.0 F7 What-If Analysis)
+- **v2.26.0** — **F7 What-If Analysis Sandbox**:
+  - `pages/3_🔬_What-If_Analysis.py`: NEW — mitigation toggle checkboxes (grouped by type); Compute Baseline button fetches + scopes data; recomputes `GlobalExposureResult` in-memory on every toggle change; portfolio summary (RR%, WRS, TRI) with `st.metric` delta indicators; health status change alert; per-risk delta table (Baseline vs Modified EL + TRI, sorted by Δ EL); Reset Scenario button; "Include inactive risks" worst-case toggle.
+  - `utils/state_manager.py`: `WHATIF_DEFAULTS` + `init_whatif_state()`; registered in `init_all()`.
+  - **409 tests passing.**
+
+### Session N+4 (v2.25.1 U12 polish)
 - **v2.25.1** — **U12 Post-Implementation Fixes**:
   - `database/queries/risks.py`: Fixed `get_archive_candidates()` — replaced `WHERE NOT EXISTS { MATCH ... WHERE }` (Neo4j 5.x only) with `OPTIONAL MATCH` + `COUNT` aggregation pattern.
   - `pages/2_💾_Data_Management.py`: Fixed scope detection (`active_scope` → `filter_manager.get_scope_node_ids()`); added **🔓 Force Accept** button for blocked auto-acceptance candidates.
@@ -153,7 +159,7 @@ _None._
 ## 🔁 Resumption Prompt (copy-paste to start next session)
 ```
 Resume RIM development. Read tasks/SESSION_STATE.md first, then continue where we left off.
-U12 complete (v2.25.1), 409 tests passing. ROADMAPv3.md is the authoritative roadmap.
-Next task: Iteration 4 — F7 What-If Analysis (v2.26.0).
+F7 complete (v2.26.0), 409 tests passing. ROADMAPv3.md is the authoritative roadmap.
+Next task: Iteration 5 — F31c Lifecycle-Aware Simulation (v2.27.0).
 Branch: feature/iteration_4.
 ```

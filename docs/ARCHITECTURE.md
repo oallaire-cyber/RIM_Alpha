@@ -15,14 +15,14 @@ RIM follows a **modular architecture** with clear separation of concerns:
 │          (Thin entry point → delegates to ui/home.py)         │
 └─────────────────────┬───────────────────────────────────────┘
                       │
-          ┌───────────┴───────────┐
-          ▼                       ▼
-┌───────────────────┐   ┌───────────────────┐
-│ pages/1_Config.py │   │ pages/2_Sim.py    │
-│ (Configuration)   │   │ (Simulation)      │
-└─────────┬─────────┘   └─────────┬─────────┘
-          │                       │
-          └───────────┬───────────┘
+    ┌───────────┬───────────┬───────────┬───────────┐
+    ▼           ▼           ▼           ▼           ▼
+┌──────────┐┌──────────┐┌──────────┐┌──────────┐┌───────────────┐
+│1_Config  ││2_Data    ││2_Sim     ││3_What-If ││  (app.py /    │
+│(Config)  ││Management││(Simulator││Analysis  ││  ui/home.py)  │
+└────┬─────┘└────┬─────┘└────┬─────┘└────┬─────┘└───────────────┘
+     │           │           │           │
+     └───────────┴───────────┴───────────┘
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    utils/db_manager.py                       │
@@ -201,11 +201,14 @@ class Effectiveness(Enum):
 ```
 services/
 ├── __init__.py
-├── exposure_calculator.py  # Quantitative exposure scoring
-├── influence_analysis.py   # Network analysis algorithms
-├── mitigation_analysis.py  # Coverage and gap analysis
-├── import_service.py       # Excel import logic
-└── export_service.py       # Excel export logic
+├── exposure_calculator.py      # Quantitative exposure scoring (EL, TRI, quadrant)
+├── influence_analysis.py       # Network analysis algorithms
+├── mitigation_analysis.py      # Coverage and gap analysis
+├── trigger_engine.py           # Lifecycle trigger review (U12)
+├── auto_acceptance_engine.py   # Auto-acceptance with severity ceiling + quadrant guards (U12)
+├── archive_engine.py           # Archive alert generation (U12)
+├── import_service.py           # Excel import logic
+└── export_service.py           # Excel export logic
 ```
 
 **Exposure Calculator** (`exposure_calculator.py`):
@@ -530,6 +533,9 @@ a single module: **`utils/state_manager.py`**.
 | `HOME_UI_DEFAULTS` | `physics_enabled`, `color_by`, `capture_mode`, `influence_explorer_enabled`, `selected_node_id` | Home page |
 | `CONFIG_PAGE_DEFAULTS` | `config_connection`, `config_connected`, `active_schema_name`, `active_schema`, `schema_modified`, `db_stats`, `health_report` | Configuration page |
 | `ANALYSIS_CACHE_DEFAULTS` | `influence_analysis_cache`, `influence_analysis_timestamp`, `mitigation_analysis_cache`, `mitigation_analysis_timestamp`, `pending_explore_node` | Analysis panels |
+| `SIMULATION_DEFAULTS` | `saved_simulations` | Simulation page |
+| `LIFECYCLE_DEFAULTS` | `lifecycle_trigger_result`, `lifecycle_acceptance_result`, `lifecycle_archive_alerts`, `lifecycle_last_run`, `show_accepted_risks` | Data Management page |
+| `WHATIF_DEFAULTS` | `whatif_baseline`, `whatif_modified`, `whatif_raw_risks`, `whatif_raw_influences`, `whatif_raw_mitigations`, `whatif_raw_mitigates`, `whatif_include_inactive` | What-If Analysis page |
 
 In addition, `filter_manager` (`FilterManager`) and `layout_manager`
 (`LayoutManager`) are instantiated lazily inside `init_home_state()`.
@@ -542,6 +548,9 @@ from utils.state_manager import (
     init_home_state,            # connection + form + ui + FilterManager/LayoutManager
     init_config_page_state,     # connection + config page keys
     init_analysis_cache_state,  # influence & mitigation panel caches
+    init_simulation_state,      # SIMULATION_DEFAULTS
+    init_lifecycle_state,       # LIFECYCLE_DEFAULTS
+    init_whatif_state,          # WHATIF_DEFAULTS
     init_all,                   # everything (useful for tests)
     get, set,                   # thin wrappers around st.session_state
 )

@@ -4,6 +4,35 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.26.0] - 2026-03-21 (F7 What-If Analysis Sandbox)
+
+### New Features
+
+- **`pages/3_🔬_What-If_Analysis.py`**: New What-If Analysis page. Toggle mitigations ON/OFF
+  in-memory and immediately observe EL + TRI deltas — no database writes.
+  - **Compute Baseline**: fetches risks, influences, mitigations, and MITIGATES relationships;
+    applies active scope and lifecycle filters; computes `GlobalExposureResult` baseline.
+  - **Mitigation toggles**: per-mitigation checkboxes grouped by type; unchecking a mitigation
+    removes it (and its MITIGATES relationships) from the in-memory recomputation.
+  - **Portfolio summary**: Residual Risk %, Weighted Risk Score, Total TRI — each with a
+    `Δ` delta indicator (Streamlit `st.metric` `delta_color="inverse"`).
+  - **Health status change alert**: warns when toggling mitigations shifts the portfolio
+    health band (Excellent / Good / Moderate / Concerning / Critical).
+  - **Per-risk delta table**: Baseline vs Modified EL + TRI for every risk in scope, sorted
+    by largest EL increase.
+  - **Scope-constrained**: respects active `filter_manager` scope (same whitelist logic as
+    `manager.calculate_exposure()`).
+  - **Lifecycle-aware**: `exclude_inactive=True` by default; sidebar "Include inactive risks"
+    checkbox enables worst-case scenario with Accepted/Watching/Suppressed risks.
+  - **Reset Scenario**: re-enables all mitigation toggles and reruns.
+
+- **`utils/state_manager.py`**: Added `WHATIF_DEFAULTS` dict + `init_whatif_state()` function;
+  registered in `init_all()`. Keys: `whatif_baseline`, `whatif_modified`,
+  `whatif_raw_risks`, `whatif_raw_influences`, `whatif_raw_mitigations`,
+  `whatif_raw_mitigates`, `whatif_include_inactive`.
+
+---
+
 ## [v2.25.1] - 2026-03-20 (U12 Post-Implementation Fixes & Polish)
 
 ### Bug Fixes
