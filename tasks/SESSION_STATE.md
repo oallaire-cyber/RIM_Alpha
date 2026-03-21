@@ -40,7 +40,15 @@ _None. v2.29.0 complete._
     `render_graph_streamlit()` builds `visual_config` from `vp_*` state with legacy fallback.
   - `ui/home.py`: Display Options expander → Color Options (color_by only); visual panel wired
     after layout management; schema defaults seeded into `vp_*` on first load.
-  - `docs/USER_GUIDE.md`, `docs/ARCHITECTURE.md`: updated. `CHANGELOG.md` v2.29.0. `ROADMAPv3.md` F32 done.
+  - `docs/USER_GUIDE.md`, `docs/ARCHITECTURE.md`, `docs/METHODOLOGY.md`, `docs/CONFIGURATION_MANAGER.md`,
+    `docs/help_overview.md`, `docs/welcome.md`, `docs/help_visual_panel.md` (NEW), `README.md`: updated.
+    `CHANGELOG.md` v2.29.0. `ROADMAPv3.md` F32 done.
+  - **Bug fix**: `UnboundLocalError` on `exposure_results` in `render_visualization_tab` — pre-existing
+    unbound local; fixed by initialising from session state before the quadrant filter block.
+  - **Bug fix**: Quadrant border encoding was NOK — two root causes: (1) `_QUADRANT_BORDER_COLORS` keys
+    were capitalised ("Critical"/"High") but actual values are lowercase ("critical"/"frequency");
+    (2) `risk_quadrant` was not copied onto node dicts in the exposure overlay — added alongside
+    `base_exposure` / `exposure`.
   - **445 tests passing.**
 
 ### Session N+10 (v2.28.1 TRI Delta removal)
@@ -152,6 +160,20 @@ _None. v2.29.0 complete._
 ---
 
 ## 🧠 Key Decisions Made (not in docs yet)
+
+- **F32 `risk_quadrant` overlay pattern**: `risk_quadrant` is computed at exposure-calculation time
+  and stored only in `exposure_results["risk_results"]`. It is overlaid onto node dicts in
+  `render_visualization_tab` alongside `base_exposure`/`exposure`. Without this overlay,
+  `create_node_config()` cannot see the quadrant. This is the same pattern as exposure overlays.
+
+- **F32 `_QUADRANT_BORDER_COLORS` keys are lowercase**: The four values returned by
+  `_compute_risk_quadrant()` are `"critical"`, `"frequency"`, `"severity"`, `"marginal"` — all
+  lowercase. The colour map must use these exact strings. Do not capitalise.
+
+- **F32 quadrant borders require exposure to be calculated first**: If no exposure calculation
+  has been run, nodes have no `risk_quadrant` attribute and borders silently do not appear.
+  This is by design — borders are derived from computed values, not raw node properties.
+
 
 - **`high_exposure_threshold` — not `expected_loss_threshold`**: The raw exposure score
   is not an "Expected Loss" in the financial sense. EL will be introduced later with the

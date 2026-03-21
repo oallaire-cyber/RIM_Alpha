@@ -104,6 +104,32 @@ analysis:
 
 Breaches are shown in the **Exposure** dashboard after each computation. See **❓ Help → Alerts** in the main app for details.
 
+### 🖼️ Graph Visual Behaviour (F32)
+
+Configure default visual behaviour for the graph canvas in the `graph_visual_config` YAML block:
+
+```yaml
+graph_visual_config:
+  lifecycle_opacity:
+    watching: 0.35      # Opacity for Watching risks (0.0 – 1.0)
+    suppressed: 0.15    # Opacity for Suppressed risks
+    accepted: 0.40      # Opacity for Accepted risks
+    closed: 0.20        # Opacity for Closed/Archived risks
+  quadrant_border_encoding: true   # Draw quadrant-coloured borders on risk nodes
+  default_preset: "analysis"       # Preset applied on app load (clean / analysis / lifecycle / sandbox)
+```
+
+These defaults are applied when the app starts and can be overridden live in the **Graph Visual Behaviour** panel on the Home page (Advanced mode). Use the **💾 Save as Schema Default** button to persist your live adjustments back to the YAML.
+
+**Presets**:
+
+| Preset | Exposure Opacity | Lifecycle Opacity | Quadrant Borders |
+|--------|-----------------|-------------------|-----------------|
+| `clean` | Off | Off | Off |
+| `analysis` | On | Off | On |
+| `lifecycle` | Off | On | On |
+| `sandbox` | Off | On | Off |
+
 ### 📋 Risk Templates
 
 The `is_template` attribute is a boolean flag on the Risk node.  Templates are defined and instantiated in **💾 Data Management → Risks → 📋 Risk Templates** — no schema YAML change is required to use templates. The `instantiates` context edge is registered in `context_edges:` to enable INSTANTIATES relationship display in the canvas if needed.

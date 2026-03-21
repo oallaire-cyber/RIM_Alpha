@@ -745,4 +745,4 @@ flake8>=6.0.0
 
 ---
 
-*Last updated: March 2026 | Version 2.27.1*
+*Last updated: March 2026 | Version 2.29.0*

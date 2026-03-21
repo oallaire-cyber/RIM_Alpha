@@ -83,6 +83,7 @@ streamlit run app.py
 | **Dual-Metric Exposure** | TRI (Tail Risk Indicator = L × S^1.5) and Risk Quadrant alongside standard EL |
 | **Generic Risk Templates** | Define reusable risk archetypes (GenericRisk); instantiate into specific risks with one click; excluded from all exposure math |
 | **Threshold Alerts** | Configurable EL + TRI breach detection surfaced in the exposure dashboard; scope- and lifecycle-aware |
+| **Graph Visual Behaviour** | Consolidated visual panel: 4 presets, per-status lifecycle opacity, quadrant border encoding, schema-persisted defaults |
 
 ### Visualization
 
@@ -90,6 +91,7 @@ streamlit run app.py
 - **Heat map coloring**: Exposure-based gradient (green → red)
 - **Multiple layouts**: Hierarchical (Sugiyama), Layered, Category-based, Cluster
 - **Interactive exploration**: Click nodes, filter by criteria, save layouts
+- **Visual Behaviour Panel**: Presets, lifecycle opacity per status, quadrant border encoding
 
 ### Analysis Tools
 
@@ -260,4 +262,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.27.1 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.29.0 | See [CHANGELOG.md](CHANGELOG.md) for history

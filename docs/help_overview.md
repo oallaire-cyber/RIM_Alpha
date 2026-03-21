@@ -25,6 +25,7 @@ The **Risk Influence Map** transforms static risk registers into
 | 📊 Mitigation Exposure | Rank mitigations by marginal EL + TRI impact (counterfactual per-mitigation analysis) |
 | 📋 Risk Templates | Define reusable GenericRisk archetypes; instantiate into specific risks with one click |
 | ⚠️ Threshold Alerts | Automatic EL + TRI breach detection surfaced in the exposure dashboard |
+| 🖼️ Graph Visual Behaviour | Presets, per-status lifecycle opacity, quadrant border encoding, schema-persisted defaults |
 
 ---
 

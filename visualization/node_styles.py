@@ -75,11 +75,12 @@ def build_generic_tooltip(node: Dict[str, Any], entity_type, is_highlighted: boo
 # =============================================================================
 
 # F32: quadrant → border colour mapping
+# Keys match _compute_risk_quadrant() return values (lowercase)
 _QUADRANT_BORDER_COLORS: Dict[str, str] = {
-    "Critical": "#8B0000",   # dark red
-    "High":     "#FF6600",   # orange
-    "Moderate": "#FFD700",   # gold
-    "Low":      "#228B22",   # forest green
+    "critical":  "#8B0000",   # dark red  — high likelihood + high severity
+    "frequency": "#FF6600",   # orange    — high likelihood + low severity
+    "severity":  "#FFD700",   # gold      — low likelihood + high severity
+    "marginal":  "#228B22",   # forest green — low likelihood + low severity
 }
 
 

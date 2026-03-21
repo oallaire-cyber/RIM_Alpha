@@ -75,6 +75,7 @@ _HELP_FILES = {
     "What-If":     "help_whatif.md",
     "Templates":   "help_templates.md",
     "Alerts":      "help_alerts.md",
+    "Visual Panel": "help_visual_panel.md",
 }
 
 
@@ -1099,6 +1100,7 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
                         ]
         
         # ── Apply quadrant filter (U13) ───────────────────────────────────
+        exposure_results = st.session_state.get("exposure_results")
         selected_quadrants = st.session_state.get("filter_risk_quadrants")
         if selected_quadrants is not None and exposure_results and "risk_results" in exposure_results:
             q_lookup = {r["risk_id"]: r.get("risk_quadrant", "marginal") for r in exposure_results["risk_results"]}
@@ -1142,6 +1144,7 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
                 if n.get("id") in exp_lookup:
                     n["base_exposure"] = exp_lookup[n["id"]]["base_exposure"]
                     n["exposure"] = exp_lookup[n["id"]]["final_exposure"]
+                    n["risk_quadrant"] = exp_lookup[n["id"]].get("risk_quadrant", "marginal")
         
         # Handle edge filtering
         max_edges = None

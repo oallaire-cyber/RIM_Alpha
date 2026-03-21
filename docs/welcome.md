@@ -89,6 +89,12 @@ and which program objectives are at stake.
 - Breach panel surfaced in the Exposure dashboard after each computation
 - Scope-aware and lifecycle-aware — only active in-scope risks are evaluated
 
+**🖼️ Graph Visual Behaviour**
+- Four presets: Clean / Analysis / Lifecycle Audit / Sandbox Edit
+- Per-status lifecycle opacity sliders (Watching, Suppressed, Accepted, Closed)
+- Quadrant border encoding: coloured borders by risk quadrant (Critical / Frequency / Severity / Marginal)
+- Save as Schema Default — persists settings to `graph_visual_config` in schema YAML
+
 **📊 Import/Export**
 - Full Excel import/export
 - Layout save/load for presentations

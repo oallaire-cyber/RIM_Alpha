@@ -207,7 +207,7 @@ def render_graph_visual_panel(schema_config: Any = None, db_manager: Any = None)
 
     if qb_enabled:
         st.caption(
-            "🟥 Critical  🟠 High  🟡 Moderate  🟢 Low"
+            "🟥 Critical  🟠 Frequency  🟡 Severity  🟢 Marginal"
         )
 
     # ── Save as Default ──────────────────────────────────────────────────
