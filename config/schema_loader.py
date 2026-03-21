@@ -362,6 +362,27 @@ class UIConfig:
 
 
 # =============================================================================
+# GRAPH VISUAL CONFIGURATION
+# =============================================================================
+
+@dataclass
+class GraphVisualConfig:
+    """Graph visual behaviour configuration (F32).
+
+    Controls lifecycle-driven node opacity (per status), quadrant border
+    encoding, and the default preset applied on application load.
+    """
+    lifecycle_opacity: Dict[str, float] = field(default_factory=lambda: {
+        "watching": 0.35,
+        "suppressed": 0.15,
+        "accepted": 0.40,
+        "closed": 0.20,
+    })
+    quadrant_border_encoding: bool = True
+    default_preset: str = "analysis"
+
+
+# =============================================================================
 # MAIN SCHEMA CONFIGURATION
 # =============================================================================
 
@@ -393,6 +414,9 @@ class SchemaConfig:
 
     # Lifecycle Rules
     lifecycle_rules: LifecycleRulesConfig = field(default_factory=LifecycleRulesConfig)
+
+    # Graph Visual Behaviour (F32)
+    graph_visual_config: GraphVisualConfig = field(default_factory=GraphVisualConfig)
 
     # UI
     ui: UIConfig = field(default_factory=UIConfig)
@@ -585,6 +609,11 @@ class SchemaLoader:
         # Parse lifecycle rules
         schema.lifecycle_rules = self._parse_lifecycle_rules(
             data.get("risk_lifecycle_rules", {})
+        )
+
+        # Parse graph visual config (F32)
+        schema.graph_visual_config = self._parse_graph_visual_config(
+            data.get("graph_visual_config", {})
         )
 
         # Parse UI config
@@ -920,6 +949,25 @@ class SchemaLoader:
             ),
         )
 
+    def _parse_graph_visual_config(self, data: Dict[str, Any]) -> GraphVisualConfig:
+        """Parse graph_visual_config block.
+
+        Missing keys use safe defaults so schemas without this block still load.
+        """
+        default_opacity = {
+            "watching": 0.35,
+            "suppressed": 0.15,
+            "accepted": 0.40,
+            "closed": 0.20,
+        }
+        raw_opacity = data.get("lifecycle_opacity", {})
+        lifecycle_opacity = {**default_opacity, **{k: float(v) for k, v in raw_opacity.items()}}
+        return GraphVisualConfig(
+            lifecycle_opacity=lifecycle_opacity,
+            quadrant_border_encoding=bool(data.get("quadrant_border_encoding", True)),
+            default_preset=str(data.get("default_preset", "analysis")),
+        )
+
     def _parse_ui(self, data: Dict[str, Any]) -> UIConfig:
         """Parse UI configuration."""
         ui = UIConfig(
@@ -990,6 +1038,7 @@ class SchemaLoader:
             },
             "analysis": self._analysis_to_dict(schema.analysis),
             "risk_lifecycle_rules": self._lifecycle_rules_to_dict(schema.lifecycle_rules),
+            "graph_visual_config": self._graph_visual_config_to_dict(schema.graph_visual_config),
             "ui": self._ui_to_dict(schema.ui),
         }
         
@@ -1238,6 +1287,14 @@ class SchemaLoader:
                 "severity_threshold_frequency": rules.quadrant_thresholds.severity_threshold_frequency,
                 "severity_threshold_severity": rules.quadrant_thresholds.severity_threshold_severity,
             },
+        }
+
+    def _graph_visual_config_to_dict(self, cfg: GraphVisualConfig) -> Dict[str, Any]:
+        """Convert GraphVisualConfig to dictionary for YAML serialization."""
+        return {
+            "lifecycle_opacity": dict(cfg.lifecycle_opacity),
+            "quadrant_border_encoding": cfg.quadrant_border_encoding,
+            "default_preset": cfg.default_preset,
         }
 
     def _ui_to_dict(self, ui: UIConfig) -> Dict[str, Any]:

@@ -100,6 +100,20 @@ WHATIF_DEFAULTS: Dict[str, Any] = {
     "whatif_include_inactive": False,   # bool — include lifecycle-inactive risks
 }
 
+VISUAL_PANEL_DEFAULTS: Dict[str, Any] = {
+    "vp_preset": "analysis",               # active preset name
+    "vp_exposure_opacity": False,
+    "vp_exposure_threshold": 60.0,
+    "vp_lifecycle_opacity_enabled": False,
+    "vp_lifecycle_opacity": {              # per-status opacity fractions
+        "watching": 0.35,
+        "suppressed": 0.15,
+        "accepted": 0.40,
+        "closed": 0.20,
+    },
+    "vp_quadrant_borders": False,
+}
+
 MITIGATION_EXPOSURE_DEFAULTS: Dict[str, Any] = {
     "mitexp_baseline": None,            # GlobalExposureResult | None — cached baseline
     "mitexp_raw_risks": None,           # List[Dict] — risks snapshot
@@ -197,6 +211,11 @@ def init_mitigation_exposure_state() -> None:
     init_defaults(MITIGATION_EXPOSURE_DEFAULTS)
 
 
+def init_visual_panel_state() -> None:
+    """Initialise Graph Visual Behaviour panel keys (F32)."""
+    init_defaults(VISUAL_PANEL_DEFAULTS)
+
+
 def init_all() -> None:
     """Initialise every registered key.  Useful in test harnesses."""
     init_connection_state()
@@ -208,6 +227,7 @@ def init_all() -> None:
     init_lifecycle_state()
     init_whatif_state()
     init_mitigation_exposure_state()
+    init_visual_panel_state()
 
 
 # ---------------------------------------------------------------------------

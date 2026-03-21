@@ -13,7 +13,7 @@ from core import get_registry
 from config import APP_TITLE, APP_ICON, RISK_LEVEL_CONFIG
 from config import NEO4J_DEFAULT_URI, NEO4J_DEFAULT_USER, NEO4J_DEFAULT_PASSWORD
 from config.schema_loader import SchemaLoader
-from utils.state_manager import init_home_state
+from utils.state_manager import init_home_state, init_visual_panel_state
 from utils.markdown_loader import load_doc
 
 # Database
@@ -29,6 +29,7 @@ from ui import (
     render_inline_editor,
     render_node_property_panel,
 )
+from ui.panels.graph_visual_panel import render_graph_visual_panel
 
 # Legend
 from ui.legend import (
@@ -117,6 +118,7 @@ def init_session_state():
     definitions and default values live in one place.
     """
     init_home_state()
+    init_visual_panel_state()
 
 
 def render_help_section():
@@ -714,7 +716,7 @@ def render_visualization_filters(manager: RiskGraphManager):
         st.markdown("---")
 
     # Color mode
-    with st.expander("🎨 Display Options", expanded=False):
+    with st.expander("🎨 Color Options", expanded=False):
         color_by = st.radio(
             "Color by",
             ["level", "exposure"],
@@ -723,40 +725,6 @@ def render_visualization_filters(manager: RiskGraphManager):
             key="color_by_radio"
         )
         st.session_state.color_by = color_by
-
-        st.markdown("---")
-        
-        # F20: Exposure-Driven Opacity
-        st.markdown("**🌫️ Exposure-Driven Opacity**")
-        exposure_opacity = st.checkbox(
-            "Enable Opacity by Exposure",
-            value=st.session_state.get("exposure_opacity_enabled", False),
-            help="High exposure risks remain solid, low exposure risks fade into background."
-        )
-        st.session_state.exposure_opacity_enabled = exposure_opacity
-        
-        if exposure_opacity:
-            high_exposure_threshold = st.slider(
-                "High Exposure Threshold",
-                min_value=0,
-                max_value=100,
-                value=st.session_state.get("high_exposure_threshold", 60),
-                step=5,
-                format="%d",
-                help="Risks with an exposure score above this value will be 100% opaque."
-            )
-            st.session_state.high_exposure_threshold = high_exposure_threshold
-
-        st.markdown("---")
-
-        # F21: Lifecycle Ghosting
-        st.markdown("**👻 Lifecycle & Status Ghosting**")
-        lifecycle_ghosting = st.checkbox(
-            "Enable Status Ghosting",
-            value=st.session_state.get("lifecycle_ghosting_enabled", False),
-            help="Contingent risks and Proposed/Deferred mitigations appear semi-transparent."
-        )
-        st.session_state.lifecycle_ghosting_enabled = lifecycle_ghosting
 
     return filter_mgr
 
@@ -1026,9 +994,14 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
         if show_filters:
             filter_mgr = render_visualization_filters(manager)
             render_influence_explorer(manager)
-            
+
             render_graph_options()
             render_layout_management(manager)
+
+            # F32: Graph Visual Behaviour Panel
+            st.markdown("---")
+            _schema_cfg = st.session_state.get("_active_schema_config")
+            render_graph_visual_panel(schema_config=_schema_cfg)
             if mode == "Simple":
                 if st.button("🙈 Hide Advanced Filters", use_container_width=True):
                     st.session_state.show_filters_in_simple_mode = False
@@ -1563,7 +1536,24 @@ def render_main_content(manager: RiskGraphManager):
     """
     # ── Complexity Toggle in sidebar ─────────────────────────────────────────
     render_complexity_toggle()
-    
+
+    # ── Load active schema + initialize vp_* defaults (F32) ─────────────────
+    try:
+        loader = SchemaLoader()
+        _schema_name = st.session_state.get("active_schema_name", "default")
+        _schema = loader.load_schema(_schema_name)
+        st.session_state["_active_schema_config"] = _schema
+        # On first load, seed vp_lifecycle_opacity from schema defaults
+        if "vp_lifecycle_opacity" not in st.session_state or not st.session_state.get("_vp_schema_seeded"):
+            gvc = _schema.graph_visual_config
+            st.session_state["vp_lifecycle_opacity"] = dict(gvc.lifecycle_opacity)
+            st.session_state["vp_quadrant_borders"] = gvc.quadrant_border_encoding
+            if "vp_preset" not in st.session_state:
+                st.session_state["vp_preset"] = gvc.default_preset
+            st.session_state["_vp_schema_seeded"] = True
+    except Exception:
+        st.session_state.setdefault("_active_schema_config", None)
+
     # ── Scope selector in sidebar ────────────────────────────────────────
     render_scope_selector()
     

@@ -499,6 +499,14 @@ risk_lifecycle_rules:
     likelihood_threshold: 6.0
     severity_threshold_frequency: 6.0
     severity_threshold_severity: 7.0
+graph_visual_config:
+  lifecycle_opacity:
+    watching: 0.35
+    suppressed: 0.15
+    accepted: 0.4
+    closed: 0.2
+  quadrant_border_encoding: true
+  default_preset: analysis
 ui:
   app_title: Risk Influence Map (RIM)
   app_icon: 🎯

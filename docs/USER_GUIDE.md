@@ -782,10 +782,15 @@ Set `enabled: false` to suppress alerts without removing the configuration.
 - **🏆 TPO Filters**: Show/hide TPOs, filter by cluster
 - **🔗 TPO Impact Filters**: Impact level
 
-**🎨 Display Options**:
+**🎨 Color Options**:
 - Color mode (by level/by exposure)
-- Label options
-- Edge visibility
+
+**🖼️ Graph Visual Behaviour** (F32):
+- **Presets**: Clean / Analysis / Lifecycle Audit / Sandbox Edit — one-click bundles
+- **Exposure Opacity**: High-exposure risks solid; low-exposure risks fade (configurable threshold)
+- **Lifecycle Opacity**: Per-status transparency (Watching, Suppressed, Accepted, Closed)
+- **Quadrant Border Encoding**: Coloured node borders show risk quadrant (Critical/High/Moderate/Low)
+- **Save as Schema Default**: Persist settings to `graph_visual_config` in schema YAML
 
 **🔍 Influence Explorer**:
 - Show neighborhood of selected node

@@ -4,6 +4,60 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.29.0] - 2026-03-21 (F32 Graph Visual Behaviour Panel)
+
+### New Features
+
+- **F32 Graph Visual Behaviour Panel** (`ui/panels/graph_visual_panel.py` — new):
+  Consolidated visual settings panel superseding the scatter-shot F20/F21 Display Options
+  expander. Rendered in the left filter column of the Visualization tab (Advanced mode).
+  - **Presets**: Clean / Analysis / Lifecycle Audit / Sandbox Edit — one-click bundles
+    that apply a coherent combination of visual effects.
+  - **Exposure Opacity** (F20 — moved here): toggleable with configurable threshold slider.
+  - **Lifecycle Opacity** (F21 — upgraded): per-status granular opacity sliders for
+    Watching, Suppressed, Accepted, and Closed / Archived risks (replaces hardcoded 50%).
+  - **Quadrant Border Encoding**: coloured node borders by risk quadrant
+    (Critical = dark red, High = orange, Moderate = gold, Low = forest green).
+  - **Save as Schema Default**: persists current settings to `graph_visual_config` in
+    the active `schema.yaml` so they take effect on next application load.
+
+- **`graph_visual_config` schema block** (`schemas/default/schema.yaml`,
+  `schemas/it_security/schema.yaml`): new top-level YAML block storing
+  `lifecycle_opacity` (per-status map), `quadrant_border_encoding` (bool),
+  and `default_preset` (str). Parsed into `GraphVisualConfig` dataclass.
+
+- **`GraphVisualConfig` dataclass** (`config/schema_loader.py`): new dataclass + parse/
+  serialise helpers; added to `SchemaConfig` and wired into `_parse_schema()` /
+  `_schema_to_dict()` so save/load round-trips are lossless.
+
+- **`VISUAL_PANEL_DEFAULTS`** (`utils/state_manager.py`): new key registry (`vp_*`
+  prefix) + `init_visual_panel_state()` registered in `init_all()`.
+
+- **Rendering upgrades** (`visualization/node_styles.py`, `visualization/graph_renderer.py`):
+  - `create_node_config()` accepts a `visual_config` dict (F32); per-status opacity replaces
+    the hardcoded `opacity *= 0.5` lifecycle ghosting.
+  - `_QUADRANT_BORDER_COLORS` constant maps quadrant → border hex colour.
+  - `render_graph_streamlit()` builds `visual_config` from `vp_*` session state with
+    graceful fallback to legacy `exposure_opacity_enabled` / `lifecycle_ghosting_enabled` keys.
+  - Legacy `exposure_opacity`, `high_exposure_threshold`, `lifecycle_ghosting` params
+    retained on `render_graph()` / `render_subgraph()` for backward compatibility.
+
+**Files Modified:**
+- `ui/panels/graph_visual_panel.py` (NEW)
+- `ui/panels/__init__.py` — exports `render_graph_visual_panel`
+- `ui/home.py` — import + call; old Display Options expander replaced by Color Options;
+  schema defaults seeded into `vp_*` on first load; `_active_schema_config` stored in state
+- `config/schema_loader.py` — `GraphVisualConfig` dataclass; parse + serialise helpers
+- `utils/state_manager.py` — `VISUAL_PANEL_DEFAULTS` + `init_visual_panel_state()`
+- `visualization/node_styles.py` — per-status opacity; quadrant border encoding
+- `visualization/graph_renderer.py` — `visual_config` param; F32 session state bridge
+- `schemas/default/schema.yaml` — `graph_visual_config` block
+- `schemas/it_security/schema.yaml` — `graph_visual_config` block
+
+**445 tests passing.**
+
+---
+
 ## [v2.28.1] - 2026-03-21 (TRI Delta removal — Mitigation Exposure & What-If)
 
 ### Bug Fixes / Improvements

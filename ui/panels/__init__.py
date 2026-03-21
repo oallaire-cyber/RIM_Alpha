@@ -26,6 +26,10 @@ from ui.panels.scope_filter_panel import (
     render_scope_node_editor,
 )
 
+from ui.panels.graph_visual_panel import (
+    render_graph_visual_panel,
+)
+
 __all__ = [
     "render_influence_analysis_panel",
     "render_mitigation_analysis_panel",
@@ -33,5 +37,6 @@ __all__ = [
     "render_node_property_panel",
     "render_scope_filter_panel",
     "render_scope_node_editor",
+    "render_graph_visual_panel",
     "get_level_icon",
 ]

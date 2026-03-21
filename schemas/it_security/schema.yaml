@@ -543,3 +543,11 @@ ui:
           enabled: true
         mitigations:
           enabled: false
+graph_visual_config:
+  lifecycle_opacity:
+    watching: 0.35
+    suppressed: 0.15
+    accepted: 0.40
+    closed: 0.20
+  quadrant_border_encoding: true
+  default_preset: "analysis"

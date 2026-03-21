@@ -69,6 +69,7 @@ def render_graph(
     exposure_opacity: bool = False,
     high_exposure_threshold: float = 60.0,
     lifecycle_ghosting: bool = False,
+    visual_config: Optional[Dict[str, Any]] = None,
     focus_node_ids: Optional[List[str]] = None
 ) -> Optional[str]:
     """
@@ -86,10 +87,11 @@ def render_graph(
         edge_scores: Dict mapping (source, target) to score
         height: Graph container height in pixels
         complexity_mode: "Simple" or "Advanced" for rendering complexity
-        exposure_opacity: Enable exposure-driven opacity (F20)
-        high_exposure_threshold: Threshold percentage for fully opaque nodes
-        lifecycle_ghosting: Enable status/lifecycle ghosting (F21)
-    
+        exposure_opacity: Enable exposure-driven opacity (F20 legacy)
+        high_exposure_threshold: Threshold percentage for fully opaque nodes (F20 legacy)
+        lifecycle_ghosting: Enable status/lifecycle ghosting (F21 legacy)
+        visual_config: F32 consolidated visual settings dict (supersedes legacy flags)
+
     Returns:
         HTML content string, or None if using Streamlit
     """
@@ -161,12 +163,13 @@ def render_graph(
     # Add nodes
     for node in nodes:
         node_config = create_node_config(
-            node, 
-            color_by=color_by, 
+            node,
+            color_by=color_by,
             highlighted_node_id=highlighted_node_id,
             exposure_opacity=exposure_opacity,
             high_exposure_threshold=high_exposure_threshold,
-            lifecycle_ghosting=lifecycle_ghosting
+            lifecycle_ghosting=lifecycle_ghosting,
+            visual_config=visual_config,
         )
         
         # Apply positions if provided
@@ -305,6 +308,25 @@ def render_graph_streamlit(
         st.info("No risks to display. Create your first risk!")
         return None
 
+    # F32: build visual_config dict from vp_* session state.
+    # Falls back to legacy F20/F21 keys so that un-migrated callers still work.
+    visual_config = {
+        "exposure_opacity": st.session_state.get(
+            "vp_exposure_opacity",
+            st.session_state.get("exposure_opacity_enabled", False),
+        ),
+        "exposure_threshold": float(st.session_state.get(
+            "vp_exposure_threshold",
+            st.session_state.get("high_exposure_threshold", 60),
+        )),
+        "lifecycle_opacity_enabled": st.session_state.get(
+            "vp_lifecycle_opacity_enabled",
+            st.session_state.get("lifecycle_ghosting_enabled", False),
+        ),
+        "lifecycle_opacity": st.session_state.get("vp_lifecycle_opacity", {}),
+        "quadrant_borders": st.session_state.get("vp_quadrant_borders", False),
+    }
+
     html_content = render_graph(
         nodes=nodes,
         edges=edges,
@@ -317,9 +339,10 @@ def render_graph_streamlit(
         edge_scores=edge_scores,
         height=height,
         complexity_mode=complexity_mode,
-        exposure_opacity=st.session_state.get("exposure_opacity_enabled", False),
-        high_exposure_threshold=st.session_state.get("high_exposure_threshold", 60),
-        lifecycle_ghosting=st.session_state.get("lifecycle_ghosting_enabled", False),
+        exposure_opacity=visual_config["exposure_opacity"],
+        high_exposure_threshold=visual_config["exposure_threshold"],
+        lifecycle_ghosting=visual_config["lifecycle_opacity_enabled"],
+        visual_config=visual_config,
         focus_node_ids=focus_node_ids
     )
 
@@ -344,11 +367,12 @@ def render_subgraph(
     exposure_opacity: bool = False,
     high_exposure_threshold: float = 60.0,
     lifecycle_ghosting: bool = False,
+    visual_config: Optional[Dict[str, Any]] = None,
     **kwargs
 ) -> Optional[str]:
     """
     Render a subgraph centered on a specific node.
-    
+
     Args:
         nodes: All available nodes
         edges: All available edges
@@ -357,9 +381,10 @@ def render_subgraph(
         max_depth: Maximum traversal depth
         include_tpos: Whether to include TPO nodes
         level_filter: Filter to specific level ("Business", "Operational", or None for all)
-        exposure_opacity: Enable exposure-driven opacity (F20)
-        high_exposure_threshold: Threshold percentage for fully opaque nodes
-        lifecycle_ghosting: Enable status/lifecycle ghosting (F21)
+        exposure_opacity: Enable exposure-driven opacity (F20 legacy)
+        high_exposure_threshold: Threshold percentage for fully opaque nodes (F20 legacy)
+        lifecycle_ghosting: Enable status/lifecycle ghosting (F21 legacy)
+        visual_config: F32 consolidated visual settings dict
         **kwargs: Additional arguments passed to render_graph
     
     Returns:
@@ -442,5 +467,6 @@ def render_subgraph(
         exposure_opacity=exposure_opacity,
         high_exposure_threshold=high_exposure_threshold,
         lifecycle_ghosting=lifecycle_ghosting,
+        visual_config=visual_config,
         **kwargs
     )

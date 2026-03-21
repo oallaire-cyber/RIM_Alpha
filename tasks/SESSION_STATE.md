@@ -6,26 +6,56 @@
 ---
 
 ## Current Version
-`v2.28.0` — F6 Mitigation Exposure View. Branch: feature/iteration_4.
+`v2.29.0` — F32 Graph Visual Behaviour Panel. Branch: feature/iteration_4.
 
 ## Last Updated
-2026-03-21 — v2.28.0 fully implemented. 445 tests passing.
+2026-03-21 — v2.29.0 complete. 445 tests passing.
 
 ---
 
 ## 🔴 Active Work In Progress
 
-_None. v2.28.0 complete._
+_None. v2.29.0 complete._
 
-**Next feature**: **F32** Graph Visual Behaviour Panel (v2.28.0) — see ROADMAPv3.md Iteration 5.
+**Next feature**: **F31c** Lifecycle-Aware Simulation — see ROADMAPv3.md Iteration 5.
 
 ---
 
 ## ✅ Recently Completed (last 2 sessions)
 
-### Session N+9 (this session — v2.28.0 F6 Mitigation Exposure View)
+### Session N+11 (this session — v2.29.0 F32 Graph Visual Behaviour Panel)
+- **v2.29.0** — **F32 Graph Visual Behaviour Panel**:
+  - `ui/panels/graph_visual_panel.py`: NEW — consolidated visual settings panel. 4 presets
+    (Clean / Analysis / Lifecycle Audit / Sandbox Edit), exposure opacity (F20 moved here),
+    per-status lifecycle opacity sliders (F21 upgraded — replaces hardcoded 0.5), quadrant
+    border encoding toggle, Save as Schema Default button.
+  - `config/schema_loader.py`: `GraphVisualConfig` dataclass; `_parse_graph_visual_config()`;
+    `_graph_visual_config_to_dict()`; wired into `SchemaConfig`, `_parse_schema()`, `_schema_to_dict()`.
+  - `schemas/default/schema.yaml` + `schemas/it_security/schema.yaml`: `graph_visual_config` block.
+  - `utils/state_manager.py`: `VISUAL_PANEL_DEFAULTS` (`vp_*` keys) + `init_visual_panel_state()`
+    registered in `init_all()`.
+  - `visualization/node_styles.py`: `_QUADRANT_BORDER_COLORS`; `create_node_config()` accepts
+    `visual_config` dict; per-status opacity from map; quadrant border encoding block.
+  - `visualization/graph_renderer.py`: `render_graph()` / `render_subgraph()` accept `visual_config`;
+    `render_graph_streamlit()` builds `visual_config` from `vp_*` state with legacy fallback.
+  - `ui/home.py`: Display Options expander → Color Options (color_by only); visual panel wired
+    after layout management; schema defaults seeded into `vp_*` on first load.
+  - `docs/USER_GUIDE.md`, `docs/ARCHITECTURE.md`: updated. `CHANGELOG.md` v2.29.0. `ROADMAPv3.md` F32 done.
+  - **445 tests passing.**
+
+### Session N+10 (v2.28.1 TRI Delta removal)
+- **v2.28.1** — **TRI Delta removed from Mitigation Exposure & What-If**:
+  - Root cause: `TRI = likelihood × severity^1.5` is mitigation-independent; counterfactual TRI delta was always 0.
+  - `pages/4_📊_Mitigation_Exposure.py`: removed `delta_tri` computation + "TRI Delta ↑" column; added `pct_covered` metric (EL Delta / base_exposure_of_covered_risks × 100) and "% EL (Covered Risks)" column.
+  - `pages/3_🔬_What-If_Analysis.py`: replaced "Total TRI" summary card with "Max Single Risk EL" (responds correctly to mitigation toggles); removed "Baseline TRI", "Modified TRI", "Δ TRI" from per-risk delta table.
+  - `docs/help_mitigation_exposure.md`: column reference updated; explanatory note added on why TRI Delta is absent.
+  - `CLAUDE.md`: development workflow updated — manual-test gate added between pytest and docs/commit steps.
+  - `CHANGELOG.md` v2.28.1 entry. `ROADMAPv3.md` F6 + F7 entries updated.
+  - **445 tests passing.**
+
+### Session N+9 (v2.28.0 F6 Mitigation Exposure View)
 - **v2.28.0** — **F6 Mitigation Exposure View**:
-  - `pages/4_📊_Mitigation_Exposure.py`: NEW — counterfactual per-mitigation impact page. Loads baseline via same pattern as What-If; for each mitigation computes portfolio exposure without it (N+1 `calculate_exposure` runs); displays ranked table (EL Delta ↑, TRI Delta ↑, % Portfolio EL, Risks Covered, Level). Scope-aware, lifecycle-filtered, level filter sidebar.
+  - `pages/4_📊_Mitigation_Exposure.py`: NEW — counterfactual per-mitigation impact page. Loads baseline via same pattern as What-If; for each mitigation computes portfolio exposure without it (N+1 `calculate_exposure` runs); displays ranked table (EL Delta ↑, % Portfolio EL, Risks Covered, Level). Scope-aware, lifecycle-filtered, level filter sidebar.
   - `utils/state_manager.py`: `MITIGATION_EXPOSURE_DEFAULTS` dict + `init_mitigation_exposure_state()` added; registered in `init_all()`.
   - `docs/help_mitigation_exposure.md`: NEW runtime-loaded help article.
   - `docs/help_overview.md`, `docs/welcome.md`, `docs/USER_GUIDE.md`, `docs/ARCHITECTURE.md`: updated for F6.
@@ -244,7 +274,8 @@ _None._
 ## 🔁 Resumption Prompt (copy-paste to start next session)
 ```
 Resume RIM development. Read tasks/SESSION_STATE.md first, then continue where we left off.
-F7 complete (v2.26.0) including documentation pass, 409 tests passing. ROADMAPv3.md is the authoritative roadmap.
-Next task: Iteration 5 — F31c Lifecycle-Aware Simulation (v2.27.0).
+v2.29.0 complete (F32 Graph Visual Behaviour Panel), 445 tests passing.
+ROADMAPv3.md is the authoritative roadmap.
+Next task: Iteration 5 — F31c Lifecycle-Aware Simulation.
 Branch: feature/iteration_4.
 ```

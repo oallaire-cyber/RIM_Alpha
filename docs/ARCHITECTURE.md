@@ -271,8 +271,9 @@ ui/
 ├── styles.py         # CSS injection
 ├── panels/
 │   ├── __init__.py
-│   ├── influence_panel.py   # Influence analysis UI
-│   └── mitigation_panel.py  # Mitigation analysis UI
+│   ├── influence_panel.py    # Influence analysis UI
+│   ├── mitigation_panel.py   # Mitigation analysis UI
+│   └── graph_visual_panel.py # F32 — consolidated visual behaviour settings
 └── tabs/
     ├── __init__.py
     ├── unified_crud_tab.py  # Generic data grids/forms for any entity
@@ -537,6 +538,7 @@ a single module: **`utils/state_manager.py`**.
 | `LIFECYCLE_DEFAULTS` | `lifecycle_trigger_result`, `lifecycle_acceptance_result`, `lifecycle_archive_alerts`, `lifecycle_last_run`, `show_accepted_risks` | Data Management page |
 | `WHATIF_DEFAULTS` | `whatif_baseline`, `whatif_modified`, `whatif_raw_risks`, `whatif_raw_influences`, `whatif_raw_mitigations`, `whatif_raw_mitigates`, `whatif_include_inactive` | What-If Analysis page |
 | `MITIGATION_EXPOSURE_DEFAULTS` | `mitexp_baseline`, `mitexp_raw_risks`, `mitexp_raw_influences`, `mitexp_raw_mitigations`, `mitexp_raw_mitigates`, `mitexp_results`, `mitexp_include_inactive`, `mitexp_level_filter` | Mitigation Exposure View page |
+| `VISUAL_PANEL_DEFAULTS` | `vp_preset`, `vp_exposure_opacity`, `vp_exposure_threshold`, `vp_lifecycle_opacity_enabled`, `vp_lifecycle_opacity`, `vp_quadrant_borders` | Graph Visual Behaviour panel (F32) |
 
 In addition, `filter_manager` (`FilterManager`) and `layout_manager`
 (`LayoutManager`) are instantiated lazily inside `init_home_state()`.
@@ -552,6 +554,8 @@ from utils.state_manager import (
     init_simulation_state,      # SIMULATION_DEFAULTS
     init_lifecycle_state,       # LIFECYCLE_DEFAULTS
     init_whatif_state,          # WHATIF_DEFAULTS
+    init_mitigation_exposure_state,  # MITIGATION_EXPOSURE_DEFAULTS
+    init_visual_panel_state,    # VISUAL_PANEL_DEFAULTS (F32)
     init_all,                   # everything (useful for tests)
     get, set,                   # thin wrappers around st.session_state
 )
