@@ -100,6 +100,17 @@ WHATIF_DEFAULTS: Dict[str, Any] = {
     "whatif_include_inactive": False,   # bool — include lifecycle-inactive risks
 }
 
+MITIGATION_EXPOSURE_DEFAULTS: Dict[str, Any] = {
+    "mitexp_baseline": None,            # GlobalExposureResult | None — cached baseline
+    "mitexp_raw_risks": None,           # List[Dict] — risks snapshot
+    "mitexp_raw_influences": None,      # List[Dict] — influences snapshot
+    "mitexp_raw_mitigations": None,     # List[Dict] — mitigations in scope
+    "mitexp_raw_mitigates": None,       # List[Dict] — MITIGATES relationships snapshot
+    "mitexp_results": None,             # List[Dict] — per-mitigation impact rows
+    "mitexp_include_inactive": False,   # bool — include lifecycle-inactive risks
+    "mitexp_level_filter": "All",       # str — "All" | "Business" | "Operational"
+}
+
 
 # ---------------------------------------------------------------------------
 # Generic initializer
@@ -181,6 +192,11 @@ def init_whatif_state() -> None:
     init_defaults(WHATIF_DEFAULTS)
 
 
+def init_mitigation_exposure_state() -> None:
+    """Initialise Mitigation Exposure View page keys."""
+    init_defaults(MITIGATION_EXPOSURE_DEFAULTS)
+
+
 def init_all() -> None:
     """Initialise every registered key.  Useful in test harnesses."""
     init_connection_state()
@@ -191,6 +207,7 @@ def init_all() -> None:
     init_simulation_state()
     init_lifecycle_state()
     init_whatif_state()
+    init_mitigation_exposure_state()
 
 
 # ---------------------------------------------------------------------------

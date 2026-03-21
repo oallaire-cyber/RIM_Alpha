@@ -16,11 +16,12 @@ Complete documentation for the Risk Influence Map application.
 8. [Visualization](#visualization)
 9. [Analysis Tools](#analysis-tools)
 10. [What-If Analysis](#what-if-analysis)
-11. [Risk Lifecycle Engine](#risk-lifecycle-engine)
-12. [Risk Templates](#risk-templates)
-13. [Threshold Alerts](#threshold-alerts)
-14. [Import/Export](#importexport)
-15. [Filter System](#filter-system)
+11. [Mitigation Exposure View](#mitigation-exposure-view)
+12. [Risk Lifecycle Engine](#risk-lifecycle-engine)
+13. [Risk Templates](#risk-templates)
+14. [Threshold Alerts](#threshold-alerts)
+15. [Import/Export](#importexport)
+16. [Filter System](#filter-system)
 
 ---
 
@@ -68,6 +69,7 @@ The application uses a multi-page routing structure:
 | ⚙️ **Configuration** | Schema and database management |
 | 🎲 **Simulation** | Monte Carlo calibration simulator (scope-based real-data mode) |
 | 🔬 **What-If Analysis** | In-memory mitigation toggle with EL + TRI delta reporting |
+| 📊 **Mitigation Exposure** | Counterfactual per-mitigation EL + TRI impact ranking |
 
 ### Loading Demo Data (Quick Start)
 
@@ -550,6 +552,62 @@ The table lists every in-scope risk with:
 | "Which mitigation delivers the most coverage?" | Disable one at a time; compare Residual Risk % deltas |
 | "Worst-case unmitigated exposure?" | Disable all mitigations + enable "Include inactive risks" |
 | "Stakeholder briefing for a domain" | Activate a scope, compute baseline, toggle mitigations live |
+
+---
+
+## Mitigation Exposure View
+
+### Overview
+
+The **Mitigation Exposure View** (`📊 Mitigation Exposure` in the sidebar) answers:
+
+> *Which mitigations are protecting the portfolio the most — and which are redundant?*
+
+For each active mitigation, a **counterfactual** exposure is computed: what would the portfolio
+look like without that mitigation? The **EL Delta** and **TRI Delta** show its individual
+protective value, independent of other controls.
+
+### Step-by-Step
+
+1. Navigate to the **📊 Mitigation Exposure** page
+2. Verify the active scope in the sidebar (or leave it as Full Graph)
+3. Optionally check **"Include inactive risks (worst-case)"** to include
+   Accepted/Watching/Suppressed/Closed risks
+4. Optionally set the **Risk level** filter (All / Business / Operational)
+5. Click **🔄 Compute Mitigation Impact** — each mitigation is evaluated in one pass
+6. Review the ranked table — mitigations with the highest EL Delta ↑ are most critical
+
+> Changing scope or lifecycle settings requires re-clicking **Compute Mitigation Impact**
+> to refresh the cached results.
+
+### Column Reference
+
+| Column | Description |
+|--------|-------------|
+| **Mitigation** | Name of the mitigation control |
+| **Type** | Dedicated / Inherited / Baseline |
+| **Status** | Proposed / In Progress / Implemented / Deferred |
+| **Level** | Risk level(s) the mitigation covers (Business / Operational / Mixed) |
+| **Risks Covered** | Number of in-scope risks directly addressed by this mitigation |
+| **EL Delta ↑** | Exposure increase if this mitigation were removed (marginal value) |
+| **TRI Delta ↑** | Tail Risk Indicator increase if this mitigation were removed |
+| **% Portfolio EL** | EL Delta as a percentage of total unmitigated base exposure |
+
+### Interpreting Results
+
+| Pattern | Interpretation |
+|---------|----------------|
+| High EL Delta + Implemented | Critical control — protect and monitor |
+| High EL Delta + Proposed/Deferred | Unacceptable gap — prioritise implementation |
+| Low EL Delta + any status | Limited measurable impact; check effectiveness data or control overlap |
+| Zero EL Delta | Covers only risks with no likelihood/severity data, or fully redundant |
+
+### Relationship to What-If Analysis
+
+| Feature | Best for |
+|---------|---------|
+| **What-If Analysis** | Interactive multi-mitigation scenario exploration |
+| **Mitigation Exposure View** | Objective single-mitigation ranking and prioritisation |
 
 ---
 

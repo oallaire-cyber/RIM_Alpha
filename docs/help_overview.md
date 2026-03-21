@@ -22,6 +22,7 @@ The **Risk Influence Map** transforms static risk registers into
 | 📊 Statistics | Live dashboard adapts to active scope |
 | ♻️ Lifecycle engine | 6-state risk lifecycle with auto-acceptance, trigger review, and archive alerts |
 | 🔬 What-If Analysis | Toggle mitigations ON/OFF in-memory; observe EL + TRI deltas without DB writes |
+| 📊 Mitigation Exposure | Rank mitigations by marginal EL + TRI impact (counterfactual per-mitigation analysis) |
 | 📋 Risk Templates | Define reusable GenericRisk archetypes; instantiate into specific risks with one click |
 | ⚠️ Threshold Alerts | Automatic EL + TRI breach detection surfaced in the exposure dashboard |
 

@@ -15,14 +15,14 @@ RIM follows a **modular architecture** with clear separation of concerns:
 │          (Thin entry point → delegates to ui/home.py)         │
 └─────────────────────┬───────────────────────────────────────┘
                       │
-    ┌───────────┬───────────┬───────────┬───────────┐
-    ▼           ▼           ▼           ▼           ▼
-┌──────────┐┌──────────┐┌──────────┐┌──────────┐┌───────────────┐
-│1_Config  ││2_Data    ││2_Sim     ││3_What-If ││  (app.py /    │
-│(Config)  ││Management││(Simulator││Analysis  ││  ui/home.py)  │
-└────┬─────┘└────┬─────┘└────┬─────┘└────┬─────┘└───────────────┘
-     │           │           │           │
-     └───────────┴───────────┴───────────┘
+    ┌───────────┬───────────┬───────────┬───────────┬───────────┐
+    ▼           ▼           ▼           ▼           ▼           ▼
+┌──────────┐┌──────────┐┌──────────┐┌──────────┐┌──────────┐┌──────────────┐
+│1_Config  ││2_Data    ││2_Sim     ││3_What-If ││4_Mit     ││  (app.py /   │
+│(Config)  ││Management││(Simulator││Analysis  ││Exposure  ││  ui/home.py) │
+└────┬─────┘└────┬─────┘└────┬─────┘└────┬─────┘└────┬─────┘└──────────────┘
+     │           │           │           │           │
+     └───────────┴───────────┴───────────┴───────────┘
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    utils/db_manager.py                       │
@@ -536,6 +536,7 @@ a single module: **`utils/state_manager.py`**.
 | `SIMULATION_DEFAULTS` | `saved_simulations` | Simulation page |
 | `LIFECYCLE_DEFAULTS` | `lifecycle_trigger_result`, `lifecycle_acceptance_result`, `lifecycle_archive_alerts`, `lifecycle_last_run`, `show_accepted_risks` | Data Management page |
 | `WHATIF_DEFAULTS` | `whatif_baseline`, `whatif_modified`, `whatif_raw_risks`, `whatif_raw_influences`, `whatif_raw_mitigations`, `whatif_raw_mitigates`, `whatif_include_inactive` | What-If Analysis page |
+| `MITIGATION_EXPOSURE_DEFAULTS` | `mitexp_baseline`, `mitexp_raw_risks`, `mitexp_raw_influences`, `mitexp_raw_mitigations`, `mitexp_raw_mitigates`, `mitexp_results`, `mitexp_include_inactive`, `mitexp_level_filter` | Mitigation Exposure View page |
 
 In addition, `filter_manager` (`FilterManager`) and `layout_manager`
 (`LayoutManager`) are instantiated lazily inside `init_home_state()`.

@@ -4,6 +4,32 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.28.0] - 2026-03-21 (F6 Mitigation Exposure View)
+
+### New Features
+
+- **F6 Mitigation Exposure View** (`pages/4_📊_Mitigation_Exposure.py` — new page):
+  Ranks every active in-scope mitigation by its **marginal EL and TRI contribution**
+  using a counterfactual approach — for each mitigation, portfolio exposure is recomputed
+  without that mitigation to derive the individual protective value (EL Delta ↑, TRI Delta ↑,
+  % Portfolio EL). Scope-aware, lifecycle-filtered (inactive risks excluded by default),
+  level filter (All / Business / Operational), and a 4-column summary header.
+
+- **State management** (`utils/state_manager.py`):
+  `MITIGATION_EXPOSURE_DEFAULTS` dict + `init_mitigation_exposure_state()` function;
+  registered in `init_all()`.
+
+### Documentation
+
+- `docs/help_mitigation_exposure.md`: new runtime-loaded help article (counterfactual
+  method, column reference, interpretation guide, comparison with What-If Analysis).
+- `docs/help_overview.md`: Mitigation Exposure row added to Core Capabilities table.
+- `docs/welcome.md`: Mitigation Exposure View capability block added.
+- `docs/USER_GUIDE.md`: Mitigation Exposure View section added; nav table updated.
+- `docs/ARCHITECTURE.md`: page diagram + state defaults table updated.
+
+---
+
 ## [v2.27.1] - 2026-03-21 (Post-v2.27.0 Fixes + Subtype Selection)
 
 ### Bug Fixes

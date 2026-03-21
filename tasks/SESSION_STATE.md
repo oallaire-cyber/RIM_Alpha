@@ -6,24 +6,33 @@
 ---
 
 ## Current Version
-`v2.27.1` — Post-release fixes + Subtype selection. Branch: feature/iteration_4.
+`v2.28.0` — F6 Mitigation Exposure View. Branch: feature/iteration_4.
 
 ## Last Updated
-2026-03-21 — v2.27.1 fully implemented. 445 tests passing.
+2026-03-21 — v2.28.0 fully implemented. 445 tests passing.
 
 ---
 
 ## 🔴 Active Work In Progress
 
-_None. v2.27.1 complete._
+_None. v2.28.0 complete._
 
-**Next feature**: **F6** Mitigation Exposure View (v2.28.0) — see ROADMAPv3.md Iteration 5.
+**Next feature**: **F32** Graph Visual Behaviour Panel (v2.28.0) — see ROADMAPv3.md Iteration 5.
 
 ---
 
 ## ✅ Recently Completed (last 2 sessions)
 
-### Session N+8 (this session — v2.27.1 fixes + subtype selection)
+### Session N+9 (this session — v2.28.0 F6 Mitigation Exposure View)
+- **v2.28.0** — **F6 Mitigation Exposure View**:
+  - `pages/4_📊_Mitigation_Exposure.py`: NEW — counterfactual per-mitigation impact page. Loads baseline via same pattern as What-If; for each mitigation computes portfolio exposure without it (N+1 `calculate_exposure` runs); displays ranked table (EL Delta ↑, TRI Delta ↑, % Portfolio EL, Risks Covered, Level). Scope-aware, lifecycle-filtered, level filter sidebar.
+  - `utils/state_manager.py`: `MITIGATION_EXPOSURE_DEFAULTS` dict + `init_mitigation_exposure_state()` added; registered in `init_all()`.
+  - `docs/help_mitigation_exposure.md`: NEW runtime-loaded help article.
+  - `docs/help_overview.md`, `docs/welcome.md`, `docs/USER_GUIDE.md`, `docs/ARCHITECTURE.md`: updated for F6.
+  - `CHANGELOG.md` v2.28.0 entry. `ROADMAPv3.md` F6 marked complete.
+  - **445 tests passing.**
+
+### Session N+8 (v2.27.1 fixes + subtype selection)
 - **v2.27.1** — Post-release fixes + Subtype Selection:
   - `config/schema_loader.py`: `expected_loss_threshold` → `high_exposure_threshold`; backward-compat parse fallback.
   - `schemas/default/schema.yaml` + `schemas/it_security/schema.yaml`: key renamed.

@@ -27,10 +27,11 @@ These are **mandatory** components. They affect the exposure calculator, schema 
     *   **U12** Risk Lifecycle Engine — **COMPLETE** (v2.25.1). 6-state lifecycle; `TriggerEngine`; `AutoAcceptanceEngine` with 3 guards + Force Accept override; `ArchiveEngine`; `exclude_inactive=True` on analytical queries; scope-aware engine; lifecycle node property panel; help article.
     *   **F7** What-If Analysis — **COMPLETE** (v2.26.0). `pages/3_🔬_What-If_Analysis.py`; in-memory mitigation toggle; EL + TRI + WRS deltas; scope + lifecycle constrained.
 
-*   **Iteration 5 — Partial** (v2.27.1)
+*   **Iteration 5 — Partial** (v2.28.0)
     *   **U14** Templates — **COMPLETE** (v2.27.0). `is_template` flag; `INSTANTIATES` rel; template library UI + instantiation workflow in CRUD tab; exclusion from exposure engine + canvas; node property panel section.
     *   **F5** Alerts — **COMPLETE** (v2.27.0). `AlertThresholdsConfig`; `high_exposure_threshold` + TRI threshold alerts in exposure expander; configurable per domain YAML.
     *   **v2.27.1** Post-release fixes: `boolean`→`bool` attribute alias; YAML encoding fix; INSTANTIATES edge safety filter; `high_exposure_threshold` rename; Subtype selector in risk create/edit forms.
+    *   **F6** Mitigation Exposure View — **COMPLETE** (v2.28.0). `pages/4_📊_Mitigation_Exposure.py`; counterfactual per-mitigation EL + TRI delta; scope + lifecycle constrained; level filter; `MITIGATION_EXPOSURE_DEFAULTS` in state manager.
 
 ---
 
@@ -222,7 +223,7 @@ ALE = λ × Mean Magnitude collapses the distribution, masking tail behaviour. T
 |------|---------|---------|---------|
 | ~~**U14** Templates~~ ✅ _(v2.27.0)_ | ~~v2.27.0~~ | ~~`models/risk.py`, `schema.yaml`, `ui/tabs/unified_crud_tab.py`, `database/queries/risks.py`, `database/manager.py`, `ui/panels/node_property_panel.py`~~ | ~~`is_template` flag; `INSTANTIATES` rel; `get_all_templates()`, `create_instantiates_rel()`; template library UI in CRUD tab; instantiation workflow; exclusion from exposure engine + canvas.~~ |
 | ~~**F5** Alerts~~ ✅ _(v2.27.0)_ | ~~v2.27.0~~ | ~~`ui/home.py`, `schema.yaml`, `config/schema_loader.py`~~ | ~~`AlertThresholdsConfig`; EL + TRI threshold alerts; `_render_threshold_alerts()`; configurable per domain in YAML.~~ |
-| **F6** Mitigation View | v2.28.0 | `pages/3_🔬_Analysis.py` | Business Risk mitigation view; lifecycle filter; EL+TRI delta. |
+| ~~**F6** Mitigation View~~ ✅ _(v2.28.0)_ | ~~v2.28.0~~ | ~~`pages/4_📊_Mitigation_Exposure.py`, `utils/state_manager.py`~~ | ~~Counterfactual per-mitigation EL + TRI delta; scope + lifecycle constrained; level filter; `MITIGATION_EXPOSURE_DEFAULTS`.~~ |
 | **F32** Visual Panel | v2.28.0 | `ui/panels/graph_visual_panel.py` (new), `schema.yaml` | Consolidated settings; lifecycle opacity; quadrant encoding; presets persisted to YAML. |
 | **F31c** Lifecycle-aware simulation | v2.29.0 | `pages/2_🎲_Simulation.py` | Re-activate all accepted/watching risks; reveal latent tail exposure on worst-case canvas. Requires U12 complete. |
 | **F31d** TRI alpha calibration | v2.30.0 | `pages/2_🎲_Simulation.py` | Vary α over configurable range; observe quadrant distribution shift; output calibration report for domain-appropriate α selection. Requires U13 TRI computation complete. |

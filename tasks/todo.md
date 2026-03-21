@@ -1,44 +1,42 @@
-# Task: v2.27.1 Post-Release Fixes + Subtype Selection
-**Stream**: A + B
+# Task: v2.28.0 F6 Mitigation Exposure View
+**Stream**: A
 **Started**: 2026-03-21
-**Target version**: v2.27.1
+**Target version**: v2.28.0
 
 ## Plan
-- [x] Rename `expected_loss_threshold` → `high_exposure_threshold` throughout
-- [x] Fix YAML encoding (`charmap` error) in Configuration page YAML editor backup
-- [x] Fix `is_template` not rendering as checkbox (`boolean` alias in `core/attribute.py`)
-- [x] Fix graph `AssertionError` on INSTANTIATES edge (safety filter in `analysis.py`)
-- [x] Add Subtype selector to create/edit risk forms (`unified_crud_tab.py`)
-- [x] Full documentation pass (v2.27.0 + v2.27.1 features)
+- [x] Add `MITIGATION_EXPOSURE_DEFAULTS` + `init_mitigation_exposure_state()` to `utils/state_manager.py`
+- [x] Create `pages/4_📊_Mitigation_Exposure.py` — counterfactual per-mitigation impact page
+- [x] Create `docs/help_mitigation_exposure.md`
+- [x] Update `docs/help_overview.md`, `docs/welcome.md`
+- [x] Update `docs/USER_GUIDE.md` — add Mitigation Exposure View section
+- [x] Update `docs/ARCHITECTURE.md` — page diagram + state defaults table
+- [x] Update `CHANGELOG.md` — v2.28.0 entry
+- [x] Update `ROADMAPv3.md` — F6 marked complete
 - [x] Run full test suite → 445 passing
-- [x] Update CHANGELOG + ROADMAPv3 + SESSION_STATE + todo.md
+- [x] Update SESSION_STATE.md + todo.md
 
 ## Git Commit
 ```
-fix(v2.27.1): post-release fixes + risk subtype selection in forms
+feat(v2.28.0): F6 Mitigation Exposure View
 
-- high_exposure_threshold: renamed from expected_loss_threshold throughout
-  (schema_loader, schema YAMLs, home.py, tests). Backward-compat parse
-  fallback accepts old key. EL terminology reserved for future financial model.
+New page: pages/4_📊_Mitigation_Exposure.py
+- Counterfactual per-mitigation impact: for each active mitigation,
+  recomputes portfolio exposure with that mitigation disabled to derive
+  the marginal EL Delta and TRI Delta attributable to it.
+- Scope-aware (respects active FilterManager scope), lifecycle-filtered
+  (inactive risks excluded by default), level filter (All/Business/Operational).
+- 4-column summary header: Active Mitigations, Portfolio EL, EL Reduction,
+  Portfolio TRI.
+- Per-mitigation table: Name | Type | Status | Level | Risks Covered |
+  EL Delta ↑ | TRI Delta ↑ | % Portfolio EL — sorted by EL delta descending.
+- Inline help expander loads docs/help_mitigation_exposure.md.
 
-- YAML encoding: open() in Configuration page YAML editor now specifies
-  encoding='utf-8' for both backup read and write (Windows charmap fix).
+State manager (utils/state_manager.py):
+- MITIGATION_EXPOSURE_DEFAULTS dict (mitexp_* keys).
+- init_mitigation_exposure_state() registered in init_all().
 
-- is_template checkbox: core/attribute.py __post_init__ adds 'boolean'→'bool'
-  and 'integer'→'int' aliases before AttributeType() enum lookup. Without this,
-  schema attributes typed 'boolean' silently fell back to STRING widget.
-
-- Graph AssertionError: analysis.py get_graph_data now strips any edge whose
-  source or target is absent from the canvas node set, before scope filtering.
-  Prevents INSTANTIATES edges from crashing PyVis when template node is excluded.
-
-- Subtype selection: _render_risk_subtype_fields() in unified_crud_tab.py renders
-  a subtype selectbox (filtered by selected level) + extension fields after the
-  generic build_entity_form(). Applied to both create and edit forms for risks.
+Docs: help_mitigation_exposure.md (new); help_overview.md, welcome.md,
+USER_GUIDE.md, ARCHITECTURE.md updated. CHANGELOG v2.28.0. ROADMAPv3 F6 done.
 
 445 tests passing.
-
-Documentation: help_templates.md + help_alerts.md (new); USER_GUIDE, ARCHITECTURE,
-METHODOLOGY, CONFIGURATION_MANAGER, help_overview, welcome, help_exposure, README
-all updated for v2.27.0 features. /finish skill enforces doc pass as mandatory step.
 ```

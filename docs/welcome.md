@@ -68,8 +68,15 @@ and which program objectives are at stake.
 - Scope-constrained and lifecycle-aware
 - "Include inactive risks" option for worst-case scenario exploration
 
-> *Use What-If to answer "what if this control fails?" or "which mitigation
-> delivers the most risk reduction?" in a live briefing.*
+> *Use What-If to answer "what if this control fails?" or to explore multi-mitigation scenarios in a live briefing.*
+
+**📊 Mitigation Exposure View**
+- Rank every in-scope mitigation by its **marginal EL and TRI contribution**
+- Counterfactual computation: for each mitigation, calculates what the portfolio would look like without it
+- Business-focused: filter by risk level, scope-aware, lifecycle-filtered by default
+- Instantly surfaces critical controls and coverage gaps
+
+> *Use Mitigation Exposure to prioritise control investment and identify single points of failure in your mitigation portfolio.*
 
 **📋 Risk Templates**
 - Define Generic Risk archetypes as reusable templates
