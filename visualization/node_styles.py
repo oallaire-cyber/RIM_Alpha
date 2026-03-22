@@ -74,13 +74,24 @@ def build_generic_tooltip(node: Dict[str, Any], entity_type, is_highlighted: boo
 # NODE CONFIGURATION FUNCTIONS
 # =============================================================================
 
+# F32: quadrant → border colour mapping
+# Keys match _compute_risk_quadrant() return values (lowercase)
+_QUADRANT_BORDER_COLORS: Dict[str, str] = {
+    "critical":  "#8B0000",   # dark red  — high likelihood + high severity
+    "frequency": "#FF6600",   # orange    — high likelihood + low severity
+    "severity":  "#FFD700",   # gold      — low likelihood + high severity
+    "marginal":  "#228B22",   # forest green — low likelihood + low severity
+}
+
+
 def create_node_config(
     node: Dict[str, Any],
     color_by: str = "level",
     highlighted_node_id: Optional[str] = None,
     exposure_opacity: bool = False,
     high_exposure_threshold: float = 60.0,
-    lifecycle_ghosting: bool = False
+    lifecycle_ghosting: bool = False,
+    visual_config: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Create node configuration for any node type from schema.
@@ -144,40 +155,68 @@ def create_node_config(
         border_dashes = [8, 4]
         border_width = 3
         
-    # 💧 Opacity calculations (F20 & F21)
+    # 💧 Opacity calculations (F20, F21, F32)
+    # Resolve visual_config — F32 supersedes legacy flags when provided
+    _vc = visual_config or {}
+    _use_f32 = bool(_vc)
+
+    # Lifecycle opacity
+    _lc_opacity_enabled = _vc.get("lifecycle_opacity_enabled", lifecycle_ghosting if not _use_f32 else False)
+    _lc_opacity_map: Dict[str, float] = _vc.get("lifecycle_opacity", {})
+
+    # Exposure opacity
+    _exp_opacity_enabled = _vc.get("exposure_opacity", exposure_opacity)
+    _exp_threshold = float(_vc.get("exposure_threshold", high_exposure_threshold))
+
+    # Quadrant borders
+    _quadrant_borders_enabled = _vc.get("quadrant_borders", False)
+
     # Start fully opaque
     opacity = 1.0
-    
-    if lifecycle_ghosting and status in ("contingent", "proposed", "deferred"):
-        opacity *= 0.5
-        
-    if exposure_opacity and node_type_id == "risk":
-        # Check against high exposure threshold absolute value
+
+    # F21/F32 lifecycle opacity
+    if _lc_opacity_enabled:
+        if _lc_opacity_map:
+            # F32: per-status granular opacity
+            if status in _lc_opacity_map:
+                opacity *= _lc_opacity_map[status]
+        else:
+            # Legacy F21 fallback: ghost contingent/proposed/deferred at 50%
+            if status in ("contingent", "proposed", "deferred"):
+                opacity *= 0.5
+
+    # F20/F32 exposure-driven opacity
+    if _exp_opacity_enabled and node_type_id == "risk":
         if exposure is not None:
-            if exposure >= high_exposure_threshold:
-                # Keep completely opaque if meeting or exceeding threshold
-                pass
+            if exposure >= _exp_threshold:
+                pass  # fully opaque
             else:
-                # Scale from 20% min to whatever proportion they are at, capped by threshold
-                if high_exposure_threshold > 0:
-                    opacity *= 0.2 + 0.8 * (exposure / high_exposure_threshold)
+                if _exp_threshold > 0:
+                    opacity *= 0.2 + 0.8 * (exposure / _exp_threshold)
                 else:
                     opacity *= 0.2
         else:
-            # Null exposure
             opacity *= 0.2
-            
+
     # Apply opacity to colors
     from visualization.graph_renderer import hex_to_rgba
     rgba_base = hex_to_rgba(base_color, opacity)
     rgba_border = hex_to_rgba(border_color, opacity)
     rgba_highlight_border = hex_to_rgba("#FFFF00", opacity)
     
+    # F32: quadrant border encoding — override border colour for risk nodes
+    if _quadrant_borders_enabled and node_type_id == "risk" and not is_highlighted:
+        quadrant = node.get("risk_quadrant", "")
+        qb_color = _QUADRANT_BORDER_COLORS.get(quadrant)
+        if qb_color:
+            rgba_border = hex_to_rgba(qb_color, opacity)
+            border_width = max(border_width, 3)
+
     # 📝 Label Construction
     label = f"{emoji} " + wrap_label(node.get("name", ""), 18)
     if is_highlighted:
         label = f"★ {label}"
-        
+
     font_color = "#FFFFFF" if entity_type.shape == "box" else "#2C3E50"
     rgba_font = hex_to_rgba(font_color, max(0.4, opacity)) # don't make text completely invisible
 

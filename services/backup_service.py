@@ -358,7 +358,7 @@ def _risk_kwargs(d: Dict[str, Any]) -> Dict[str, Any]:
         "description": d.get("description", ""),
         "owner": d.get("owner", ""),
         "probability": d.get("probability"),
-        "impact": d.get("impact"),
+        "severity": d.get("severity") or d.get("impact"),  # impact fallback for legacy JSON backups
         "exposure": d.get("exposure"),
         "activation_condition": d.get("activation_condition"),
         "activation_decision_date": d.get("activation_decision_date"),

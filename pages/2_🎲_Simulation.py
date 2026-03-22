@@ -2,7 +2,7 @@
 RIM Exposure Model Calibration Simulator
 
 Monte Carlo simulation tool to validate and calibrate the exposure calculation model.
-Generates random scenarios with varying likelihood, impact, and influence values
+Generates random scenarios with varying likelihood, severity, and influence values
 to visualize how risk exposure evolves along different mitigation paths.
 
 Run with: streamlit run calibration_simulator.py
@@ -18,7 +18,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from dataclasses import dataclass, field
-from typing import List, Dict, Tuple, Optional
+from typing import Any, List, Dict, Tuple, Optional
 import random
 from datetime import datetime
 import sys
@@ -30,6 +30,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.db_manager import get_active_manager
 from utils.simulation_store import SimulationRecord
 from utils.state_manager import init_simulation_state
+from services.exposure_calculator import _compute_risk_quadrant, TRI_ALPHA
 
 
 # =============================================================================
@@ -65,11 +66,11 @@ class SimulatedRisk:
     name: str
     level: str  # Strategic or Operational
     likelihood: float
-    impact: float
+    severity: float
     base_exposure: float = field(init=False)
-    
+
     def __post_init__(self):
-        self.base_exposure = self.likelihood * self.impact
+        self.base_exposure = self.likelihood * self.severity
 
 
 @dataclass
@@ -187,10 +188,10 @@ def calculate_scenario_exposures(scenario: SimulationScenario) -> SimulationScen
     
     # Weighted score
     weighted_sum = sum(
-        scenario.risk_exposures[r.id] * (r.impact ** 2) 
+        scenario.risk_exposures[r.id] * (r.severity ** 2)
         for r in scenario.risks
     )
-    max_weighted = sum(100 * (r.impact ** 2) for r in scenario.risks)
+    max_weighted = sum(100 * (r.severity ** 2) for r in scenario.risks)
     scenario.global_risk_score = (weighted_sum / max_weighted * 100) if max_weighted > 0 else 0
     
     scenario.max_exposure = max(scenario.risk_exposures.values()) if scenario.risk_exposures else 0
@@ -207,11 +208,11 @@ def generate_risk_network(
     n_strategic: int,
     influence_density: float,
     likelihood_range: Tuple[float, float],
-    impact_range: Tuple[float, float]
+    severity_range: Tuple[float, float]
 ) -> Tuple[List[SimulatedRisk], List[SimulatedInfluence]]:
     """Generate a random risk network."""
     risks = []
-    
+
     # Generate operational risks
     for i in range(n_operational):
         risks.append(SimulatedRisk(
@@ -219,9 +220,9 @@ def generate_risk_network(
             name=f"Operational Risk {i+1}",
             level="Operational",
             likelihood=random.uniform(*likelihood_range),
-            impact=random.uniform(*impact_range)
+            severity=random.uniform(*severity_range)
         ))
-    
+
     # Generate strategic risks
     for i in range(n_strategic):
         risks.append(SimulatedRisk(
@@ -229,7 +230,7 @@ def generate_risk_network(
             name=f"Strategic Risk {i+1}",
             level="Strategic",
             likelihood=random.uniform(*likelihood_range),
-            impact=random.uniform(*impact_range)
+            severity=random.uniform(*severity_range)
         ))
     
     # Generate influences
@@ -383,22 +384,22 @@ def run_monte_carlo(
     n_strategic: int,
     influence_density: float,
     likelihood_range: Tuple[float, float],
-    impact_range: Tuple[float, float],
+    severity_range: Tuple[float, float],
     mitigation_coverage_range: Tuple[float, float],
     progress_callback=None
 ) -> pd.DataFrame:
     """
     Run Monte Carlo simulation with random parameters.
-    
+
     Returns DataFrame with results for each simulation.
     """
     results = []
-    
+
     for i in range(n_simulations):
         # Generate random network
         risks, influences = generate_risk_network(
             n_operational, n_strategic, influence_density,
-            likelihood_range, impact_range
+            likelihood_range, severity_range
         )
         
         # Generate scenario with random mitigations
@@ -450,7 +451,7 @@ def run_monte_carlo(
             "weighted_risk_score": scenario.global_risk_score,
             "max_single_exposure": scenario.max_exposure,
             "avg_likelihood": np.mean([r.likelihood for r in risks]),
-            "avg_impact": np.mean([r.impact for r in risks]),
+            "avg_severity": np.mean([r.severity for r in risks]),
         })
         
         if progress_callback and (i + 1) % 100 == 0:
@@ -466,21 +467,21 @@ def run_mitigation_path_simulation(
     n_strategic: int,
     influence_density: float,
     likelihood_range: Tuple[float, float],
-    impact_range: Tuple[float, float],
+    severity_range: Tuple[float, float],
     progress_callback=None
 ) -> pd.DataFrame:
     """
     Run simulation of mitigation paths.
-    
+
     Returns DataFrame with results for each step of each path.
     """
     results = []
-    
+
     for path_id in range(n_paths):
         # Generate random network (fixed for this path)
         risks, influences = generate_risk_network(
             n_operational, n_strategic, influence_density,
-            likelihood_range, impact_range
+            likelihood_range, severity_range
         )
         
         # Generate mitigation path
@@ -541,16 +542,17 @@ def main():
 
     sim_mode = st.sidebar.radio(
         "Simulation Mode",
-        ["Monte Carlo (Random)", "Mitigation Path", "Scope-Based (Real Data)"],
+        ["Monte Carlo (Random)", "Mitigation Path", "Scope-Based (Real Data)", "TRI α Calibration"],
         help=(
             "Monte Carlo: random scenarios. "
             "Mitigation Path: progressive mitigation. "
-            "Scope-Based: real graph data from the active DB connection."
+            "Scope-Based: real graph data from the active DB connection. "
+            "TRI α Calibration: sweep the TRI exponent (α) to validate domain-appropriate value."
         )
     )
 
-    # ── Scope-Based mode sidebar ──────────────────────────────────────────────
-    if sim_mode == "Scope-Based (Real Data)":
+    # ── Scope-Based / TRI α Calibration sidebar (both require DB) ────────────
+    if sim_mode in ("Scope-Based (Real Data)", "TRI α Calibration"):
         st.sidebar.markdown("---")
         st.sidebar.subheader("🔗 DB Connection")
 
@@ -579,65 +581,165 @@ def main():
             st.sidebar.info("📍 Scope: **Full Graph** (no scope active)")
 
         st.sidebar.markdown("---")
-        st.sidebar.subheader("⚙️ Scope-Based Settings")
 
-        param_mode = st.sidebar.radio(
-            "Parameter mode",
-            ["Real L×I values", "Random L×I (calibration)"],
+        # ── F31c: Worst-Case Canvas toggle (shared by both DB modes) ─────────
+        include_inactive = st.sidebar.checkbox(
+            "🧟 Worst-Case Canvas",
+            value=False,
             help=(
-                "Real L×I: use actual likelihood/impact from the DB each run. "
-                "Random L×I: randomise likelihood/impact within ranges while keeping real topology."
-            )
+                "Re-activates lifecycle-inactive risks (accepted / watching / suppressed / closed) "
+                "to reveal latent tail exposure. Results are labelled as worst-case."
+            ),
+            key="sb_include_inactive",
         )
+        if include_inactive and scope_label != "Full Graph":
+            scope_label = scope_label + " [Worst-Case]"
+        elif include_inactive:
+            scope_label = "Full Graph [Worst-Case]"
 
-        n_simulations_sb = st.sidebar.slider(
-            "Number of Simulations", 100, 5000, 500, step=100,
-            key="sb_n_sims"
-        )
-        coverage_variance = st.sidebar.slider(
-            "Mitigation Variance %", 0, 100, 30,
-            help="How much mitigation coverage varies around the real value each run.",
-            key="sb_cov_var"
-        ) / 100
+        if sim_mode == "Scope-Based (Real Data)":
+            # ── Scope-Based settings ──────────────────────────────────────────
+            st.sidebar.subheader("⚙️ Scope-Based Settings")
 
-        if param_mode == "Random L×I (calibration)":
-            st.sidebar.markdown("---")
-            st.sidebar.subheader("📈 L×I Ranges")
-            col1, col2 = st.sidebar.columns(2)
-            with col1:
-                sb_likelihood_min = st.number_input("Likelihood Min", 1.0, 10.0, 1.0, key="sb_lmin")
-                sb_impact_min = st.number_input("Impact Min", 1.0, 10.0, 1.0, key="sb_imin")
-            with col2:
-                sb_likelihood_max = st.number_input("Likelihood Max", 1.0, 10.0, 10.0, key="sb_lmax")
-                sb_impact_max = st.number_input("Impact Max", 1.0, 10.0, 10.0, key="sb_imax")
-            sb_likelihood_range = (sb_likelihood_min, sb_likelihood_max)
-            sb_impact_range = (sb_impact_min, sb_impact_max)
-        else:
-            sb_likelihood_range = (1.0, 10.0)
-            sb_impact_range = (1.0, 10.0)
-
-        st.sidebar.markdown("---")
-        run_button = st.sidebar.button(
-            "🚀 Run Simulation", type="primary", use_container_width=True,
-            disabled=run_button_disabled
-        )
-
-        with tab_sim:
-            if run_button and not run_button_disabled:
-                run_scope_based_simulation_ui(
-                    manager, scope_ids, scope_label,
-                    n_simulations_sb, coverage_variance,
-                    param_mode == "Random L×I (calibration)",
-                    sb_likelihood_range, sb_impact_range
+            param_mode = st.sidebar.radio(
+                "Parameter mode",
+                ["Real L×I values", "Random L×I (calibration)"],
+                help=(
+                    "Real L×I: use actual likelihood/severity from the DB each run. "
+                    "Random L×I: randomise likelihood/severity within ranges while keeping real topology."
                 )
-            elif not run_button:
-                st.info("👈 Configure parameters in the sidebar and click **Run Simulation** to start.")
-                _render_about_expander()
+            )
+
+            n_simulations_sb = st.sidebar.slider(
+                "Number of Simulations", 100, 5000, 500, step=100,
+                key="sb_n_sims"
+            )
+            coverage_variance = st.sidebar.slider(
+                "Mitigation Variance %", 0, 100, 30,
+                help="How much mitigation coverage varies around the real value each run.",
+                key="sb_cov_var"
+            ) / 100
+
+            if param_mode == "Random L×I (calibration)":
+                st.sidebar.markdown("---")
+                st.sidebar.subheader("📈 L×I Ranges")
+                col1, col2 = st.sidebar.columns(2)
+                with col1:
+                    sb_likelihood_min = st.number_input("Likelihood Min", 1.0, 10.0, 1.0, key="sb_lmin")
+                    sb_severity_min = st.number_input("Severity Min", 1.0, 10.0, 1.0, key="sb_imin")
+                with col2:
+                    sb_likelihood_max = st.number_input("Likelihood Max", 1.0, 10.0, 10.0, key="sb_lmax")
+                    sb_severity_max = st.number_input("Severity Max", 1.0, 10.0, 10.0, key="sb_imax")
+                sb_likelihood_range = (sb_likelihood_min, sb_likelihood_max)
+                sb_severity_range = (sb_severity_min, sb_severity_max)
+            else:
+                sb_likelihood_range = (1.0, 10.0)
+                sb_severity_range = (1.0, 10.0)
+
+            st.sidebar.markdown("---")
+            run_button = st.sidebar.button(
+                "🚀 Run Simulation", type="primary", use_container_width=True,
+                disabled=run_button_disabled
+            )
+
+            with tab_sim:
+                # Run compute when button clicked (clears then fills ss["last_sb_result"])
+                if run_button and not run_button_disabled:
+                    _compute_sb_and_store(
+                        manager, scope_ids, scope_label,
+                        n_simulations_sb, coverage_variance,
+                        param_mode == "Random L×I (calibration)",
+                        sb_likelihood_range, sb_severity_range,
+                        include_inactive=include_inactive,
+                    )
+
+                # Always render from stored state — this is what makes the save button work:
+                # even when run_button is False (e.g. after clicking 💾 Save Results),
+                # the results and save button are still rendered and their clicks processed.
+                stored_sb = st.session_state.get("last_sb_result")
+                if stored_sb is not None:
+                    _render_sb_results(stored_sb)
+                elif not run_button:
+                    st.info("👈 Configure parameters in the sidebar and click **Run Simulation** to start.")
+                    _render_about_expander()
+
+        else:
+            # ── TRI α Calibration settings (F31d) ────────────────────────────
+            st.sidebar.subheader("⚙️ TRI α Calibration Settings")
+
+            st.sidebar.markdown(f"*Current schema default: α = {TRI_ALPHA}*")
+
+            alpha_col1, alpha_col2 = st.sidebar.columns(2)
+            with alpha_col1:
+                alpha_min = st.number_input("α Min", 0.5, 5.0, 1.0, step=0.25, key="tac_alpha_min")
+            with alpha_col2:
+                alpha_max = st.number_input("α Max", 0.5, 5.0, 3.0, step=0.25, key="tac_alpha_max")
+            alpha_step = st.sidebar.select_slider(
+                "α Step", options=[0.1, 0.25, 0.5, 1.0], value=0.25, key="tac_alpha_step"
+            )
+            runs_per_alpha = st.sidebar.slider(
+                "Runs per α", 50, 500, 200, step=50, key="tac_runs_per_alpha"
+            )
+
+            st.sidebar.markdown("---")
+            tac_param_mode = st.sidebar.radio(
+                "Parameter mode",
+                ["Real L×I values", "Random L×I (calibration)"],
+                key="tac_param_mode",
+                help=(
+                    "Real L×I: use actual likelihood/severity from the DB. "
+                    "Random L×I: randomise L×I within ranges."
+                )
+            )
+            if tac_param_mode == "Random L×I (calibration)":
+                st.sidebar.markdown("---")
+                st.sidebar.subheader("📈 L×I Ranges")
+                tac_col1, tac_col2 = st.sidebar.columns(2)
+                with tac_col1:
+                    tac_lmin = st.number_input("Likelihood Min", 1.0, 10.0, 1.0, key="tac_lmin")
+                    tac_imin = st.number_input("Severity Min", 1.0, 10.0, 1.0, key="tac_imin")
+                with tac_col2:
+                    tac_lmax = st.number_input("Likelihood Max", 1.0, 10.0, 10.0, key="tac_lmax")
+                    tac_imax = st.number_input("Severity Max", 1.0, 10.0, 10.0, key="tac_imax")
+                tac_likelihood_range = (tac_lmin, tac_lmax)
+                tac_severity_range = (tac_imin, tac_imax)
+            else:
+                tac_likelihood_range = (1.0, 10.0)
+                tac_severity_range = (1.0, 10.0)
+
+            st.sidebar.markdown("---")
+            run_button = st.sidebar.button(
+                "🚀 Run Calibration", type="primary", use_container_width=True,
+                disabled=run_button_disabled
+            )
+
+            with tab_sim:
+                # Compute when button clicked
+                if run_button and not run_button_disabled:
+                    _compute_tac_and_store(
+                        manager, scope_ids, scope_label,
+                        alpha_min=alpha_min,
+                        alpha_max=alpha_max,
+                        alpha_step=alpha_step,
+                        runs_per_alpha=runs_per_alpha,
+                        randomize_params=tac_param_mode == "Random L×I (calibration)",
+                        likelihood_range=tac_likelihood_range,
+                        severity_range=tac_severity_range,
+                        include_inactive=include_inactive,
+                    )
+
+                # Always render from stored state — makes 💾 Save Calibration Results work
+                stored_tac = st.session_state.get("last_tac_result")
+                if stored_tac is not None:
+                    _render_tac_results(stored_tac)
+                elif not run_button:
+                    st.info("👈 Configure α range in the sidebar and click **Run Calibration** to start.")
+                    _render_tri_alpha_about_expander()
 
         with tab_saved:
             _render_saved_results_tab()
 
-        return  # scope-based mode handled above; skip rest of main()
+        return  # DB-based modes handled above; skip rest of main()
 
     # ── Random / Mitigation Path sidebar ─────────────────────────────────────
     st.sidebar.markdown("---")
@@ -656,13 +758,13 @@ def main():
     col1, col2 = st.sidebar.columns(2)
     with col1:
         likelihood_min = st.number_input("Likelihood Min", 1.0, 10.0, 1.0)
-        impact_min = st.number_input("Impact Min", 1.0, 10.0, 1.0)
+        severity_min = st.number_input("Severity Min", 1.0, 10.0, 1.0)
     with col2:
         likelihood_max = st.number_input("Likelihood Max", 1.0, 10.0, 10.0)
-        impact_max = st.number_input("Impact Max", 1.0, 10.0, 10.0)
+        severity_max = st.number_input("Severity Max", 1.0, 10.0, 10.0)
 
     likelihood_range = (likelihood_min, likelihood_max)
-    impact_range = (impact_min, impact_max)
+    severity_range = (severity_min, severity_max)
 
     if sim_mode == "Monte Carlo (Random)":
         st.sidebar.markdown("---")
@@ -695,12 +797,12 @@ def main():
             if sim_mode == "Monte Carlo (Random)":
                 run_monte_carlo_simulation(
                     n_simulations, n_operational, n_strategic, influence_density,
-                    likelihood_range, impact_range, mitigation_coverage_range
+                    likelihood_range, severity_range, mitigation_coverage_range
                 )
             else:
                 run_mitigation_path_simulation_ui(
                     n_paths, n_steps, n_operational, n_strategic, influence_density,
-                    likelihood_range, impact_range
+                    likelihood_range, severity_range
                 )
         else:
             # Show instructions
@@ -719,7 +821,7 @@ def _render_about_expander():
 
         The model calculates risk exposure through three factors:
 
-        **1. Base Exposure** = `Likelihood × Impact` (scale 1-100)
+        **1. Base Exposure** = `Likelihood × Severity` (scale 1-100)
 
         **2. Mitigation Factor** = `∏(1 - Effectiveness)` (multiplicative, diminishing returns)
 
@@ -760,7 +862,7 @@ def _render_about_expander():
 
 def run_monte_carlo_simulation(
     n_simulations, n_operational, n_strategic, influence_density,
-    likelihood_range, impact_range, mitigation_coverage_range
+    likelihood_range, severity_range, mitigation_coverage_range
 ):
     """Run and display Monte Carlo simulation results."""
 
@@ -779,7 +881,7 @@ def run_monte_carlo_simulation(
 
     df = run_monte_carlo(
         n_simulations, n_operational, n_strategic, influence_density,
-        likelihood_range, impact_range, mitigation_coverage_range,
+        likelihood_range, severity_range, mitigation_coverage_range,
         progress_callback=update_progress
     )
 
@@ -815,7 +917,7 @@ def run_monte_carlo_simulation(
         params={
             "n_simulations": n_simulations, "n_operational": n_operational,
             "n_strategic": n_strategic, "influence_density": influence_density,
-            "likelihood_range": likelihood_range, "impact_range": impact_range,
+            "likelihood_range": likelihood_range, "severity_range": severity_range,
             "mitigation_coverage_range": mitigation_coverage_range,
         },
         button_key="save_mc",
@@ -1021,7 +1123,7 @@ def render_heatmaps(df: pd.DataFrame):
 
 def run_mitigation_path_simulation_ui(
     n_paths, n_steps, n_operational, n_strategic, influence_density,
-    likelihood_range, impact_range
+    likelihood_range, severity_range
 ):
     """Run and display mitigation path simulation results."""
     
@@ -1040,7 +1142,7 @@ def run_mitigation_path_simulation_ui(
     
     df = run_mitigation_path_simulation(
         n_paths, n_steps, n_operational, n_strategic, influence_density,
-        likelihood_range, impact_range,
+        likelihood_range, severity_range,
         progress_callback=update_progress
     )
     
@@ -1068,7 +1170,7 @@ def run_mitigation_path_simulation_ui(
             "n_paths": n_paths, "n_steps": n_steps,
             "n_operational": n_operational, "n_strategic": n_strategic,
             "influence_density": influence_density,
-            "likelihood_range": likelihood_range, "impact_range": impact_range,
+            "likelihood_range": likelihood_range, "severity_range": severity_range,
         },
         button_key="save_path",
     )
@@ -1256,13 +1358,17 @@ def render_path_cloud_plots(df: pd.DataFrame):
 def _load_scope_data(
     manager,
     scope_ids: Optional[List[str]],
+    include_inactive: bool = False,
 ) -> Tuple[List[SimulatedRisk], List[SimulatedInfluence], List[SimulatedMitigation]]:
     """Load real DB data and convert to simulation structs.
 
     Applies in-memory scope filtering using the same pattern as
     exposure_calculator.py.  Returns (risks, influences, mitigations).
+
+    When include_inactive is True, lifecycle-inactive risks (accepted/watching/
+    suppressed/closed) are included to model worst-case canvas exposure (F31c).
     """
-    risks_raw = manager.get_all_risks()
+    risks_raw = manager.get_all_risks(exclude_inactive=not include_inactive)
     influences_raw = manager.get_all_influences()  # pure INFLUENCES edges
     mitigates_raw = manager.get_all_mitigates_relationships()
 
@@ -1287,7 +1393,7 @@ def _load_scope_data(
             name=r["name"],
             level="Strategic" if r.get("level") == "Business" else "Operational",
             likelihood=float(r.get("probability") or 5.0),
-            impact=float(r.get("impact") or 5.0),
+            severity=float(r.get("severity") or r.get("impact") or 5.0),  # impact fallback for legacy data
         )
         for r in risks_raw
     ]
@@ -1322,14 +1428,14 @@ def run_scope_based_monte_carlo(
     coverage_variance: float,
     randomize_params: bool,
     likelihood_range: Tuple[float, float],
-    impact_range: Tuple[float, float],
+    severity_range: Tuple[float, float],
     progress_callback=None,
 ) -> pd.DataFrame:
     """Monte Carlo over a fixed real topology.
 
     Each run varies mitigation coverage by ±coverage_variance around the
     real coverage ratio.  When randomize_params is True, likelihood and
-    impact are also sampled randomly per run; otherwise real values are used.
+    severity are also sampled randomly per run; otherwise real values are used.
 
     Returns a DataFrame with the same schema as run_monte_carlo(), plus a
     'param_mode' column.
@@ -1352,7 +1458,7 @@ def run_scope_based_monte_carlo(
                 SimulatedRisk(
                     id=r.id, name=r.name, level=r.level,
                     likelihood=random.uniform(*likelihood_range),
-                    impact=random.uniform(*impact_range),
+                    severity=random.uniform(*severity_range),
                 )
                 for r in real_risks
             ]
@@ -1414,7 +1520,7 @@ def run_scope_based_monte_carlo(
             "weighted_risk_score": scenario.global_risk_score,
             "max_single_exposure": scenario.max_exposure,
             "avg_likelihood": np.mean([r.likelihood for r in run_risks]),
-            "avg_impact": np.mean([r.impact for r in run_risks]),
+            "avg_severity": np.mean([r.severity for r in run_risks]),
             "param_mode": "Random L×I" if randomize_params else "Real L×I",
         })
 
@@ -1424,7 +1530,7 @@ def run_scope_based_monte_carlo(
     return pd.DataFrame(results)
 
 
-def run_scope_based_simulation_ui(
+def _compute_sb_and_store(
     manager,
     scope_ids: Optional[List[str]],
     scope_label: str,
@@ -1432,24 +1538,33 @@ def run_scope_based_simulation_ui(
     coverage_variance: float,
     randomize_params: bool,
     likelihood_range: Tuple[float, float],
-    impact_range: Tuple[float, float],
-):
-    """Run and display a scope-based simulation."""
+    severity_range: Tuple[float, float],
+    include_inactive: bool = False,
+) -> None:
+    """Run the scope-based Monte Carlo and store the result in session state.
 
-    st.header("🗺️ Scope-Based Simulation Results")
-    st.caption(f"Scope: **{scope_label}** | Mode: **{'Random L×I' if randomize_params else 'Real L×I'}**")
+    Separating compute from render ensures the 💾 Save Results button works on
+    the rerun triggered by clicking it (run_button is False on that rerun, so the
+    old monolithic function was never called and the button click was lost).
+    """
+    # Clear any previous result so the render section won't show stale data
+    # if something goes wrong mid-compute.
+    st.session_state["last_sb_result"] = None
 
     with st.spinner("Loading data from DB…"):
-        real_risks, real_influences, real_mitigations = _load_scope_data(manager, scope_ids)
+        real_risks, real_influences, real_mitigations = _load_scope_data(
+            manager, scope_ids, include_inactive=include_inactive
+        )
 
     if not real_risks:
         st.warning("No risks found for the active scope. Check your DB connection and scope settings.")
         return
 
-    st.info(
-        f"Loaded **{len(real_risks)} risks**, **{len(real_influences)} influences**, "
-        f"**{len(real_mitigations)} mitigation assignments** from the graph."
-    )
+    # Compute latent count once during compute so it's stored with the result.
+    latent_count = 0
+    if include_inactive:
+        normal_risks, _, _ = _load_scope_data(manager, scope_ids, include_inactive=False)
+        latent_count = len(real_risks) - len(normal_risks)
 
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -1462,7 +1577,7 @@ def run_scope_based_simulation_ui(
     df = run_scope_based_monte_carlo(
         real_risks, real_influences, real_mitigations,
         n_simulations, coverage_variance, randomize_params,
-        likelihood_range, impact_range,
+        likelihood_range, severity_range,
         progress_callback=update_progress,
     )
     elapsed = (datetime.now() - start_time).total_seconds()
@@ -1473,9 +1588,66 @@ def run_scope_based_simulation_ui(
         st.error("Simulation returned no results.")
         return
 
+    # Store the full result for persistent rendering across reruns.
+    st.session_state["last_sb_result"] = {
+        "df": df,
+        "scope_label": scope_label,
+        "include_inactive": include_inactive,
+        "latent_count": latent_count,
+        "n_risks": len(real_risks),
+        "n_influences": len(real_influences),
+        "n_mitigations": len(real_mitigations),
+        "n_simulations": n_simulations,
+        "coverage_variance": coverage_variance,
+        "randomize_params": randomize_params,
+        "likelihood_range": likelihood_range,
+        "severity_range": severity_range,
+        "mode": "Scope-Based (Worst-Case)" if include_inactive else "Scope-Based (Real Data)",
+        "timestamp": datetime.now(),
+    }
+
+
+def _render_sb_results(stored: dict) -> None:
+    """Render scope-based simulation results from a stored result dict.
+
+    Called every rerun when last_sb_result is set — including the rerun
+    triggered by clicking 💾 Save Results — which is what makes the save work.
+    """
+    df = stored["df"]
+    scope_label = stored["scope_label"]
+    include_inactive = stored["include_inactive"]
+    latent_count = stored["latent_count"]
+    n_simulations = stored["n_simulations"]
+    coverage_variance = stored["coverage_variance"]
+    randomize_params = stored["randomize_params"]
+    likelihood_range = stored["likelihood_range"]
+    severity_range = stored["severity_range"]
+    mode = stored["mode"]
+    ts = stored["timestamp"].strftime("%H:%M:%S")
+
+    st.header("🗺️ Scope-Based Simulation Results")
+    st.caption(
+        f"Scope: **{scope_label}** | "
+        f"Mode: **{'Random L×I' if randomize_params else 'Real L×I'}** | "
+        f"Run at {ts}"
+    )
+
+    # F31c — worst-case canvas banner
+    if include_inactive and latent_count > 0:
+        st.warning(
+            f"🧟 **Worst-Case Canvas**: {latent_count} lifecycle-inactive risk"
+            f"{'s' if latent_count != 1 else ''} re-activated "
+            f"(accepted / watching / suppressed / closed)."
+        )
+
+    st.info(
+        f"**{stored['n_risks']} risks** | **{stored['n_influences']} influences** | "
+        f"**{stored['n_mitigations']} mitigation assignments** | "
+        f"**{n_simulations} simulations**"
+    )
+
     # Summary statistics
     st.subheader("📊 Summary Statistics")
-
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Mean Residual Risk %", f"{df['residual_risk_pct'].mean():.1f}%")
@@ -1488,22 +1660,35 @@ def run_scope_based_simulation_ui(
         st.metric("Std Dev", f"{df['max_single_exposure'].std():.1f}")
     with col4:
         st.metric("Mean Coverage", f"{df['mitigation_coverage'].mean()*100:.1f}%")
-        st.metric("Risks in Scope", len(real_risks))
+        st.metric("Risks in Scope", stored["n_risks"])
 
-    _render_save_results_button(
-        df=df,
-        mode="Scope-Based (Real Data)",
-        scope_label=scope_label,
-        params={
-            "n_simulations": n_simulations,
-            "coverage_variance": coverage_variance,
-            "param_mode": "Random L×I" if randomize_params else "Real L×I",
-            "likelihood_range": likelihood_range if randomize_params else "real",
-            "impact_range": impact_range if randomize_params else "real",
-            "scope_label": scope_label,
-        },
-        button_key="save_sb",
-    )
+    # Save + export row
+    col_save, col_dl, col_spacer = st.columns([2, 2, 5])
+    with col_save:
+        _render_save_results_button(
+            df=df,
+            mode=mode,
+            scope_label=scope_label,
+            params={
+                "n_simulations": n_simulations,
+                "coverage_variance": coverage_variance,
+                "param_mode": "Random L×I" if randomize_params else "Real L×I",
+                "likelihood_range": likelihood_range if randomize_params else "real",
+                "severity_range": severity_range if randomize_params else "real",
+                "scope_label": scope_label,
+                "worst_case_canvas": include_inactive,
+            },
+            button_key="save_sb",
+        )
+    with col_dl:
+        csv = df.to_csv(index=False)
+        st.download_button(
+            "📥 Export CSV",
+            csv,
+            f"sim_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            "text/csv",
+            key="dl_sb_quick",
+        )
 
     st.markdown("---")
 
@@ -1513,7 +1698,6 @@ def run_scope_based_simulation_ui(
         render_distribution_plots(df)
 
     with tab2:
-        # Scatter: coverage vs residual risk, coloured by param_mode if mixed
         fig = px.scatter(
             df, x="mitigation_coverage", y="residual_risk_pct",
             color="avg_influence_strength",
@@ -1569,6 +1753,7 @@ def run_scope_based_simulation_ui(
             csv,
             "scope_based_results.csv",
             "text/csv",
+            key="dl_sb_data_tab",
         )
 
 
@@ -1700,6 +1885,478 @@ def _render_saved_results_tab() -> None:
         if st.button("🗑️ Clear All", key="clear_all_sims", disabled=not confirm_clear):
             st.session_state.saved_simulations = []
             st.rerun()
+
+
+# =============================================================================
+# TRI α CALIBRATION MODE — F31d
+# =============================================================================
+
+# Target quadrant profiles for recommended α selection
+_TAC_PROFILES: Dict[str, Dict[str, float]] = {
+    "Balanced": {
+        "critical_pct": 25.0, "frequency_pct": 25.0,
+        "severity_pct": 25.0, "marginal_pct": 25.0,
+    },
+    "Tail-Heavy (Critical dominant)": {
+        "critical_pct": 40.0, "frequency_pct": 20.0,
+        "severity_pct": 25.0, "marginal_pct": 15.0,
+    },
+    "Frequency-Heavy": {
+        "critical_pct": 20.0, "frequency_pct": 45.0,
+        "severity_pct": 15.0, "marginal_pct": 20.0,
+    },
+    "Severity-Heavy": {
+        "critical_pct": 20.0, "frequency_pct": 10.0,
+        "severity_pct": 50.0, "marginal_pct": 20.0,
+    },
+}
+
+
+def _run_alpha_sweep(
+    real_risks: List[SimulatedRisk],
+    real_influences: List[SimulatedInfluence],
+    real_mitigations: List[SimulatedMitigation],
+    alpha_values: List[float],
+    runs_per_alpha: int,
+    randomize_params: bool,
+    likelihood_range: Tuple[float, float],
+    severity_range: Tuple[float, float],
+    progress_callback=None,
+) -> pd.DataFrame:
+    """For each α value, run Monte Carlo and compute TRI + quadrant statistics.
+
+    Returns a DataFrame with one row per α:
+      alpha | mean_tri | std_tri | p95_tri | critical_pct | frequency_pct |
+      severity_pct | marginal_pct
+    """
+    if not real_risks:
+        return pd.DataFrame()
+
+    rows = []
+    total_steps = len(alpha_values) * runs_per_alpha
+    step = 0
+
+    for alpha in alpha_values:
+        tri_values: List[float] = []
+        quadrant_counts: Dict[str, int] = {
+            "critical": 0, "frequency": 0, "severity": 0, "marginal": 0
+        }
+        total_risk_runs = 0
+
+        for run_i in range(runs_per_alpha):
+            if randomize_params:
+                run_risks = [
+                    SimulatedRisk(
+                        id=r.id, name=r.name, level=r.level,
+                        likelihood=random.uniform(*likelihood_range),
+                        severity=random.uniform(*severity_range),
+                    )
+                    for r in real_risks
+                ]
+            else:
+                run_risks = list(real_risks)
+
+            for r in run_risks:
+                tri = r.likelihood * (r.severity ** alpha)
+                tri_values.append(tri)
+                q = _compute_risk_quadrant(r.likelihood, r.severity)
+                quadrant_counts[q] += 1
+                total_risk_runs += 1
+
+            step += 1
+            if progress_callback and step % max(1, total_steps // 100) == 0:
+                progress_callback(step, total_steps)
+
+        n = len(tri_values)
+        q_total = total_risk_runs or 1
+        rows.append({
+            "alpha": round(float(alpha), 4),
+            "mean_tri": float(np.mean(tri_values)),
+            "std_tri": float(np.std(tri_values)),
+            "p95_tri": float(np.percentile(tri_values, 95)),
+            "critical_pct": round(quadrant_counts["critical"] / q_total * 100, 1),
+            "frequency_pct": round(quadrant_counts["frequency"] / q_total * 100, 1),
+            "severity_pct": round(quadrant_counts["severity"] / q_total * 100, 1),
+            "marginal_pct": round(quadrant_counts["marginal"] / q_total * 100, 1),
+        })
+
+    return pd.DataFrame(rows)
+
+
+def _find_recommended_alpha(calib_df: pd.DataFrame, target_profile: str) -> float:
+    """Return the α value whose quadrant distribution best matches the target profile."""
+    target = _TAC_PROFILES[target_profile]
+    best_alpha = float(calib_df["alpha"].iloc[0])
+    best_dist = float("inf")
+    for _, row in calib_df.iterrows():
+        dist = sum(
+            (row[k] - target[k]) ** 2
+            for k in ("critical_pct", "frequency_pct", "severity_pct", "marginal_pct")
+        ) ** 0.5
+        if dist < best_dist:
+            best_dist = dist
+            best_alpha = float(row["alpha"])
+    return best_alpha
+
+
+def _render_tri_alpha_about_expander() -> None:
+    """Instructions shown when TRI α Calibration mode is selected but not run."""
+    with st.expander("📖 About TRI α Calibration", expanded=True):
+        st.markdown(f"""
+### What is TRI α?
+
+The **Tail Risk Indicator (TRI)** is a secondary metric that emphasises catastrophic,
+low-frequency risks:
+
+> **TRI = Likelihood × Severity^α**
+
+The exponent **α** controls how strongly severity is amplified:
+- **α = 1.0** — TRI equals base exposure (L × S), no amplification.
+- **α = 1.5** — current schema default; moderate tail emphasis.
+- **α = 2.0+** — strong tail emphasis; high-severity risks dominate the portfolio.
+
+### What does this mode do?
+
+This mode sweeps α from your chosen minimum to maximum, runs **N Monte Carlo
+iterations per α value** using real graph data, and records:
+- Mean / Std / P95 TRI across all risks × runs.
+- Quadrant distribution shift (Critical / Frequency / Severity / Marginal %).
+
+The output helps you select a domain-appropriate α. Compare the quadrant
+distribution to your domain expectation, then update `tri_alpha` in
+`schemas/[domain]/schema.yaml` to persist the calibrated value.
+
+### Current default
+`TRI_ALPHA = {TRI_ALPHA}` (hardcoded in `services/exposure_calculator.py`)
+        """)
+
+
+def _compute_tac_and_store(
+    manager,
+    scope_ids: Optional[List[str]],
+    scope_label: str,
+    alpha_min: float,
+    alpha_max: float,
+    alpha_step: float,
+    runs_per_alpha: int,
+    randomize_params: bool,
+    likelihood_range: Tuple[float, float],
+    severity_range: Tuple[float, float],
+    include_inactive: bool = False,
+) -> None:
+    """Run the TRI α sweep and store the result in session state (F31d compute half).
+
+    Separating compute from render ensures the 💾 Save Calibration Results button
+    works on the rerun triggered by clicking it.
+    """
+    st.session_state["last_tac_result"] = None  # clear stale result
+
+    if alpha_min >= alpha_max:
+        st.error("α Min must be less than α Max.")
+        return
+
+    with st.spinner("Loading data from DB…"):
+        real_risks, real_influences, real_mitigations = _load_scope_data(
+            manager, scope_ids, include_inactive=include_inactive
+        )
+
+    if not real_risks:
+        st.warning("No risks found for the active scope. Check your DB connection and scope settings.")
+        return
+
+    latent_count = 0
+    if include_inactive:
+        normal_risks, _, _ = _load_scope_data(manager, scope_ids, include_inactive=False)
+        latent_count = len(real_risks) - len(normal_risks)
+
+    alpha_values = list(np.arange(alpha_min, alpha_max + alpha_step / 2, alpha_step))
+    n_alpha = len(alpha_values)
+    total_runs = n_alpha * runs_per_alpha
+
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+
+    def update_progress(current, total):
+        progress_bar.progress(current / total)
+        status_text.text(f"Computing… {current:,}/{total:,} risk-runs")
+
+    start_time = datetime.now()
+    calib_df = _run_alpha_sweep(
+        real_risks, real_influences, real_mitigations,
+        alpha_values, runs_per_alpha, randomize_params,
+        likelihood_range, severity_range,
+        progress_callback=update_progress,
+    )
+    elapsed = (datetime.now() - start_time).total_seconds()
+    progress_bar.progress(1.0)
+    status_text.text(f"✅ Calibration complete in {elapsed:.2f}s")
+
+    if calib_df.empty:
+        st.error("Calibration returned no results.")
+        return
+
+    st.session_state["last_tac_result"] = {
+        "calib_df": calib_df,
+        "scope_label": scope_label,
+        "include_inactive": include_inactive,
+        "latent_count": latent_count,
+        "n_risks": len(real_risks),
+        "alpha_min": alpha_min,
+        "alpha_max": alpha_max,
+        "alpha_step": alpha_step,
+        "alpha_values": alpha_values,
+        "n_alpha": n_alpha,
+        "runs_per_alpha": runs_per_alpha,
+        "total_runs": total_runs,
+        "randomize_params": randomize_params,
+        "likelihood_range": likelihood_range,
+        "severity_range": severity_range,
+        "timestamp": datetime.now(),
+    }
+
+
+def _render_tac_results(stored: dict) -> None:
+    """Render TRI α calibration results from a stored result dict (F31d render half).
+
+    Called every rerun when last_tac_result is set — including the rerun
+    triggered by clicking 💾 Save Calibration Results.
+    """
+    calib_df = stored["calib_df"]
+    scope_label = stored["scope_label"]
+    include_inactive = stored["include_inactive"]
+    latent_count = stored["latent_count"]
+    alpha_min = stored["alpha_min"]
+    alpha_max = stored["alpha_max"]
+    alpha_step = stored["alpha_step"]
+    n_alpha = stored["n_alpha"]
+    runs_per_alpha = stored["runs_per_alpha"]
+    total_runs = stored["total_runs"]
+    randomize_params = stored["randomize_params"]
+    likelihood_range = stored["likelihood_range"]
+    severity_range = stored["severity_range"]
+    ts = stored["timestamp"].strftime("%H:%M:%S")
+
+    st.header("📐 TRI α Calibration Results")
+    st.caption(
+        f"Scope: **{scope_label}** | "
+        f"α: {alpha_min} → {alpha_max} (step {alpha_step}) | "
+        f"{runs_per_alpha} runs/α | "
+        f"Mode: **{'Random L×I' if randomize_params else 'Real L×I'}** | "
+        f"Run at {ts}"
+    )
+
+    if include_inactive and latent_count > 0:
+        st.warning(
+            f"🧟 **Worst-Case Canvas**: {latent_count} lifecycle-inactive risk"
+            f"{'s' if latent_count != 1 else ''} re-activated."
+        )
+
+    st.info(
+        f"**{stored['n_risks']} risks** | "
+        f"**{n_alpha} α values** × **{runs_per_alpha} runs** = **{total_runs:,} total runs**"
+    )
+
+    # ── Target profile selector (interactive — reactive to selectbox changes) ─
+    st.markdown("---")
+    col_profile, col_spacer = st.columns([2, 3])
+    with col_profile:
+        target_profile = st.selectbox(
+            "Target quadrant profile",
+            list(_TAC_PROFILES.keys()),
+            index=0,
+            help=(
+                "Select the quadrant distribution that best reflects your domain's risk profile. "
+                "The recommended α minimises the distance to this target."
+            ),
+            key="tac_target_profile",
+        )
+
+    recommended_alpha = _find_recommended_alpha(calib_df, target_profile)
+
+    st.success(
+        f"📌 **Recommended α = {recommended_alpha}** for profile *{target_profile}*  "
+        f"(current schema default: α = {TRI_ALPHA})"
+    )
+    if recommended_alpha != TRI_ALPHA:
+        st.caption(
+            "To apply: update `tri_alpha` under `exposure_model` in "
+            "`schemas/[domain]/schema.yaml` and reload the schema."
+        )
+
+    # ── Output tabs ───────────────────────────────────────────────────────────
+    tab_chart, tab_report, tab_raw = st.tabs(
+        ["📈 Calibration Chart", "📋 Calibration Report", "📋 Raw Data"]
+    )
+
+    with tab_chart:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=calib_df["alpha"],
+            y=calib_df["mean_tri"] + calib_df["std_tri"],
+            mode="lines", line=dict(width=0), showlegend=False,
+            name="+1σ",
+        ))
+        fig.add_trace(go.Scatter(
+            x=calib_df["alpha"],
+            y=calib_df["mean_tri"] - calib_df["std_tri"],
+            mode="lines", line=dict(width=0),
+            fill="tonexty", fillcolor="rgba(52,152,219,0.15)",
+            showlegend=True, name="±1σ band",
+        ))
+        fig.add_trace(go.Scatter(
+            x=calib_df["alpha"],
+            y=calib_df["mean_tri"],
+            mode="lines+markers", line=dict(color="#3498db", width=2),
+            name="Mean TRI",
+        ))
+        fig.add_trace(go.Scatter(
+            x=calib_df["alpha"],
+            y=calib_df["p95_tri"],
+            mode="lines", line=dict(color="#e74c3c", width=1.5, dash="dash"),
+            name="P95 TRI",
+        ))
+        fig.add_vline(
+            x=recommended_alpha, line_dash="dot", line_color="#27ae60",
+            annotation_text=f"Recommended α={recommended_alpha}",
+            annotation_position="top right",
+        )
+        fig.add_vline(
+            x=TRI_ALPHA, line_dash="dot", line_color="#95a5a6",
+            annotation_text=f"Current α={TRI_ALPHA}",
+            annotation_position="top left",
+        )
+        fig.update_layout(
+            title="TRI vs α — Mean, ±1σ Band, and P95",
+            xaxis_title="α (TRI exponent)",
+            yaxis_title="TRI value",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        fig2 = go.Figure()
+        _bar_colors = {
+            "critical_pct": "#c0392b",
+            "frequency_pct": "#e67e22",
+            "severity_pct": "#8e44ad",
+            "marginal_pct": "#95a5a6",
+        }
+        _bar_labels = {
+            "critical_pct": "Critical",
+            "frequency_pct": "Frequency",
+            "severity_pct": "Severity",
+            "marginal_pct": "Marginal",
+        }
+        for col, color in _bar_colors.items():
+            fig2.add_trace(go.Bar(
+                x=calib_df["alpha"],
+                y=calib_df[col],
+                name=_bar_labels[col],
+                marker_color=color,
+            ))
+        fig2.add_vline(x=recommended_alpha, line_dash="dot", line_color="#27ae60")
+        fig2.update_layout(
+            barmode="stack",
+            title="Quadrant Distribution vs α",
+            xaxis_title="α (TRI exponent)",
+            yaxis_title="% of risk-runs",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        )
+        st.plotly_chart(fig2, use_container_width=True)
+
+    with tab_report:
+        target = _TAC_PROFILES[target_profile]
+        display_df = calib_df.copy()
+        display_df.columns = [
+            "α", "Mean TRI", "Std TRI", "P95 TRI",
+            "Critical %", "Frequency %", "Severity %", "Marginal %",
+        ]
+
+        def _highlight_recommended(row):
+            return [
+                "background-color: #d5f5e3; font-weight: bold"
+                if row["α"] == recommended_alpha else ""
+                for _ in row
+            ]
+
+        styled = display_df.style.apply(_highlight_recommended, axis=1).format({
+            "α": "{:.2f}",
+            "Mean TRI": "{:.2f}",
+            "Std TRI": "{:.2f}",
+            "P95 TRI": "{:.2f}",
+            "Critical %": "{:.1f}",
+            "Frequency %": "{:.1f}",
+            "Severity %": "{:.1f}",
+            "Marginal %": "{:.1f}",
+        })
+        st.dataframe(styled, use_container_width=True, hide_index=True)
+
+        st.caption(
+            f"Target profile **{target_profile}**: "
+            f"Critical {target['critical_pct']:.0f}% | "
+            f"Frequency {target['frequency_pct']:.0f}% | "
+            f"Severity {target['severity_pct']:.0f}% | "
+            f"Marginal {target['marginal_pct']:.0f}%"
+        )
+
+        # Save button — rendered every rerun, so the click is always processed.
+        col_save_tac, col_dl_tac, _ = st.columns([2, 2, 5])
+        with col_save_tac:
+            if st.button("💾 Save Calibration Results", key="save_tac"):
+                record = SimulationRecord(
+                    id=str(uuid.uuid4())[:8],
+                    timestamp=datetime.now(),
+                    mode="TRI α Calibration",
+                    scope_label=scope_label,
+                    params={
+                        "alpha_min": alpha_min,
+                        "alpha_max": alpha_max,
+                        "alpha_step": alpha_step,
+                        "runs_per_alpha": runs_per_alpha,
+                        "param_mode": "Random L×I" if randomize_params else "Real L×I",
+                        "target_profile": target_profile,
+                        "recommended_alpha": recommended_alpha,
+                        "worst_case_canvas": include_inactive,
+                    },
+                    key_metrics={
+                        "recommended_alpha": recommended_alpha,
+                        "current_default_alpha": TRI_ALPHA,
+                        "n_alpha_values": n_alpha,
+                        "n_risks": stored["n_risks"],
+                        "total_runs": total_runs,
+                        # Stubs for _render_saved_results_tab compatibility
+                        "mean_residual_risk_pct": 0.0,
+                        "std_residual_risk_pct": 0.0,
+                        "mean_risk_score": 0.0,
+                        "mean_max_exposure": 0.0,
+                        "mean_coverage": 0.0,
+                        "n_simulations": total_runs,
+                    },
+                    df=calib_df.copy(),
+                )
+                if st.session_state.saved_simulations is None:
+                    st.session_state.saved_simulations = []
+                st.session_state.saved_simulations.append(record)
+                st.success(f"✅ Saved calibration run #{len(st.session_state.saved_simulations)}")
+        with col_dl_tac:
+            csv = calib_df.to_csv(index=False)
+            st.download_button(
+                "📥 Export CSV",
+                csv,
+                f"tac_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                "text/csv",
+                key="dl_tac_report_quick",
+            )
+
+    with tab_raw:
+        st.dataframe(calib_df, use_container_width=True)
+        csv = calib_df.to_csv(index=False)
+        st.download_button(
+            "📥 Download Calibration Report (CSV)",
+            csv,
+            f"tri_alpha_calibration_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            "text/csv",
+            key="dl_tac_csv",
+        )
 
 
 if __name__ == "__main__":

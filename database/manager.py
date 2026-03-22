@@ -92,16 +92,18 @@ class RiskGraphManager:
         activation_decision_date: str = None,
         owner: str = "",
         probability: float = None,
-        impact: float = None,
+        severity: float = None,
         origin: str = "New",
         subtype: str = None,
         ext_fields: dict = None,
+        is_template: bool = False,
     ) -> Optional[str]:
         """Create a new risk node. Returns the created node ID or None."""
         result = risks.create_risk(
             self._connection, name, level, categories, description, status,
-            origin, owner, probability, impact, activation_condition,
-            activation_decision_date, subtype=subtype, ext_fields=ext_fields
+            origin, owner, probability, severity, activation_condition,
+            activation_decision_date, subtype=subtype, ext_fields=ext_fields,
+            is_template=is_template,
         )
         return result
     
@@ -110,12 +112,16 @@ class RiskGraphManager:
         level_filter=None,
         category_filter=None,
         status_filter=None,
-        origin_filter=None
+        origin_filter=None,
+        exclude_inactive=True,
+        exclude_templates=True,
     ) -> list:
-        """Retrieve all risks with optional filters."""
+        """Retrieve all risks with optional filters. Templates and inactive risks excluded by default."""
         return risks.get_all_risks(
             self._connection, level_filter, category_filter,
-            status_filter, origin_filter
+            status_filter, origin_filter,
+            exclude_inactive=exclude_inactive,
+            exclude_templates=exclude_templates,
         )
     
     def get_risk_by_id(self, risk_id: str) -> Optional[Dict]:
@@ -138,22 +144,42 @@ class RiskGraphManager:
         activation_decision_date: str,
         owner: str,
         probability: float,
-        impact: float,
+        severity: float,
         origin: str = "New",
         subtype: str = None,
         ext_fields: dict = None,
+        is_template: bool = None,
     ) -> bool:
         """Update an existing risk."""
         return risks.update_risk(
             self._connection, risk_id, name, level, categories, description,
-            status, origin, owner, probability, impact, activation_condition,
-            activation_decision_date, subtype=subtype, ext_fields=ext_fields
+            status, origin, owner, probability, severity, activation_condition,
+            activation_decision_date, subtype=subtype, ext_fields=ext_fields,
+            is_template=is_template,
         )
     
     def delete_risk(self, risk_id: str) -> bool:
         """Delete a risk and all its relationships."""
         return risks.delete_risk(self._connection, risk_id)
-    
+
+    # ── Template operations (U14) ─────────────────────────────────────────────
+
+    def get_all_templates(self) -> list:
+        """Return all GenericRisk templates (is_template = true)."""
+        return risks.get_all_templates(self._connection)
+
+    def create_instantiates_rel(self, template_id: str, instance_id: str) -> bool:
+        """Create an INSTANTIATES relationship from a template to an instance risk."""
+        return risks.create_instantiates_rel(self._connection, template_id, instance_id)
+
+    def get_instances_of_template(self, template_id: str) -> list:
+        """Return all specific risk instances linked from a template via INSTANTIATES."""
+        return risks.get_instances_of_template(self._connection, template_id)
+
+    def get_template_of_instance(self, instance_id: str) -> Optional[Dict]:
+        """Return the GenericRisk template this instance was instantiated from, or None."""
+        return risks.get_template_of_instance(self._connection, instance_id)
+
     # =========================================================================
     # INFLUENCE OPERATIONS
     # =========================================================================
@@ -1695,10 +1721,11 @@ class RiskGraphManager:
                 activation_decision_date=data.get("activation_decision_date"),
                 owner=data.get("owner", ""),
                 probability=data.get("probability"),
-                impact=data.get("impact"),
+                severity=data.get("severity"),
                 origin=data.get("origin", "New"),
                 subtype=data.get("subtype"),
-                ext_fields=data.get("ext_fields", {})
+                ext_fields=data.get("ext_fields", {}),
+                is_template=bool(data.get("is_template", False)),
             )
         elif entity_type_id == "mitigation":
             return self.create_mitigation(
@@ -1737,6 +1764,10 @@ class RiskGraphManager:
         from core import get_registry
         
         if entity_type_id == "risk":
+            # Extract is_template — None means "don't change" (COALESCE in Cypher)
+            _is_template = data.get("is_template")
+            if _is_template is not None:
+                _is_template = bool(_is_template)
             # Update specific
             success = self.update_risk(
                 risk_id=id,
@@ -1749,10 +1780,11 @@ class RiskGraphManager:
                 activation_decision_date=data.get("activation_decision_date"),
                 owner=data.get("owner", ""),
                 probability=data.get("probability"),
-                impact=data.get("impact"),
+                severity=data.get("severity"),
                 origin=data.get("origin", "New"),
                 subtype=data.get("subtype"),
-                ext_fields=data.get("ext_fields", {})
+                ext_fields=data.get("ext_fields", {}),
+                is_template=_is_template,
             )
             return self.get_risk_by_id(id) if success else None
         elif entity_type_id == "mitigation":

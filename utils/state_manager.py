@@ -80,6 +80,54 @@ ANALYSIS_CACHE_DEFAULTS: Dict[str, Any] = {
 SIMULATION_DEFAULTS: Dict[str, Any] = {
     # Lazily initialised to [] in the simulation page to avoid a shared mutable list.
     "saved_simulations": None,
+    # Last scope-based simulation result (dict with df + metadata). Persists across
+    # reruns so the Save Results button works regardless of which button was last clicked.
+    "last_sb_result": None,
+    # Last TRI α calibration result (dict with calib_df + metadata).
+    "last_tac_result": None,
+}
+
+LIFECYCLE_DEFAULTS: Dict[str, Any] = {
+    "lifecycle_trigger_result": None,       # TriggerEvaluationResult | None
+    "lifecycle_acceptance_result": None,    # AutoAcceptanceResult | None
+    "lifecycle_archive_alerts": None,       # ArchiveAlertResult | None
+    "lifecycle_last_run": None,             # datetime | None
+    "show_accepted_risks": False,           # toggle for accepted-risk review table
+}
+
+WHATIF_DEFAULTS: Dict[str, Any] = {
+    "whatif_baseline": None,            # GlobalExposureResult | None — cached baseline
+    "whatif_modified": None,            # GlobalExposureResult | None — current scenario
+    "whatif_raw_risks": None,           # List[Dict] — risks snapshot at baseline time
+    "whatif_raw_influences": None,      # List[Dict] — influences snapshot
+    "whatif_raw_mitigations": None,     # List[Dict] — mitigations in scope
+    "whatif_raw_mitigates": None,       # List[Dict] — MITIGATES relationships snapshot
+    "whatif_include_inactive": False,   # bool — include lifecycle-inactive risks
+}
+
+VISUAL_PANEL_DEFAULTS: Dict[str, Any] = {
+    "vp_preset": "analysis",               # active preset name
+    "vp_exposure_opacity": False,
+    "vp_exposure_threshold": 60.0,
+    "vp_lifecycle_opacity_enabled": False,
+    "vp_lifecycle_opacity": {              # per-status opacity fractions
+        "watching": 0.35,
+        "suppressed": 0.15,
+        "accepted": 0.40,
+        "closed": 0.20,
+    },
+    "vp_quadrant_borders": False,
+}
+
+MITIGATION_EXPOSURE_DEFAULTS: Dict[str, Any] = {
+    "mitexp_baseline": None,            # GlobalExposureResult | None — cached baseline
+    "mitexp_raw_risks": None,           # List[Dict] — risks snapshot
+    "mitexp_raw_influences": None,      # List[Dict] — influences snapshot
+    "mitexp_raw_mitigations": None,     # List[Dict] — mitigations in scope
+    "mitexp_raw_mitigates": None,       # List[Dict] — MITIGATES relationships snapshot
+    "mitexp_results": None,             # List[Dict] — per-mitigation impact rows
+    "mitexp_include_inactive": False,   # bool — include lifecycle-inactive risks
+    "mitexp_level_filter": "All",       # str — "All" | "Business" | "Operational"
 }
 
 
@@ -153,6 +201,26 @@ def init_simulation_state() -> None:
     init_defaults(SIMULATION_DEFAULTS)
 
 
+def init_lifecycle_state() -> None:
+    """Initialise lifecycle engine cache keys."""
+    init_defaults(LIFECYCLE_DEFAULTS)
+
+
+def init_whatif_state() -> None:
+    """Initialise What-If Analysis page keys."""
+    init_defaults(WHATIF_DEFAULTS)
+
+
+def init_mitigation_exposure_state() -> None:
+    """Initialise Mitigation Exposure View page keys."""
+    init_defaults(MITIGATION_EXPOSURE_DEFAULTS)
+
+
+def init_visual_panel_state() -> None:
+    """Initialise Graph Visual Behaviour panel keys (F32)."""
+    init_defaults(VISUAL_PANEL_DEFAULTS)
+
+
 def init_all() -> None:
     """Initialise every registered key.  Useful in test harnesses."""
     init_connection_state()
@@ -161,6 +229,10 @@ def init_all() -> None:
     init_config_page_state()
     init_analysis_cache_state()
     init_simulation_state()
+    init_lifecycle_state()
+    init_whatif_state()
+    init_mitigation_exposure_state()
+    init_visual_panel_state()
 
 
 # ---------------------------------------------------------------------------

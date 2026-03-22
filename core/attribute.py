@@ -56,8 +56,14 @@ class AttributeDefinition:
     def __post_init__(self):
         """Convert string type to AttributeType enum if needed."""
         if isinstance(self.type, str):
+            _type_str = self.type.lower()
+            # Handle common aliases
+            if _type_str == "boolean":
+                _type_str = "bool"
+            elif _type_str in ("integer", "number"):
+                _type_str = "int"
             try:
-                self.type = AttributeType(self.type.lower())
+                self.type = AttributeType(_type_str)
             except ValueError:
                 self.type = AttributeType.STRING
     

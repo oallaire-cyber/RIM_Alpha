@@ -62,6 +62,50 @@ and which program objectives are at stake.
 - ◇ Hollow diamond for potential/contingent risks
 - Decision timeline and activation conditions
 
+**🔬 What-If Analysis**
+- Toggle any mitigation ON/OFF in-memory — no database changes
+- Instantly see EL + TRI deltas at portfolio and per-risk level
+- Scope-constrained and lifecycle-aware
+- "Include inactive risks" option for worst-case scenario exploration
+
+> *Use What-If to answer "what if this control fails?" or to explore multi-mitigation scenarios in a live briefing.*
+
+**📊 Mitigation Exposure View**
+- Rank every in-scope mitigation by its **marginal EL and TRI contribution**
+- Counterfactual computation: for each mitigation, calculates what the portfolio would look like without it
+- Business-focused: filter by risk level, scope-aware, lifecycle-filtered by default
+- Instantly surfaces critical controls and coverage gaps
+
+> *Use Mitigation Exposure to prioritise control investment and identify single points of failure in your mitigation portfolio.*
+
+**📋 Risk Templates**
+- Define Generic Risk archetypes as reusable templates
+- Instantiate a template to create a specific risk pre-filled with standard attributes
+- Templates are excluded from exposure calculations and the graph canvas
+- Traceable via `[:INSTANTIATES]` relationship in Neo4j
+
+**⚠️ Threshold Alerts**
+- Configurable EL and TRI thresholds per domain (set in schema YAML)
+- Breach panel surfaced in the Exposure dashboard after each computation
+- Scope-aware and lifecycle-aware — only active in-scope risks are evaluated
+
+**🖼️ Graph Visual Behaviour**
+- Four presets: Clean / Analysis / Lifecycle Audit / Sandbox Edit
+- Per-status lifecycle opacity sliders (Watching, Suppressed, Accepted, Closed)
+- Quadrant border encoding: coloured borders by risk quadrant (Critical / Frequency / Severity / Marginal)
+- Save as Schema Default — persists settings to `graph_visual_config` in schema YAML
+
+**🎲 Lifecycle-Aware Simulation (Worst-Case Canvas)**
+- Re-activates accepted / watching / suppressed / closed risks in-memory to reveal latent tail exposure
+- Shows count of re-activated risks; results labelled `[Worst-Case]` in Saved Results
+- Available in both Scope-Based and TRI α Calibration modes
+
+**📐 TRI α Calibration**
+- Sweeps TRI exponent α over a configurable range (default 1.0 → 3.0)
+- Monte Carlo per α value: computes TRI = L × S^α and classifies into quadrants
+- Output: calibration chart (Mean TRI ±1σ, P95), stacked quadrant distribution, calibration report
+- Recommends domain-appropriate α based on selected target quadrant profile
+
 **📊 Import/Export**
 - Full Excel import/export
 - Layout save/load for presentations

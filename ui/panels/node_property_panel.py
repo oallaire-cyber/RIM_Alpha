@@ -31,6 +31,13 @@ class Section:
 # Section render helpers (private)
 # ---------------------------------------------------------------------------
 
+_LIFECYCLE_FIELDS = {
+    "trigger_condition", "acceptance_date", "acceptance_owner", "archive_date",
+}
+
+_INACTIVE_STATUSES = {"Accepted", "Watching", "Suppressed", "Closed", "Archived"}
+
+
 def _render_identity(entity_data: Dict[str, Any], entity_type_id: Optional[str]) -> None:
     """Section 1 — basic node properties."""
     if not entity_data:
@@ -55,7 +62,27 @@ def _render_identity(entity_data: Dict[str, Any], entity_type_id: Optional[str])
             st.markdown(f"**{key.replace('_', ' ').title()}:** {val}")
             shown.add(key)
 
-    # Remaining fields (skip internal)
+    # Lifecycle section (risk nodes only, shown when any lifecycle field is populated)
+    if entity_type_id == "risk":
+        lifecycle_vals = {k: entity_data.get(k) for k in _LIFECYCLE_FIELDS if entity_data.get(k)}
+        if lifecycle_vals:
+            st.markdown("---")
+            st.markdown("**Lifecycle Details**")
+            lifecycle_labels = {
+                "trigger_condition": "Trigger Condition",
+                "acceptance_date": "Accepted On",
+                "acceptance_owner": "Accepted By",
+                "archive_date": "Archived On",
+            }
+            for key in ("trigger_condition", "acceptance_date", "acceptance_owner", "archive_date"):
+                val = lifecycle_vals.get(key)
+                if val:
+                    st.markdown(f"**{lifecycle_labels[key]}:** {val}")
+        shown.update(_LIFECYCLE_FIELDS)
+
+    shown.add("is_template")
+
+    # Remaining fields (skip internal and already-shown)
     skip = {"id", "_element_id", "name", "node_type"} | shown
     for key, val in entity_data.items():
         if key not in skip and val:
@@ -66,10 +93,16 @@ def _render_exposure(
     node_id: str,
     entity_type_id: Optional[str],
     exposure_results: Optional[Dict],
+    entity_data: Optional[Dict] = None,
 ) -> None:
     """Section 2 — exposure metrics (risk nodes only)."""
     if entity_type_id != "risk":
         st.caption("Not applicable for this node type.")
+        return
+
+    # U14: Templates are excluded from the exposure engine
+    if (entity_data or {}).get("is_template"):
+        st.info("📋 This is a **GenericRisk Template** — excluded from exposure calculations and canvas display. Use the Risk Templates section in Data Management to instantiate it.")
         return
 
     if not exposure_results or "risk_results" not in exposure_results:
@@ -81,7 +114,19 @@ def _render_exposure(
     }
     r = exp_lookup.get(node_id)
     if not r:
-        st.caption("This node was not included in the last exposure calculation.")
+        status = (entity_data or {}).get("status", "")
+        if status in _INACTIVE_STATUSES:
+            status_messages = {
+                "Accepted": "This risk has been **formally accepted** and is excluded from active exposure analysis. Use the Lifecycle Engine in Data Management to review or re-open it.",
+                "Watching": "This risk is in **Watching** state — it was accepted and is being monitored for trigger re-activation. It is excluded from exposure calculations.",
+                "Suppressed": "This risk is **Suppressed** — its exposure dropped below the acceptance threshold. It is excluded from exposure calculations.",
+                "Closed": "This risk is **Closed** — the risk condition no longer exists. It is retained for audit but excluded from exposure calculations.",
+                "Archived": "This risk has been **Archived** and is excluded from all active analysis.",
+            }
+            msg = status_messages.get(status, f"This risk has lifecycle status **{status}** and is excluded from exposure calculations.")
+            st.info(msg)
+        else:
+            st.caption("This node was not included in the last exposure calculation.")
         return
 
     c1, c2, c3 = st.columns(3)
@@ -89,7 +134,7 @@ def _render_exposure(
         st.metric("Likelihood", f"{r.get('likelihood', 0):.1f}")
         st.metric("Base Exposure", f"{r.get('base_exposure', 0):.1f}")
     with c2:
-        st.metric("Impact", f"{r.get('impact', 0):.1f}")
+        st.metric("Severity", f"{r.get('severity', 0):.1f}")
         st.metric("Final Exposure", f"{r.get('final_exposure', 0):.1f}")
     with c3:
         base = r.get("base_exposure", 0)
@@ -99,6 +144,24 @@ def _render_exposure(
         mit_factor = r.get("mitigation_factor", 1.0)
         coverage_pct = round((1 - mit_factor) * 100)
         st.metric("Mit. Coverage", f"{coverage_pct}%")
+
+    # U13 dual-metric row
+    tri = r.get("tail_risk_indicator")
+    quadrant = r.get("risk_quadrant")
+    if tri is not None or quadrant is not None:
+        q1, q2 = st.columns(2)
+        with q1:
+            st.metric("TRI", f"{tri:.2f}" if tri is not None else "—",
+                      help="Tail Risk Indicator = Likelihood × Severity^1.5")
+        with q2:
+            quadrant_labels = {
+                "critical": "🔴 Critical",
+                "frequency": "🟠 Frequency",
+                "severity": "🟡 Severity",
+                "marginal": "🟢 Marginal",
+            }
+            st.metric("Quadrant", quadrant_labels.get(quadrant, quadrant or "—"),
+                      help="Risk quadrant based on likelihood/severity thresholds")
 
     if r.get("trace"):
         with st.expander("Calculation trace", expanded=False):
@@ -241,6 +304,47 @@ def _render_mitigation_summary(
             st.caption(f"• **{m.get('name', '?')}** — {m.get('status', '?')}{eff_label}")
 
 
+def _render_template_info(
+    manager: RiskGraphManager,
+    node_id: str,
+    entity_data: Dict[str, Any],
+    entity_type_id: Optional[str],
+) -> None:
+    """U14 — Template / instance traceability section (risk nodes only)."""
+    if entity_type_id != "risk":
+        st.caption("Not applicable for this node type.")
+        return
+
+    is_template = (entity_data or {}).get("is_template", False)
+
+    if is_template:
+        st.info("📋 This risk is a **GenericRisk Template**. It is excluded from exposure calculations and canvas display.")
+        try:
+            instances = manager.get_instances_of_template(node_id)
+        except Exception:
+            instances = []
+        if instances:
+            st.markdown(f"**{len(instances)} instance(s):**")
+            for inst in instances:
+                st.markdown(
+                    f"- {inst.get('name', '?')} [{inst.get('level', '')}]"
+                    f" — {inst.get('status', 'Active')}"
+                )
+        else:
+            st.caption("No instances have been created from this template yet.")
+    else:
+        try:
+            tmpl = manager.get_template_of_instance(node_id)
+        except Exception:
+            tmpl = None
+        if tmpl:
+            st.info(
+                f"⬅️ Instantiated from template: **{tmpl.get('name', '?')}**"
+            )
+        else:
+            st.caption("This risk was not created from a template.")
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -282,7 +386,7 @@ def render_node_property_panel(
         Section(
             id="exposure",
             title="📊 Exposure Metrics",
-            render_fn=lambda: _render_exposure(node_id, entity_type_id, exposure_results),
+            render_fn=lambda: _render_exposure(node_id, entity_type_id, exposure_results, entity_data),
         ),
         Section(
             id="position",
@@ -298,6 +402,12 @@ def render_node_property_panel(
             id="mitigations",
             title="🛡️ Mitigation Summary",
             render_fn=lambda: _render_mitigation_summary(manager, node_id, entity_type_id),
+        ),
+        Section(
+            id="template",
+            title="📋 Template",
+            render_fn=lambda: _render_template_info(manager, node_id, entity_data, entity_type_id),
+            expanded=False,
         ),
         Section(
             id="edit",

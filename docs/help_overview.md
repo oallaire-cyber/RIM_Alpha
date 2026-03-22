@@ -20,6 +20,14 @@ The **Risk Influence Map** transforms static risk registers into
 | 🛡️ Mitigation analysis | Coverage gaps, treatment effectiveness, high-priority flags |
 | 🎯 TPO tracking | Links risks to program objectives with impact levels |
 | 📊 Statistics | Live dashboard adapts to active scope |
+| ♻️ Lifecycle engine | 6-state risk lifecycle with auto-acceptance, trigger review, and archive alerts |
+| 🔬 What-If Analysis | Toggle mitigations ON/OFF in-memory; observe EL + TRI deltas without DB writes |
+| 📊 Mitigation Exposure | Rank mitigations by marginal EL + TRI impact (counterfactual per-mitigation analysis) |
+| 📋 Risk Templates | Define reusable GenericRisk archetypes; instantiate into specific risks with one click |
+| ⚠️ Threshold Alerts | Automatic EL + TRI breach detection surfaced in the exposure dashboard |
+| 🖼️ Graph Visual Behaviour | Presets, per-status lifecycle opacity, quadrant border encoding, schema-persisted defaults |
+| 🎲 Simulation (Lifecycle-Aware) | Worst-Case Canvas — re-activates accepted/watching/suppressed risks to reveal latent tail exposure |
+| 📐 TRI α Calibration | Sweep TRI exponent α over a configurable range; calibration chart + report + recommended α per target profile |
 
 ---
 

@@ -52,6 +52,8 @@ def render_unified_crud_tab(manager: RiskGraphManager, definition: Union[EntityT
         with st.expander(f"Create New {definition.label}", expanded=True):
             if is_node:
                 form_data = build_entity_form(definition, key_prefix=f"add_{type_id}")
+                if type_id == "risk":
+                    _render_risk_subtype_fields(form_data, {}, key_prefix=f"add_{type_id}")
             else:
                 # Gather potential sources and targets for edges
                 source_entities = _get_entities_by_types(manager, registry, definition.from_entity_types)
@@ -123,7 +125,12 @@ def render_unified_crud_tab(manager: RiskGraphManager, definition: Union[EntityT
                         st.rerun()
                     
     st.markdown("---")
-    
+
+    # --- RISK TEMPLATE LIBRARY (U14) ---
+    if is_node and type_id == "risk":
+        _render_template_library(manager)
+        st.markdown("---")
+
     # --- LIST VIEW ---
     try:
         if is_node:
@@ -180,6 +187,170 @@ def render_unified_crud_tab(manager: RiskGraphManager, definition: Union[EntityT
         st.error(f"Error loading {definition.label.lower()}s: {e}")
 
 
+def _render_risk_subtype_fields(form_data: dict, existing_data: dict, key_prefix: str) -> None:
+    """
+    Render subtype selector and extension fields for a risk form.
+    Mutates form_data in place, adding 'subtype' and 'ext_fields'.
+    Must be called after build_entity_form so form_data['level'] is populated.
+    """
+    schema = get_active_schema()
+    if schema is None:
+        form_data["subtype"] = "generic"
+        form_data["ext_fields"] = {}
+        return
+
+    level_id = (form_data.get("level") or "").lower()
+    subtypes = schema.risk.get_subtypes_for_level(level_id)
+
+    # Build option list: Generic always first, then level-specific subtypes
+    options = [{"id": "generic", "label": "Generic (no subtype)"}] + [
+        {"id": s.id, "label": s.label} for s in subtypes
+    ]
+    option_labels = [o["label"] for o in options]
+
+    # Resolve current selection (edit mode pre-fill)
+    current_id = existing_data.get("subtype") or "generic"
+    current_label = next((o["label"] for o in options if o["id"] == current_id), option_labels[0])
+    current_index = option_labels.index(current_label) if current_label in option_labels else 0
+
+    selected_label = st.selectbox(
+        "Subtype",
+        options=option_labels,
+        index=current_index,
+        key=f"{key_prefix}_subtype"
+    )
+    selected_id = next((o["id"] for o in options if o["label"] == selected_label), "generic")
+    form_data["subtype"] = selected_id
+
+    # Extension fields for the selected subtype
+    selected_subtype = next((s for s in subtypes if s.id == selected_id), None)
+    ext_fields = {}
+    if selected_subtype and selected_subtype.extension_fields:
+        st.markdown(f"**{selected_label} fields:**")
+        existing_ext = existing_data.get("ext_fields") or {}
+        for ef in selected_subtype.extension_fields:
+            ftype = ef.type.lower()
+            current_val = existing_ext.get(ef.name, "")
+            label = ef.name.replace("_", " ").title() + (" *" if ef.required else "")
+            help_text = ef.description or None
+            widget_key = f"{key_prefix}_ext_{ef.name}"
+
+            if ftype == "enum" and ef.values:
+                idx = ef.values.index(current_val) if current_val in ef.values else 0
+                val = st.selectbox(label, options=ef.values, index=idx, help=help_text, key=widget_key)
+            elif ftype in ("boolean", "bool"):
+                val = st.checkbox(label, value=bool(current_val), help=help_text, key=widget_key)
+            elif ftype in ("integer", "int"):
+                val = st.number_input(label, value=int(current_val) if current_val else 0,
+                                      step=1, help=help_text, key=widget_key)
+            elif ftype == "float":
+                val = st.number_input(label, value=float(current_val) if current_val else 0.0,
+                                      step=0.1, help=help_text, key=widget_key)
+            else:
+                val = st.text_input(label, value=str(current_val) if current_val else "",
+                                    help=help_text, key=widget_key)
+            ext_fields[ef.name] = val
+
+    form_data["ext_fields"] = ext_fields
+
+
+def _render_template_library(manager: RiskGraphManager):
+    """U14 — Render the GenericRisk template library expander."""
+    templates = manager.get_all_templates()
+    count_label = f" ({len(templates)})" if templates else ""
+    with st.expander(f"📋 Risk Templates{count_label}", expanded=False):
+        if not templates:
+            st.info("No risk templates defined. Mark a risk as a template when creating it.")
+            return
+
+        for tmpl in templates:
+            tmpl_id = tmpl.get("id", "")
+            tmpl_name = tmpl.get("name", "Unnamed")
+            tmpl_level = tmpl.get("level", "")
+            tmpl_prob = tmpl.get("probability")
+            tmpl_sev = tmpl.get("severity")
+            score_str = f" | L={tmpl_prob} S={tmpl_sev}" if (tmpl_prob and tmpl_sev) else ""
+            instances = manager.get_instances_of_template(tmpl_id)
+            inst_str = f" — {len(instances)} instance(s)" if instances else " — no instances yet"
+
+            with st.expander(f"📋 **{tmpl_name}** [{tmpl_level}]{score_str}{inst_str}"):
+                desc = tmpl.get("description", "")
+                if desc:
+                    st.markdown(f"*{desc}*")
+
+                # Show existing instances
+                if instances:
+                    st.markdown("**Instances:**")
+                    for inst in instances:
+                        st.markdown(
+                            f"- {inst.get('name', '?')} [{inst.get('level', '')}] "
+                            f"— {inst.get('status', 'Active')}"
+                        )
+
+                st.markdown("---")
+                col_inst, col_del = st.columns(2)
+
+                with col_inst:
+                    if st.button("➕ Instantiate", key=f"btn_instantiate_{tmpl_id}"):
+                        st.session_state[f"instantiate_tmpl_{tmpl_id}"] = True
+
+                with col_del:
+                    if st.button("🗑️ Delete Template", key=f"btn_del_tmpl_{tmpl_id}"):
+                        manager.delete_risk(tmpl_id)
+                        st.success("Template deleted.")
+                        st.rerun()
+
+                # Instantiation inline form
+                if st.session_state.get(f"instantiate_tmpl_{tmpl_id}"):
+                    st.markdown("#### Create Instance from Template")
+                    inst_name = st.text_input(
+                        "Instance name", value=f"{tmpl_name} (Instance)",
+                        key=f"inst_name_{tmpl_id}"
+                    )
+                    inst_prob = st.number_input(
+                        "Likelihood (0–10)", min_value=0.0, max_value=10.0,
+                        value=float(tmpl_prob or 5.0), step=0.5,
+                        key=f"inst_prob_{tmpl_id}"
+                    )
+                    inst_sev = st.number_input(
+                        "Severity (0–10)", min_value=0.0, max_value=10.0,
+                        value=float(tmpl_sev or 5.0), step=0.5,
+                        key=f"inst_sev_{tmpl_id}"
+                    )
+                    inst_owner = st.text_input(
+                        "Owner", value=tmpl.get("owner", ""),
+                        key=f"inst_owner_{tmpl_id}"
+                    )
+
+                    ic1, ic2 = st.columns(2)
+                    with ic1:
+                        if st.button("💾 Create Instance", key=f"save_inst_{tmpl_id}"):
+                            new_id = manager.create_risk(
+                                name=inst_name,
+                                level=tmpl_level,
+                                categories=tmpl.get("categories", []),
+                                description=tmpl.get("description", ""),
+                                status="Active",
+                                owner=inst_owner,
+                                probability=inst_prob,
+                                severity=inst_sev,
+                                origin=tmpl.get("origin", "New"),
+                                subtype=tmpl.get("subtype"),
+                                is_template=False,
+                            )
+                            if new_id:
+                                manager.create_instantiates_rel(tmpl_id, new_id)
+                                st.success(f"Instance '{inst_name}' created and linked to template.")
+                                st.session_state[f"instantiate_tmpl_{tmpl_id}"] = False
+                                st.rerun()
+                            else:
+                                st.error("Failed to create instance.")
+                    with ic2:
+                        if st.button("❌ Cancel", key=f"cancel_inst_{tmpl_id}"):
+                            st.session_state[f"instantiate_tmpl_{tmpl_id}"] = False
+                            st.rerun()
+
+
 def _render_node_card(manager: RiskGraphManager, node: Dict, definition: EntityTypeDefinition, active_scopes: List):
     """Render an individual node CRUD card."""
     node_id = node.get("id", "")
@@ -191,7 +362,9 @@ def _render_node_card(manager: RiskGraphManager, node: Dict, definition: EntityT
             # Edit Mode
             st.markdown("### Edit Mode")
             edited_data = build_entity_form(definition, node, key_prefix=f"edit_form_{definition.id}_{node_id}")
-            
+            if definition.id == "risk":
+                _render_risk_subtype_fields(edited_data, node, key_prefix=f"edit_form_{definition.id}_{node_id}")
+
             c1, c2 = st.columns(2)
             with c1:
                 if st.button("💾 Save Changes", key=f"save_{definition.id}_{node_id}"):

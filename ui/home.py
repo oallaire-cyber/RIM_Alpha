@@ -13,7 +13,7 @@ from core import get_registry
 from config import APP_TITLE, APP_ICON, RISK_LEVEL_CONFIG
 from config import NEO4J_DEFAULT_URI, NEO4J_DEFAULT_USER, NEO4J_DEFAULT_PASSWORD
 from config.schema_loader import SchemaLoader
-from utils.state_manager import init_home_state
+from utils.state_manager import init_home_state, init_visual_panel_state
 from utils.markdown_loader import load_doc
 
 # Database
@@ -29,6 +29,7 @@ from ui import (
     render_inline_editor,
     render_node_property_panel,
 )
+from ui.panels.graph_visual_panel import render_graph_visual_panel
 
 # Legend
 from ui.legend import (
@@ -70,6 +71,12 @@ _HELP_FILES = {
     "Influence":   "help_influence.md",
     "Mitigations": "help_mitigations.md",
     "Layouts":     "help_layouts.md",
+    "Lifecycle":   "help_lifecycle.md",
+    "What-If":     "help_whatif.md",
+    "Templates":   "help_templates.md",
+    "Alerts":      "help_alerts.md",
+    "Visual Panel": "help_visual_panel.md",
+    "Simulation":  "help_simulation.md",
 }
 
 
@@ -113,6 +120,7 @@ def init_session_state():
     definitions and default values live in one place.
     """
     init_home_state()
+    init_visual_panel_state()
 
 
 def render_help_section():
@@ -317,7 +325,7 @@ def render_exposure_dashboard(manager):
                 st.metric(
                     f"{health_color} Risk Score",
                     f"{weighted_score:.1f}/100",
-                    help=f"Impact-weighted risk score. Status: {health_label}"
+                    help=f"Severity-weighted risk score. Status: {health_label}"
                 )
             
             with col3:
@@ -349,7 +357,13 @@ def render_exposure_dashboard(manager):
                 risks_with_data = exposure_results.get("risks_with_data", 0)
                 total_risks = exposure_results.get("total_risks", 0)
                 st.metric("📋 With Data", f"{risks_with_data}/{total_risks}")
-            
+
+            # U13 — Quadrant distribution widget
+            _render_quadrant_distribution(exposure_results)
+
+            # F5 — Threshold alerts
+            _render_threshold_alerts(exposure_results)
+
             # Details expander
             with st.expander("📋 Detailed Risk Exposures", expanded=False):
                 risk_results = exposure_results.get("risk_results", [])
@@ -391,6 +405,99 @@ def render_exposure_dashboard(manager):
                                         st.text(message)
                 else:
                     st.info("No risk exposure data available.")
+
+
+def _render_quadrant_distribution(exposure_results: dict) -> None:
+    """U13 — Render a compact quadrant distribution bar for the exposure panel."""
+    risk_results = exposure_results.get("risk_results", [])
+    if not risk_results:
+        return
+
+    quadrant_counts = {"critical": 0, "frequency": 0, "severity": 0, "marginal": 0}
+    for r in risk_results:
+        q = r.get("risk_quadrant", "marginal")
+        if q in quadrant_counts:
+            quadrant_counts[q] += 1
+
+    total = sum(quadrant_counts.values())
+    if total == 0:
+        return
+
+    labels = {
+        "critical": ("🔴 Critical", "#e74c3c"),
+        "frequency": ("🟠 Frequency", "#e67e22"),
+        "severity": ("🟡 Severity", "#f39c12"),
+        "marginal": ("🟢 Marginal", "#27ae60"),
+    }
+
+    st.markdown("**Quadrant Distribution (U13)**")
+    cols = st.columns(4)
+    for i, (q, (label, color)) in enumerate(labels.items()):
+        count = quadrant_counts[q]
+        pct = count / total * 100
+        with cols[i]:
+            st.metric(label, f"{count}", help=f"{pct:.0f}% of risks in this quadrant")
+
+
+def _render_threshold_alerts(exposure_results: dict) -> None:
+    """F5 — Render EL and TRI threshold breach alerts in the exposure panel."""
+    from config.settings import get_active_schema
+    schema = get_active_schema()
+    if schema is None:
+        return
+    cfg = schema.analysis.alert_thresholds
+    if not cfg.enabled:
+        return
+
+    risk_results = exposure_results.get("risk_results", [])
+    if not risk_results:
+        return
+
+    he_thresh = cfg.high_exposure_threshold
+    tri_thresh = cfg.tail_risk_indicator_threshold
+
+    he_breaches = [
+        r for r in risk_results
+        if r.get("final_exposure", 0) > he_thresh
+    ]
+    tri_breaches = [
+        r for r in risk_results
+        if r.get("tail_risk_indicator", 0) > tri_thresh
+    ]
+
+    if not he_breaches and not tri_breaches:
+        st.success(f"✅ All risks within thresholds (High Exposure ≤ {he_thresh:.0f}, TRI ≤ {tri_thresh:.1f})")
+        return
+
+    with st.container():
+        st.markdown("#### ⚠️ Threshold Alerts")
+        alert_col1, alert_col2 = st.columns(2)
+
+        with alert_col1:
+            if he_breaches:
+                st.warning(
+                    f"**High Exposure breaches** (threshold: {he_thresh:.0f})\n\n"
+                    + "\n".join(
+                        f"- {r.get('risk_name', r.get('risk_id', '?'))} "
+                        f"[{r.get('level', '')}]: **{r.get('final_exposure', 0):.1f}**"
+                        for r in sorted(he_breaches, key=lambda x: x.get("final_exposure", 0), reverse=True)
+                    )
+                )
+            else:
+                st.success(f"No High Exposure breaches (threshold: {he_thresh:.0f})")
+
+        with alert_col2:
+            if tri_breaches:
+                st.warning(
+                    f"**Tail Risk Index breaches** (threshold: {tri_thresh:.1f})\n\n"
+                    + "\n".join(
+                        f"- {r.get('risk_name', r.get('risk_id', '?'))} "
+                        f"[{r.get('level', '')}]: **{r.get('tail_risk_indicator', 0):.1f}**"
+                        for r in sorted(tri_breaches, key=lambda x: x.get("tail_risk_indicator", 0), reverse=True)
+                    )
+                )
+            else:
+                st.success(f"No TRI breaches (threshold: {tri_thresh:.1f})")
 
 
 def render_visualization_filters(manager: RiskGraphManager):
@@ -502,6 +609,39 @@ def render_visualization_filters(manager: RiskGraphManager):
                         )
                         st.session_state["filter_risk_subtypes"] = selected_subtypes
 
+                    # U13 — Quadrant filter (only shown when exposure has been calculated)
+                    _exp = st.session_state.get("exposure_results")
+                    if _exp and _exp.get("risk_results"):
+                        all_quadrants = ["critical", "frequency", "severity", "marginal"]
+                        quadrant_labels_map = {
+                            "critical": "🔴 Critical",
+                            "frequency": "🟠 Frequency",
+                            "severity": "🟡 Severity",
+                            "marginal": "🟢 Marginal",
+                        }
+                        # Only list quadrants that are actually present
+                        present_quadrants = list({
+                            r.get("risk_quadrant", "marginal")
+                            for r in _exp["risk_results"]
+                            if r.get("risk_quadrant") in all_quadrants
+                        })
+                        if present_quadrants:
+                            st.markdown("**Quadrant (U13)**")
+                            current_q = st.session_state.get("filter_risk_quadrants", present_quadrants)
+                            selected_quadrants = st.multiselect(
+                                "Quadrant filter",
+                                options=[quadrant_labels_map[q] for q in all_quadrants if q in present_quadrants],
+                                default=[quadrant_labels_map[q] for q in current_q if q in present_quadrants],
+                                key="filter_risk_quadrants_ms",
+                                label_visibility="collapsed"
+                            )
+                            # Reverse-map labels back to IDs
+                            label_to_qid = {v: k for k, v in quadrant_labels_map.items()}
+                            st.session_state["filter_risk_quadrants"] = [
+                                label_to_qid[lbl] for lbl in selected_quadrants
+                                if lbl in label_to_qid
+                            ]
+
     def _render_relationship_filter(rel_id, rel_type):
         """Render filter controls for a single relationship type."""
         with st.expander(f"🔗 {rel_type.label} Filters", expanded=False):
@@ -578,7 +718,7 @@ def render_visualization_filters(manager: RiskGraphManager):
         st.markdown("---")
 
     # Color mode
-    with st.expander("🎨 Display Options", expanded=False):
+    with st.expander("🎨 Color Options", expanded=False):
         color_by = st.radio(
             "Color by",
             ["level", "exposure"],
@@ -587,40 +727,6 @@ def render_visualization_filters(manager: RiskGraphManager):
             key="color_by_radio"
         )
         st.session_state.color_by = color_by
-
-        st.markdown("---")
-        
-        # F20: Exposure-Driven Opacity
-        st.markdown("**🌫️ Exposure-Driven Opacity**")
-        exposure_opacity = st.checkbox(
-            "Enable Opacity by Exposure",
-            value=st.session_state.get("exposure_opacity_enabled", False),
-            help="High exposure risks remain solid, low exposure risks fade into background."
-        )
-        st.session_state.exposure_opacity_enabled = exposure_opacity
-        
-        if exposure_opacity:
-            high_exposure_threshold = st.slider(
-                "High Exposure Threshold",
-                min_value=0,
-                max_value=100,
-                value=st.session_state.get("high_exposure_threshold", 60),
-                step=5,
-                format="%d",
-                help="Risks with an exposure score above this value will be 100% opaque."
-            )
-            st.session_state.high_exposure_threshold = high_exposure_threshold
-
-        st.markdown("---")
-
-        # F21: Lifecycle Ghosting
-        st.markdown("**👻 Lifecycle & Status Ghosting**")
-        lifecycle_ghosting = st.checkbox(
-            "Enable Status Ghosting",
-            value=st.session_state.get("lifecycle_ghosting_enabled", False),
-            help="Contingent risks and Proposed/Deferred mitigations appear semi-transparent."
-        )
-        st.session_state.lifecycle_ghosting_enabled = lifecycle_ghosting
 
     return filter_mgr
 
@@ -890,9 +996,14 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
         if show_filters:
             filter_mgr = render_visualization_filters(manager)
             render_influence_explorer(manager)
-            
+
             render_graph_options()
             render_layout_management(manager)
+
+            # F32: Graph Visual Behaviour Panel
+            st.markdown("---")
+            _schema_cfg = st.session_state.get("_active_schema_config")
+            render_graph_visual_panel(schema_config=_schema_cfg)
             if mode == "Simple":
                 if st.button("🙈 Hide Advanced Filters", use_container_width=True):
                     st.session_state.show_filters_in_simple_mode = False
@@ -989,6 +1100,31 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
                             and e.get("target") not in removed_ids
                         ]
         
+        # ── Apply quadrant filter (U13) ───────────────────────────────────
+        exposure_results = st.session_state.get("exposure_results")
+        selected_quadrants = st.session_state.get("filter_risk_quadrants")
+        if selected_quadrants is not None and exposure_results and "risk_results" in exposure_results:
+            q_lookup = {r["risk_id"]: r.get("risk_quadrant", "marginal") for r in exposure_results["risk_results"]}
+            all_q = {"critical", "frequency", "severity", "marginal"}
+            filtered_q = set(selected_quadrants)
+            if filtered_q != all_q:
+                removed_ids = set()
+                filtered_nodes = []
+                for n in nodes:
+                    if n.get("node_type") == "Risk":
+                        q = q_lookup.get(n.get("id"), "marginal")
+                        if q not in filtered_q:
+                            removed_ids.add(n.get("id"))
+                            continue
+                    filtered_nodes.append(n)
+                if removed_ids:
+                    nodes = filtered_nodes
+                    edges = [
+                        e for e in edges
+                        if e.get("source") not in removed_ids
+                        and e.get("target") not in removed_ids
+                    ]
+
         # Load positions if layout selected
         positions = None
         if "selected_layout_name" in st.session_state:
@@ -1009,6 +1145,7 @@ def render_visualization_tab(manager: RiskGraphManager, config: dict = None):
                 if n.get("id") in exp_lookup:
                     n["base_exposure"] = exp_lookup[n["id"]]["base_exposure"]
                     n["exposure"] = exp_lookup[n["id"]]["final_exposure"]
+                    n["risk_quadrant"] = exp_lookup[n["id"]].get("risk_quadrant", "marginal")
         
         # Handle edge filtering
         max_edges = None
@@ -1403,7 +1540,24 @@ def render_main_content(manager: RiskGraphManager):
     """
     # ── Complexity Toggle in sidebar ─────────────────────────────────────────
     render_complexity_toggle()
-    
+
+    # ── Load active schema + initialize vp_* defaults (F32) ─────────────────
+    try:
+        loader = SchemaLoader()
+        _schema_name = st.session_state.get("active_schema_name", "default")
+        _schema = loader.load_schema(_schema_name)
+        st.session_state["_active_schema_config"] = _schema
+        # On first load, seed vp_lifecycle_opacity from schema defaults
+        if "vp_lifecycle_opacity" not in st.session_state or not st.session_state.get("_vp_schema_seeded"):
+            gvc = _schema.graph_visual_config
+            st.session_state["vp_lifecycle_opacity"] = dict(gvc.lifecycle_opacity)
+            st.session_state["vp_quadrant_borders"] = gvc.quadrant_border_encoding
+            if "vp_preset" not in st.session_state:
+                st.session_state["vp_preset"] = gvc.default_preset
+            st.session_state["_vp_schema_seeded"] = True
+    except Exception:
+        st.session_state.setdefault("_active_schema_config", None)
+
     # ── Scope selector in sidebar ────────────────────────────────────────
     render_scope_selector()
     

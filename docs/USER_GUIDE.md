@@ -15,8 +15,13 @@ Complete documentation for the Risk Influence Map application.
 7. [Analysis Scopes](#analysis-scopes)
 8. [Visualization](#visualization)
 9. [Analysis Tools](#analysis-tools)
-10. [Import/Export](#importexport)
-11. [Filter System](#filter-system)
+10. [What-If Analysis](#what-if-analysis)
+11. [Mitigation Exposure View](#mitigation-exposure-view)
+12. [Risk Lifecycle Engine](#risk-lifecycle-engine)
+13. [Risk Templates](#risk-templates)
+14. [Threshold Alerts](#threshold-alerts)
+15. [Import/Export](#importexport)
+16. [Filter System](#filter-system)
 
 ---
 
@@ -38,7 +43,7 @@ Complete documentation for the Risk Influence Map application.
 
 ### Interface Overview
 
-The application has three main areas:
+The application has four pages plus the main dashboard:
 
 | Area | Location | Purpose |
 |------|----------|---------|
@@ -55,16 +60,16 @@ RIM allows users to toggle the interface complexity from the **top of the sideba
 
 ### Navigation
 
-The application uses a multi-page routing structure with data strictly managed in the `Data Management` page:
+The application uses a multi-page routing structure:
 
-| Area | Purpose |
-|-----|---------|
-| 📊 Home Page | Interactive risk visualization and analysis dashboard |
-| 🗃️ Core Nodes | Manage standard framework entities like Risks and Mitigations (Data Management) |
-| 🔌 Core Edges | Map relationships like Influences and Mitigates (Data Management) |
-| 🏷️ Context Nodes | Manage dynamic nodes like TPOs (Top Program Objectives) and Actors (Data Management) |
-| 🔗 Context Edges | Link custom edges such as TPO impacts (Data Management) |
-| 📥📤 Import/Export | Data exchange via Excel (Data Management) |
+| Page | Purpose |
+|------|---------|
+| 📊 **Home** | Interactive risk visualization and analysis dashboard |
+| 💾 **Data Management** | Full CRUD for all graph entities (Core Nodes/Edges, Context Nodes/Edges, Import/Export, Lifecycle Engine) |
+| ⚙️ **Configuration** | Schema and database management |
+| 🎲 **Simulation** | Monte Carlo calibration simulator (scope-based real-data mode) |
+| 🔬 **What-If Analysis** | In-memory mitigation toggle with EL + TRI delta reporting |
+| 📊 **Mitigation Exposure** | Counterfactual per-mitigation EL + TRI impact ranking |
 
 ### Loading Demo Data (Quick Start)
 
@@ -107,9 +112,12 @@ RIM includes a complete demo dataset covering the ODT New Space program and TC01
    - **Level**: Business or Operational
    - **Category**: Programme/Produit/Industriel/Supply Chain
    - **Likelihood**: 1-10 scale
-   - **Impact**: 1-10 scale
+   - **Severity**: 1-10 scale
    - **Origin**: New or Legacy
-3. Click **Create Risk**
+   - **Subtype**: Select the domain-specific subtype applicable to the risk level (e.g., Cyber, Supply Chain, Financial). Extension fields for the selected subtype appear automatically below.
+3. Click **Save**
+
+> **Subtype extension fields** are schema-defined per domain. They appear only when a non-Generic subtype is selected and differ by domain (e.g., CIA triad fields for IT Security, contract type for Supply Chain).
 
 ### Contingent Risks
 
@@ -292,10 +300,11 @@ The exposure calculation quantifies risk severity considering:
 
 | Score Range | Status | Color |
 |-------------|--------|-------|
-| 0-25 | Excellent | Green |
-| 26-50 | Good | Blue |
-| 51-75 | Attention Needed | Orange |
-| 76-100 | Critical | Red |
+| 0–10 | Excellent | Green |
+| 11–30 | Good | Light green |
+| 31–50 | Moderate | Orange |
+| 51–70 | Concerning | Dark orange |
+| 71–100 | Critical | Red |
 
 ### Using Exposure Calculation
 
@@ -476,6 +485,268 @@ Coverage gaps are flagged if the unmitigated risk is also:
 - A **Convergence Point** (multiple influences)
 - A **Bottleneck** (single point of failure)
 
+### Monte Carlo Simulator
+
+Access from the **🎲 Simulation** page.
+
+| Mode | Data Source | Description |
+|------|-------------|-------------|
+| **Monte Carlo (Random)** | Synthetic | Random scenario generation for model validation |
+| **Mitigation Path** | Synthetic | Progressive mitigation scenario analysis |
+| **Scope-Based (Real Data)** | Live DB | Real graph topology; scope- and lifecycle-aware |
+| **TRI α Calibration** | Live DB | Sweep TRI exponent α; calibration report + recommended α |
+
+Scope-Based mode uses actual likelihood/severity values and respects the active scope.
+Saved simulation results can be compared with Δ delta columns and exported to Excel.
+
+#### Lifecycle-Aware Simulation — Worst-Case Canvas (F31c)
+
+The **🧟 Worst-Case Canvas** toggle (available in Scope-Based and TRI α Calibration modes)
+re-activates lifecycle-inactive risks (accepted / watching / suppressed / closed) to surface
+latent tail exposure hidden by lifecycle decisions.
+
+- A banner shows the count of re-activated risks
+- Results are labelled `[Worst-Case]`; the `SimulationRecord` mode is `"Scope-Based (Worst-Case)"`
+- Use to answer: *"What if we reversed all lifecycle decisions?"*
+
+#### TRI α Calibration Mode (F31d)
+
+The TRI exponent α controls tail amplification: `TRI = L × S^α`. The current schema
+default is `α = 1.5`. The calibration mode validates this choice for each domain.
+
+**Steps:**
+1. Select **TRI α Calibration** in the mode radio
+2. Configure α range (min / max / step) and runs per α
+3. Optionally enable Worst-Case Canvas
+4. Click **🚀 Run Calibration**
+5. Select a **target quadrant profile** (Balanced / Tail-Heavy / Frequency-Heavy / Severity-Heavy)
+6. The recommended α is highlighted in the calibration report table
+
+**Outputs:**
+- **Calibration Chart**: Mean TRI ±1σ band and P95 line vs α; stacked quadrant distribution bar
+- **Calibration Report**: α → Mean/Std/P95 TRI + quadrant %s; recommended row highlighted
+- **Raw Data**: CSV download of the full calibration DataFrame
+
+To apply the calibrated α, update `tri_alpha` under `exposure_model` in
+`schemas/[domain]/schema.yaml`.
+
+---
+
+## What-If Analysis
+
+### Overview
+
+The **What-If Analysis** page (`🔬 What-If Analysis` in the sidebar) lets you
+explore mitigation scenarios **without touching the database**. All exploration
+is session-local and reversible.
+
+### Step-by-Step
+
+1. Navigate to the **🔬 What-If Analysis** page
+2. Verify the active scope shown in the sidebar (or leave it as Full Graph)
+3. Optionally check **"Include inactive risks (worst-case)"** to include
+   Accepted/Watching/Suppressed/Closed risks in the analysis
+4. Click **🔄 Compute Baseline** — the page fetches live data and computes
+   the reference exposure result
+5. Uncheck any mitigation in the **Mitigation Toggles** panel to disable it
+6. The **Portfolio Impact** summary and **Per-Risk Exposure Delta** table
+   update immediately with Δ values
+7. Click **↺ Reset Scenario** to re-enable all mitigations
+
+> Changing the scope or the "Include inactive risks" setting requires
+> re-running **Compute Baseline** to refresh the cached data.
+
+### Portfolio Metrics
+
+| Metric | Description |
+|--------|-------------|
+| **Residual Risk %** | Total final exposure / total base exposure × 100 |
+| **Weighted Risk Score** | Severity²-weighted aggregate (0–100 scale) |
+| **Total TRI** | Sum of Tail Risk Indicators (L × S^1.5) across all in-scope risks |
+
+Each metric shows a delta indicator — **red = worse, green = better**.
+A health status change banner appears when the scenario moves the portfolio
+between bands (Excellent / Good / Moderate / Concerning / Critical).
+
+### Per-Risk Delta Table
+
+The table lists every in-scope risk with:
+- **Baseline EL** and **Modified EL** (Final Exposure)
+- **Δ EL** — sorted descending so the most-impacted risks appear first
+- **Baseline TRI**, **Modified TRI**, **Δ TRI**
+- **Quadrant** (critical / frequency / severity / marginal)
+
+### Typical Use Cases
+
+| Question | How to use What-If |
+|----------|--------------------|
+| "What if this mitigation is delayed?" | Disable the mitigation; read Δ EL for its target risks |
+| "Which mitigation delivers the most coverage?" | Disable one at a time; compare Residual Risk % deltas |
+| "Worst-case unmitigated exposure?" | Disable all mitigations + enable "Include inactive risks" |
+| "Stakeholder briefing for a domain" | Activate a scope, compute baseline, toggle mitigations live |
+
+---
+
+## Mitigation Exposure View
+
+### Overview
+
+The **Mitigation Exposure View** (`📊 Mitigation Exposure` in the sidebar) answers:
+
+> *Which mitigations are protecting the portfolio the most — and which are redundant?*
+
+For each active mitigation, a **counterfactual** exposure is computed: what would the portfolio
+look like without that mitigation? The **EL Delta** and **TRI Delta** show its individual
+protective value, independent of other controls.
+
+### Step-by-Step
+
+1. Navigate to the **📊 Mitigation Exposure** page
+2. Verify the active scope in the sidebar (or leave it as Full Graph)
+3. Optionally check **"Include inactive risks (worst-case)"** to include
+   Accepted/Watching/Suppressed/Closed risks
+4. Optionally set the **Risk level** filter (All / Business / Operational)
+5. Click **🔄 Compute Mitigation Impact** — each mitigation is evaluated in one pass
+6. Review the ranked table — mitigations with the highest EL Delta ↑ are most critical
+
+> Changing scope or lifecycle settings requires re-clicking **Compute Mitigation Impact**
+> to refresh the cached results.
+
+### Column Reference
+
+| Column | Description |
+|--------|-------------|
+| **Mitigation** | Name of the mitigation control |
+| **Type** | Dedicated / Inherited / Baseline |
+| **Status** | Proposed / In Progress / Implemented / Deferred |
+| **Level** | Risk level(s) the mitigation covers (Business / Operational / Mixed) |
+| **Risks Covered** | Number of in-scope risks directly addressed by this mitigation |
+| **EL Delta ↑** | Exposure increase if this mitigation were removed (marginal value) |
+| **TRI Delta ↑** | Tail Risk Indicator increase if this mitigation were removed |
+| **% Portfolio EL** | EL Delta as a percentage of total unmitigated base exposure |
+
+### Interpreting Results
+
+| Pattern | Interpretation |
+|---------|----------------|
+| High EL Delta + Implemented | Critical control — protect and monitor |
+| High EL Delta + Proposed/Deferred | Unacceptable gap — prioritise implementation |
+| Low EL Delta + any status | Limited measurable impact; check effectiveness data or control overlap |
+| Zero EL Delta | Covers only risks with no likelihood/severity data, or fully redundant |
+
+### Relationship to What-If Analysis
+
+| Feature | Best for |
+|---------|---------|
+| **What-If Analysis** | Interactive multi-mitigation scenario exploration |
+| **Mitigation Exposure View** | Objective single-mitigation ranking and prioritisation |
+
+---
+
+## Risk Lifecycle Engine
+
+### Overview
+
+The Lifecycle Engine manages the 6-state risk lifecycle:
+
+| Status | Meaning |
+|--------|---------|
+| **Active** | Currently relevant, included in all analytics |
+| **Watching** | Elevated monitoring; excluded from exposure by default |
+| **Accepted** | Formally accepted by a decision-maker; excluded from exposure |
+| **Suppressed** | Temporarily deprioritised; excluded from exposure |
+| **Closed** | Risk has materialised or is no longer applicable |
+| **Archived** | Historical record only |
+
+### Using the Lifecycle Engine
+
+Access from **💾 Data Management** → **Lifecycle Engine** expander.
+
+- **Trigger Review**: lists risks whose `trigger_condition` text warrants human review
+- **Auto-Acceptance**: flags risks eligible for formal acceptance (below threshold,
+  not critical quadrant, not severity-ceiling) — includes a **🔓 Force Accept** button
+  to override guards when reviewer intent is explicit
+- **Archive Alerts**: lists risks with inactive status older than the configured
+  `archive_retention_days` threshold
+
+### Viewing Accepted Risks
+
+Enable **"Show Accepted Risks"** toggle in Data Management to review the full list
+of accepted risks and their acceptance metadata (date, owner).
+
+---
+
+## Risk Templates
+
+### Overview
+
+Generic Risk Templates allow you to define reusable risk archetypes that can be instantiated
+into specific risks with pre-filled attributes.
+
+| Property | Behaviour |
+|----------|-----------|
+| `is_template = true` | Excluded from exposure calculations |
+| Canvas visibility | Hidden from graph canvas |
+| Lifecycle | Not subject to lifecycle engine |
+| INSTANTIATES rel | Links template → specific instance in Neo4j |
+
+### Creating a Template
+
+1. Go to **💾 Data Management → Risks** tab
+2. In the **Create New Risk** form, check **☑ Mark as template (GenericRisk)**
+3. Fill in likelihood, severity, subtype, categories, and description
+4. Save — the risk appears in the **📋 Risk Templates** expander
+
+### Instantiating a Template
+
+1. Open **📋 Risk Templates** expander in Data Management → Risks
+2. Find the template and click **➕ Instantiate**
+3. Adjust the pre-filled form (name, description, etc.) and save
+4. A new specific risk is created and linked to the template via `[:INSTANTIATES]`
+
+### Viewing Template Relationships
+
+In the **Node Property Panel** (click any risk on the canvas or in the list):
+- Template risks show an instance count and list of instance names
+- Instance risks show the parent template name
+
+---
+
+## Threshold Alerts
+
+### Overview
+
+Threshold Alerts automatically detect risks whose exposure scores exceed configured limits,
+surfaced in the **⚡ Exposure** dashboard after each computation.
+
+### Monitored Metrics
+
+| Metric | Formula | Default Threshold |
+|--------|---------|-------------------|
+| Expected Loss (EL) | Likelihood × Severity × mitigation factor × influence limitation | 50.0 |
+| Tail Risk Indicator (TRI) | Likelihood × Severity^1.5 | 25.0 |
+
+### Reading the Alert Panel
+
+After clicking **Compute** in the Exposure expander:
+- **⚠️ Threshold Alerts** panel appears below the quadrant distribution widget
+- Breach columns: **EL Breaches** and **TRI Breaches**, each listing risk name, level, and value
+- When all risks are within thresholds: **✅ All risks within thresholds** success indicator
+
+### Configuring Thresholds
+
+Edit the active schema YAML (Configuration page → Schema Editor):
+
+```yaml
+analysis:
+  alert_thresholds:
+    expected_loss_threshold: 50.0
+    tail_risk_indicator_threshold: 25.0
+    enabled: true
+```
+
+Set `enabled: false` to suppress alerts without removing the configuration.
+
 ---
 
 ## Import/Export
@@ -543,10 +814,15 @@ Coverage gaps are flagged if the unmitigated risk is also:
 - **🏆 TPO Filters**: Show/hide TPOs, filter by cluster
 - **🔗 TPO Impact Filters**: Impact level
 
-**🎨 Display Options**:
+**🎨 Color Options**:
 - Color mode (by level/by exposure)
-- Label options
-- Edge visibility
+
+**🖼️ Graph Visual Behaviour** (F32):
+- **Presets**: Clean / Analysis / Lifecycle Audit / Sandbox Edit — one-click bundles
+- **Exposure Opacity**: High-exposure risks solid; low-exposure risks fade (configurable threshold)
+- **Lifecycle Opacity**: Per-status transparency (Watching, Suppressed, Accepted, Closed)
+- **Quadrant Border Encoding**: Coloured node borders show risk quadrant (Critical/High/Moderate/Low)
+- **Save as Schema Default**: Persist settings to `graph_visual_config` in schema YAML
 
 **🔍 Influence Explorer**:
 - Show neighborhood of selected node
@@ -635,4 +911,4 @@ Each multi-select filter has **All** and **None** buttons for quick selection.
 
 ---
 
-*Last updated: March 2026 | Version 2.14.0*
+*Last updated: March 2026 | Version 2.30.0*

@@ -4,6 +4,445 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.30.0] - 2026-03-22 (F31c/d Lifecycle-Aware Simulation & TRI α Calibration)
+
+### New Features
+
+- **F31c Lifecycle-Aware Simulation (Worst-Case Canvas)** (`pages/2_🎲_Simulation.py`):
+  New "🧟 Worst-Case Canvas" checkbox in Scope-Based mode sidebar. When enabled, the
+  simulation re-activates accepted / watching / suppressed / closed risks
+  (`manager.get_all_risks(exclude_inactive=False)`) to reveal latent tail exposure that
+  is hidden by lifecycle decisions. Results are labelled `[Worst-Case]` throughout the
+  UI and in the Saved Results tab. A banner shows how many lifecycle-inactive risks were
+  re-activated.
+
+- **F31d TRI α Calibration Mode** (`pages/2_🎲_Simulation.py`):
+  New "TRI α Calibration" simulation mode (4th radio option). Sweeps the TRI exponent α
+  over a configurable range (min / max / step) with N runs per α value. For each α,
+  computes per-risk TRI = `L × S^α` and classifies risks into quadrants using the same
+  `_compute_risk_quadrant()` logic as the exposure engine. Outputs:
+  - **Calibration Chart**: Mean TRI vs α with ±1σ band and P95 line; stacked quadrant
+    distribution bar chart vs α; recommended α and current default annotated.
+  - **Calibration Report**: tabular α → Mean TRI / Std TRI / P95 TRI / quadrant %s;
+    highlighted recommended α row; target profile selectbox (Balanced / Tail-Heavy /
+    Frequency-Heavy / Severity-Heavy).
+  - **Raw Data**: full calibration DataFrame with CSV export.
+  - Save to Saved Results (F31b) with dedicated calibration key_metrics.
+  - Worst-Case Canvas toggle shared with F31c.
+  - `_compute_risk_quadrant` and `TRI_ALPHA` imported from `services/exposure_calculator.py`.
+
+**Files Modified:**
+- `pages/2_🎲_Simulation.py` — F31c + F31d additions; `Any` added to typing imports
+
+**Tests:** 445 passing (no regressions).
+
+---
+
+## [v2.29.0] - 2026-03-21 (F32 Graph Visual Behaviour Panel)
+
+### New Features
+
+- **F32 Graph Visual Behaviour Panel** (`ui/panels/graph_visual_panel.py` — new):
+  Consolidated visual settings panel superseding the scatter-shot F20/F21 Display Options
+  expander. Rendered in the left filter column of the Visualization tab (Advanced mode).
+  - **Presets**: Clean / Analysis / Lifecycle Audit / Sandbox Edit — one-click bundles
+    that apply a coherent combination of visual effects.
+  - **Exposure Opacity** (F20 — moved here): toggleable with configurable threshold slider.
+  - **Lifecycle Opacity** (F21 — upgraded): per-status granular opacity sliders for
+    Watching, Suppressed, Accepted, and Closed / Archived risks (replaces hardcoded 50%).
+  - **Quadrant Border Encoding**: coloured node borders by risk quadrant
+    (Critical = dark red, High = orange, Moderate = gold, Low = forest green).
+  - **Save as Schema Default**: persists current settings to `graph_visual_config` in
+    the active `schema.yaml` so they take effect on next application load.
+
+- **`graph_visual_config` schema block** (`schemas/default/schema.yaml`,
+  `schemas/it_security/schema.yaml`): new top-level YAML block storing
+  `lifecycle_opacity` (per-status map), `quadrant_border_encoding` (bool),
+  and `default_preset` (str). Parsed into `GraphVisualConfig` dataclass.
+
+- **`GraphVisualConfig` dataclass** (`config/schema_loader.py`): new dataclass + parse/
+  serialise helpers; added to `SchemaConfig` and wired into `_parse_schema()` /
+  `_schema_to_dict()` so save/load round-trips are lossless.
+
+- **`VISUAL_PANEL_DEFAULTS`** (`utils/state_manager.py`): new key registry (`vp_*`
+  prefix) + `init_visual_panel_state()` registered in `init_all()`.
+
+- **Rendering upgrades** (`visualization/node_styles.py`, `visualization/graph_renderer.py`):
+  - `create_node_config()` accepts a `visual_config` dict (F32); per-status opacity replaces
+    the hardcoded `opacity *= 0.5` lifecycle ghosting.
+  - `_QUADRANT_BORDER_COLORS` constant maps quadrant → border hex colour.
+  - `render_graph_streamlit()` builds `visual_config` from `vp_*` session state with
+    graceful fallback to legacy `exposure_opacity_enabled` / `lifecycle_ghosting_enabled` keys.
+  - Legacy `exposure_opacity`, `high_exposure_threshold`, `lifecycle_ghosting` params
+    retained on `render_graph()` / `render_subgraph()` for backward compatibility.
+
+**Files Modified:**
+- `ui/panels/graph_visual_panel.py` (NEW)
+- `ui/panels/__init__.py` — exports `render_graph_visual_panel`
+- `ui/home.py` — import + call; old Display Options expander replaced by Color Options;
+  schema defaults seeded into `vp_*` on first load; `_active_schema_config` stored in state
+- `config/schema_loader.py` — `GraphVisualConfig` dataclass; parse + serialise helpers
+- `utils/state_manager.py` — `VISUAL_PANEL_DEFAULTS` + `init_visual_panel_state()`
+- `visualization/node_styles.py` — per-status opacity; quadrant border encoding
+- `visualization/graph_renderer.py` — `visual_config` param; F32 session state bridge
+- `schemas/default/schema.yaml` — `graph_visual_config` block
+- `schemas/it_security/schema.yaml` — `graph_visual_config` block
+
+**445 tests passing.**
+
+---
+
+## [v2.28.1] - 2026-03-21 (TRI Delta removal — Mitigation Exposure & What-If)
+
+### Bug Fixes / Improvements
+
+- **Removed TRI Delta from Mitigation Exposure table** (`pages/4_📊_Mitigation_Exposure.py`):
+  `TRI = likelihood × severity^1.5` is mitigation-independent, so the counterfactual TRI
+  delta was always zero — a misleading column. Removed from computation and display.
+
+- **Added "% EL (Covered Risks)" column** (`pages/4_📊_Mitigation_Exposure.py`):
+  Replaces TRI Delta ↑. Shows EL Delta as a percentage of the *base exposure of only the
+  risks this mitigation covers*, not the whole portfolio. For focused mitigations this
+  gives a far more meaningful effectiveness signal than % Portfolio EL alone.
+
+- **Replaced "Total TRI" summary metric on What-If page** (`pages/3_🔬_What-If_Analysis.py`):
+  The third summary card now shows **Max Single Risk EL** (highest final exposure of any
+  individual risk in the modified scenario, with baseline delta). This responds correctly
+  to mitigation toggles, unlike TRI which was always Δ=0.
+
+- **Removed TRI columns from What-If per-risk delta table** (`pages/3_🔬_What-If_Analysis.py`):
+  "Baseline TRI", "Modified TRI", and "Δ TRI" columns removed — all three were always
+  zero because TRI is not affected by mitigations.
+
+- **Workflow: manual-test gate added to CLAUDE.md**:
+  Development workflow now requires a manual testing checklist to be confirmed before
+  documentation and commit steps are executed.
+
+---
+
+## [v2.28.0] - 2026-03-21 (F6 Mitigation Exposure View)
+
+### New Features
+
+- **F6 Mitigation Exposure View** (`pages/4_📊_Mitigation_Exposure.py` — new page):
+  Ranks every active in-scope mitigation by its **marginal EL and TRI contribution**
+  using a counterfactual approach — for each mitigation, portfolio exposure is recomputed
+  without that mitigation to derive the individual protective value (EL Delta ↑, TRI Delta ↑,
+  % Portfolio EL). Scope-aware, lifecycle-filtered (inactive risks excluded by default),
+  level filter (All / Business / Operational), and a 4-column summary header.
+
+- **State management** (`utils/state_manager.py`):
+  `MITIGATION_EXPOSURE_DEFAULTS` dict + `init_mitigation_exposure_state()` function;
+  registered in `init_all()`.
+
+### Documentation
+
+- `docs/help_mitigation_exposure.md`: new runtime-loaded help article (counterfactual
+  method, column reference, interpretation guide, comparison with What-If Analysis).
+- `docs/help_overview.md`: Mitigation Exposure row added to Core Capabilities table.
+- `docs/welcome.md`: Mitigation Exposure View capability block added.
+- `docs/USER_GUIDE.md`: Mitigation Exposure View section added; nav table updated.
+- `docs/ARCHITECTURE.md`: page diagram + state defaults table updated.
+
+---
+
+## [v2.27.1] - 2026-03-21 (Post-v2.27.0 Fixes + Subtype Selection)
+
+### Bug Fixes
+
+- **`expected_loss_threshold` → `high_exposure_threshold`** (`config/schema_loader.py`,
+  `schemas/default/schema.yaml`, `schemas/it_security/schema.yaml`, `ui/home.py`,
+  `tests/test_alerts.py`, `tests/test_templates.py`):
+  Renamed the alert threshold field throughout. The "Expected Loss" label was premature —
+  financial quantification (ALE/loss distribution) comes later; this metric tracks raw
+  exposure. Backward-compat parse fallback accepts old key in existing YAML files.
+
+- **YAML editor encoding error** (`pages/1_⚙️_Configuration.py`):
+  `open(schema_path, 'r')` and `open(backup_path, 'w')` in the raw YAML save path were
+  missing `encoding='utf-8'`. On Windows this caused `charmap` codec errors when the
+  schema contained non-ASCII characters (e.g. `≤`).
+
+- **`is_template` not rendering as checkbox** (`core/attribute.py`):
+  `AttributeType.__post_init__` called `AttributeType("boolean")` which raised `ValueError`
+  (enum value is `"bool"`) and silently fell back to `AttributeType.STRING`, rendering as
+  a text input. Added `"boolean"` → `"bool"` and `"integer"` → `"int"` alias mapping
+  before the enum lookup.
+
+- **Graph `AssertionError` after template instantiation** (`database/queries/analysis.py`):
+  The INSTANTIATES relationship (registered as a context edge) was fetched by
+  `get_all_relationships` and included in the edge list. The template source node is
+  intentionally excluded from the canvas, causing PyVis to assert `source in nodes`.
+  Fixed by adding a node-set safety filter immediately after all edges are collected:
+  any edge whose source or target is not in the canvas node set is dropped before scope
+  filtering.
+
+### New Features
+
+- **Risk Subtype selection in create and edit forms** (`ui/tabs/unified_crud_tab.py`):
+  New `_render_risk_subtype_fields()` helper renders after `build_entity_form()` for risk
+  entities. Shows a Subtype selectbox filtered by the selected level; when a typed subtype
+  is selected, renders its extension fields (string/enum/boolean/int/float). Pre-filled from
+  existing data in edit mode. Applied to both the ➕ New Risk create form and the ✏️ Edit
+  form in the risk card list.
+
+### Documentation
+
+- Full documentation pass for v2.27.0 features (templates, threshold alerts):
+  `README.md`, `docs/USER_GUIDE.md`, `docs/ARCHITECTURE.md`, `docs/METHODOLOGY.md`,
+  `docs/CONFIGURATION_MANAGER.md`, `docs/help_overview.md`, `docs/welcome.md`,
+  `docs/help_exposure.md`; new `docs/help_templates.md`, `docs/help_alerts.md`;
+  `ui/home.py` `_HELP_FILES` updated.
+- `CHANGELOG.md`, `ROADMAPv3.md`, `tasks/SESSION_STATE.md` updated.
+- `/finish` skill updated to enforce documentation pass as mandatory step.
+- `core/attribute.py`, `tasks/lessons.md` updated.
+
+---
+
+## [v2.27.0] - 2026-03-21 (U14 Templates + F5 Alerts)
+
+### New Features
+
+- **U14 Generic Risk Template Architecture** (`models/risk.py`, `database/queries/risks.py`,
+  `database/manager.py`, `ui/tabs/unified_crud_tab.py`, `ui/panels/node_property_panel.py`):
+  - `Risk.is_template: bool = False` — new field on the Risk dataclass; included in `to_dict`,
+    `from_dict`, and Neo4j CREATE/SET clauses.
+  - `Risk.is_generic_template` property — convenience alias for `is_template`.
+  - **Exclusion from engine**: `get_all_risks(exclude_templates=True)` and
+    `get_risks_with_filters(exclude_templates=True)` default to filtering out templates.
+    Canvas (`get_graph_data`) inherits this exclusion. Templates never appear in exposure
+    calculations or canvas display.
+  - **INSTANTIATES relationship**: `create_instantiates_rel(template_id, instance_id)` creates
+    a `[:INSTANTIATES]` edge linking a GenericRisk template to a specific instance.
+    Also: `get_instances_of_template(template_id)`, `get_template_of_instance(instance_id)`.
+  - **Template library UI**: `📋 Risk Templates` collapsible expander in Data Management →
+    Risks tab. Lists all templates with instance count; each has an `➕ Instantiate` button
+    that opens an inline form pre-filled with template L, S, subtype, categories.
+  - **Node Property Panel**: new `📋 Template` section. Shows instances list for templates;
+    shows parent template link for instances. Exposure section shows dedicated info message
+    for templates ("excluded from exposure engine").
+  - **Schema YAML**: `is_template` boolean attribute added to risk entity in both
+    `schemas/default/schema.yaml` and `schemas/it_security/schema.yaml`.
+    `instantiates` context edge (`INSTANTIATES`, dashed, purple) added to both schemas.
+
+- **F5 Automated Threshold Alerts** (`config/schema_loader.py`, `schemas/*/schema.yaml`,
+  `ui/home.py`):
+  - `AlertThresholdsConfig` dataclass: `expected_loss_threshold`, `tail_risk_indicator_threshold`,
+    `enabled`. Added to `AnalysisConfig`; parsed by `_parse_analysis`; serialized by
+    `_analysis_to_dict`.
+  - Both schema YAMLs default: EL threshold = 50.0, TRI threshold = 25.0, enabled = true.
+  - `_render_threshold_alerts(exposure_results)` in `ui/home.py`: displays a two-column
+    `⚠️ Threshold Alerts` panel after the quadrant distribution widget. EL breaches and TRI
+    breaches listed separately with risk name, level, and actual value. Shows
+    `✅ All risks within thresholds` when no breaches.
+
+### Tests
+
+- **`tests/test_templates.py`** (NEW — 25 tests): `is_template` model round-trip;
+  `is_generic_template` property; `AlertThresholdsConfig` defaults and parsing;
+  query function signatures; manager method existence.
+- **`tests/test_alerts.py`** (NEW — 11 tests): breach detection logic (EL/TRI); boundary
+  values; missing fields; schema integration (default and it_security schemas load correctly).
+- **445 tests passing** (up from 409).
+
+---
+
+## [v2.26.0] - 2026-03-21 (F7 What-If Analysis Sandbox)
+
+### New Features
+
+- **`pages/3_🔬_What-If_Analysis.py`**: New What-If Analysis page. Toggle mitigations ON/OFF
+  in-memory and immediately observe EL + TRI deltas — no database writes.
+  - **Compute Baseline**: fetches risks, influences, mitigations, and MITIGATES relationships;
+    applies active scope and lifecycle filters; computes `GlobalExposureResult` baseline.
+  - **Mitigation toggles**: per-mitigation checkboxes grouped by type; unchecking a mitigation
+    removes it (and its MITIGATES relationships) from the in-memory recomputation.
+  - **Portfolio summary**: Residual Risk %, Weighted Risk Score, Total TRI — each with a
+    `Δ` delta indicator (Streamlit `st.metric` `delta_color="inverse"`).
+  - **Health status change alert**: warns when toggling mitigations shifts the portfolio
+    health band (Excellent / Good / Moderate / Concerning / Critical).
+  - **Per-risk delta table**: Baseline vs Modified EL + TRI for every risk in scope, sorted
+    by largest EL increase.
+  - **Scope-constrained**: respects active `filter_manager` scope (same whitelist logic as
+    `manager.calculate_exposure()`).
+  - **Lifecycle-aware**: `exclude_inactive=True` by default; sidebar "Include inactive risks"
+    checkbox enables worst-case scenario with Accepted/Watching/Suppressed risks.
+  - **Reset Scenario**: re-enables all mitigation toggles and reruns.
+
+- **`utils/state_manager.py`**: Added `WHATIF_DEFAULTS` dict + `init_whatif_state()` function;
+  registered in `init_all()`. Keys: `whatif_baseline`, `whatif_modified`,
+  `whatif_raw_risks`, `whatif_raw_influences`, `whatif_raw_mitigations`,
+  `whatif_raw_mitigates`, `whatif_include_inactive`.
+
+### Documentation
+
+- **`docs/help_whatif.md`**: NEW runtime-loaded in-app help article for What-If Analysis
+  (How It Works, Portfolio Metrics, Per-Risk Delta Table, Scope/Lifecycle constraints,
+  Typical Use Cases). Registered as `"What-If"` tab in `ui/home.py` `_HELP_FILES`.
+- **`docs/help_overview.md`**: What-If Analysis row added to Core Capabilities table.
+- **`docs/welcome.md`**: What-If Analysis capability block added.
+- **`docs/USER_GUIDE.md`**: New **What-If Analysis** section (step-by-step, portfolio
+  metrics, per-risk delta table, use-case table); new **Risk Lifecycle Engine** section;
+  Monte Carlo simulator subsection; Navigation table updated to all 5 pages; health status
+  thresholds corrected; version footer updated to v2.26.0.
+- **`docs/ARCHITECTURE.md`**: Pages diagram updated to 5 pages; `services/` package listing
+  updated with lifecycle engine modules; `WHATIF_DEFAULTS`/`SIMULATION_DEFAULTS`/
+  `LIFECYCLE_DEFAULTS` added to state manager table; new init functions documented.
+- **`README.md`**: Version bumped to v2.26.0; What-If Analysis, Risk Lifecycle Engine,
+  and Dual-Metric Exposure added to Key Features table; What-If added to Analysis Tools
+  and navigation instructions; `pages/` and `services/` structure updated; help_whatif.md
+  added to documentation table.
+
+---
+
+## [v2.25.1] - 2026-03-20 (U12 Post-Implementation Fixes & Polish)
+
+### Bug Fixes
+
+- **`get_archive_candidates()` Cypher syntax error**: Replaced `WHERE NOT EXISTS { MATCH ... WHERE }`
+  subquery (Neo4j 5.x-only syntax) with `OPTIONAL MATCH` + `WITH r, COUNT(m) AS active_mitigations`
+  + `WHERE active_mitigations = 0` — compatible with all Neo4j ≥ 3.5. (`database/queries/risks.py`)
+
+- **Lifecycle Engine scope detection was always `None`**: Lifecycle Engine was reading
+  `st.session_state["active_scope"]` (key does not exist) instead of the correct
+  `st.session_state["filter_manager"].get_scope_node_ids()`. All three engines now receive
+  the correct `scope_node_ids` when a scope is active. (`pages/2_💾_Data_Management.py`)
+
+### New Features
+
+- **Force Accept for blocked risks**: Blocked auto-acceptance candidates now show a
+  **🔓 Force Accept** button per risk, allowing a human reviewer to override the auto-acceptance
+  guards (severity ceiling, critical quadrant) and formally accept the risk with explicit intent.
+  (`pages/2_💾_Data_Management.py`)
+
+- **Node Property Panel — lifecycle section**: `_render_identity()` now shows a dedicated
+  **Lifecycle Details** block (trigger condition, accepted on, accepted by, archived on)
+  when any lifecycle field is populated — risk nodes only; fields excluded from the generic
+  remaining-fields dump. (`ui/panels/node_property_panel.py`)
+
+- **Node Property Panel — lifecycle-aware exposure message**: When a risk has an inactive
+  lifecycle status (Accepted, Watching, Suppressed, Closed, Archived) and is absent from
+  exposure results, the Exposure Metrics section now shows a clear `st.info()` explanation
+  per status instead of the generic "not included" caption. (`ui/panels/node_property_panel.py`)
+
+### Documentation
+
+- **`docs/help_lifecycle.md`**: New runtime-loaded help article covering the 6-state lifecycle,
+  Trigger Review, Auto-Acceptance (including Force Accept), Archive Alerts, Accepted Risks toggle,
+  and YAML configuration. Registered as `"Lifecycle"` in `ui/home.py` `_HELP_FILES`.
+- **`docs/help_overview.md`**: Added Lifecycle Engine row to Core Capabilities table.
+- **`docs/help_exposure.md`**: Added lifecycle-aware note explaining inactive risk exclusion.
+
+---
+
+## [v2.25.0] - 2026-03-20 (U12 Risk Lifecycle Engine)
+
+### Iteration 4 — Risk Lifecycle Engine (U12)
+
+**Breaking schema change**: `activation_condition` renamed to `trigger_condition`;
+`activation_decision_date` renamed to `acceptance_date` across all layers.
+Run `scripts/migrate_activation_to_lifecycle.cypher` once on existing Neo4j databases.
+Application works correctly before and after migration (fallback reads both property names).
+
+**New Features:**
+
+- **[U12a] 6-State Risk Lifecycle**: Four new statuses added (`Accepted`, `Watching`,
+  `Suppressed`, `Closed`) alongside existing `Active`, `Contingent`, `Archived`.
+  - `models/enums.py`: New `RiskStatus` members + `LIFECYCLE_INACTIVE_STATUSES` constant.
+  - `schemas/default/schema.yaml` + `schemas/it_security/schema.yaml`: New status entries.
+
+- **[U12b] New Risk Model Fields**: `trigger_condition`, `acceptance_date`,
+  `acceptance_owner`, `archive_date` in `models/risk.py` and `database/queries/risks.py`.
+  - `from_dict` uses migration-safe fallbacks for old property names.
+  - `models/risk.py`: New `is_inactive` property replaces `is_contingent` semantically
+    (is_contingent retained for backward compatibility).
+
+- **[U12c] `risk_lifecycle_rules` YAML Block**: New configurable block in schema YAML.
+  - Fields: `acceptance_threshold` (20), `severity_ceiling` (7),
+    `archive_retention_days` (180), `quadrant_thresholds`.
+  - `config/schema_loader.py`: New `LifecycleRulesConfig` + `QuadrantThresholdsConfig`
+    dataclasses; `_parse_lifecycle_rules()`; `_lifecycle_rules_to_dict()` for roundtrip;
+    `SchemaConfig.lifecycle_rules` field.
+
+- **[U12d] Three New Lifecycle Services** (pure computation, no DB calls):
+  - `services/trigger_engine.py`: `TriggerEngine` — surfaces Watching/Suppressed risks
+    with their trigger conditions for human review. No auto-evaluation (free-text strings).
+  - `services/auto_acceptance_engine.py`: `AutoAcceptanceEngine` — evaluates Active risks
+    for acceptance eligibility; guards: severity ceiling, critical/severity quadrant,
+    exposure threshold.
+  - `services/archive_engine.py`: `ArchiveEngine` — generates archive alerts for risks
+    past the retention window.
+
+- **[U12e] Analytical Query Exclusion**: `database/queries/risks.py` gains
+  `exclude_inactive=True` on `get_all_risks` and `get_risks_with_filters`. Inactive
+  statuses (Accepted/Watching/Suppressed/Closed/Archived) are excluded from all
+  exposure and analysis computations by default. CRUD forms and lifecycle UI pass
+  `exclude_inactive=False` explicitly.
+
+- **[U12f] `get_archive_candidates` Query**: New DB query finds Accepted/Closed risks
+  past the retention window with no open mitigations.
+
+- **[U12g] Data Management Lifecycle Panel**: New "⚙️ Lifecycle Engine" expander in
+  `pages/2_💾_Data_Management.py`. On-demand run button; trigger review table;
+  auto-acceptance eligible/blocked tables; archive alert section. "Show Accepted Risks"
+  toggle for reviewing accepted risks independently.
+
+- **[U12h] Migration Script**: `scripts/migrate_activation_to_lifecycle.cypher` —
+  idempotent renames for `activation_condition` → `trigger_condition` and
+  `activation_decision_date` → `acceptance_date`.
+
+**Tests:** `tests/test_lifecycle.py` — 25 new test cases; all 3 testing gates covered.
+
+---
+
+## [v2.25.0] - 2026-03-19
+
+### Iteration 4 — Severity Rename + Dual-Metric Exposure (U13)
+
+**Breaking schema change**: `Risk.impact` property renamed to `Risk.severity` across all layers.
+Run `scripts/migrate_impact_to_severity.cypher` once on existing Neo4j databases.
+
+**New Features:**
+
+- **[U13a] `Risk.impact` → `Risk.severity` rename**: Intrinsic event intensity score (1–10) renamed
+  across schema YAML, Python models, database queries, manager, backup service, exposure engine,
+  simulation page, UI panels, and all test/demo Cypher datasets.
+  - Legacy JSON backups still restore correctly (`_risk_kwargs` falls back to `"impact"` key).
+  - Legacy Neo4j data still loads correctly (exposure calculator falls back to `r.impact` if
+    `r.severity` is absent — until migration Cypher is run).
+
+- **[U13b] TRI — Tail Risk Indicator**: New computed metric (session-state only, not stored in Neo4j).
+  - Formula: `TRI = likelihood × severity^1.5` (α = 1.5, emphasises rare-but-catastrophic risks).
+  - Surfaced in Node Property Panel (§ Exposure section) and `to_dict()` output.
+
+- **[U13c] Risk Quadrant Classification**: Four-class computed label per risk.
+  - `critical`: L ≥ 6 AND S ≥ 6 | `frequency`: L ≥ 6 AND S < 6
+  - `severity`: L < 6 AND S ≥ 7 | `marginal`: all others
+  - Quadrant distribution widget added to dashboard (4-column metric row).
+  - Quadrant multiselect filter added to sidebar (visible when exposure is computed).
+
+- **Cypher file reorganisation**: All root-level `.cypher` scripts moved to `scripts/` folder.
+  - `demo_data_loader_en.cypher`, `demo_tc_dataset.cypher`, `SNR_demo_data_loader_en.cypher`,
+    `bulk_import_template.cypher`, `data_cleanup.cypher` → `scripts/`
+  - `docs/New Space/ODT_RIM_SpaceUseCase.cypher` updated in place.
+  - Path references in `pages/1_⚙️_Configuration.py` updated accordingly.
+
+**Files Modified:**
+- `schemas/default/schema.yaml`, `schemas/it_security/schema.yaml` — attribute `impact` → `severity`; `base_formula` updated.
+- `models/risk.py` — field, `__post_init__`, `calculate_exposure()`, `to_dict()`, `from_dict()`.
+- `services/exposure_calculator.py` — `MAX_SEVERITY`, `TRI_ALPHA`; `_compute_risk_quadrant()` helper; `RiskExposureResult` gains `tail_risk_indicator` + `risk_quadrant`; Step 6 TRI/quadrant computation.
+- `database/queries/risks.py`, `database/manager.py` — all `impact` param/Cypher references.
+- `config/schema_loader.py` — `base_formula` default.
+- `pages/2_🎲_Simulation.py` — `SimulatedRisk.severity`, `severity_range` params, UI labels.
+- `ui/panels/node_property_panel.py` — Severity metric + TRI + quadrant display.
+- `ui/home.py` — Quadrant distribution widget; quadrant sidebar filter.
+- `services/backup_service.py` — `_risk_kwargs` legacy fallback.
+- `pages/1_⚙️_Configuration.py` — test data generator; demo file paths.
+- `scripts/` — 5 cypher files moved + updated; `migrate_impact_to_severity.cypher` (new).
+- `docs/New Space/ODT_RIM_SpaceUseCase.cypher` — `impact:` → `severity:` on all Risk nodes.
+- `tests/` — `conftest.py`, `test_risk.py`, `test_exposure_calculator.py`, `test_scopes.py`, `test_helpers.py`, `test_core/test_attribute.py`.
+
+---
+
 ## [v2.24.0] - 2026-03-18
 
 ### Iteration 4 — Scope-Driven Simulation & Results Storage (F31)

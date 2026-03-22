@@ -1353,9 +1353,9 @@ def render_yaml_preview(schema: SchemaConfig):
                         # Backup existing
                         backup_path = schema_path.with_suffix('.yaml.bak')
                         if schema_path.exists():
-                            with open(schema_path, 'r') as f:
+                            with open(schema_path, 'r', encoding='utf-8') as f:
                                 backup_content = f.read()
-                            with open(backup_path, 'w') as f:
+                            with open(backup_path, 'w', encoding='utf-8') as f:
                                 f.write(backup_content)
                         
                         # Save new content
@@ -1610,8 +1610,8 @@ def render_demo_reset_section(conn):
     )
 
     app_root = Path(__file__).parent.parent
-    odt_path = app_root / "demo_data_loader_en.cypher"
-    tc_path  = app_root / "demo_tc_dataset.cypher"
+    odt_path = app_root / "scripts" / "demo_data_loader_en.cypher"
+    tc_path  = app_root / "scripts" / "demo_tc_dataset.cypher"
 
     # Show file availability status
     col_a, col_b = st.columns(2)
@@ -1841,7 +1841,7 @@ def render_data_management():
         st.info("Load sample data for testing")
         
         schema_name = st.session_state.active_schema_name
-        demo_file = Path(__file__).parent / f"demo_data_loader_en.cypher"
+        demo_file = Path(__file__).parent.parent / "scripts" / "demo_data_loader_en.cypher"
         
         if demo_file.exists():
             if st.button("📥 Load Demo Data"):
@@ -1951,11 +1951,11 @@ def generate_test_data_cypher(schema: SchemaConfig, risks_per_level: int,
             status = random.choice(statuses) if statuses else "Active"
             origin = random.choice(origins) if origins else "New"
             likelihood = random.randint(1, 10)
-            impact = random.randint(1, 10)
-            
+            severity = random.randint(1, 10)
+
             name = f"Test {level} Risk {i+1}"
             desc = f"Sample {level.lower()} risk in {cat} category for testing"
-            
+
             lines.append(f"""
 CREATE (r{risk_counter}:Risk {{
     reference: '{ref}',
@@ -1966,7 +1966,7 @@ CREATE (r{risk_counter}:Risk {{
     status: '{status}',
     origin: '{origin}',
     likelihood: {likelihood},
-    impact: {impact},
+    severity: {severity},
     is_contingent: false,
     is_legacy: {'true' if origin == 'Legacy' else 'false'}
 }})""")

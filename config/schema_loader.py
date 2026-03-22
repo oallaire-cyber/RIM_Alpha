@@ -282,10 +282,18 @@ class MitigatesRelConfig:
 @dataclass
 class ExposureConfig:
     """Exposure calculation configuration."""
-    base_formula: str = "likelihood * impact"
+    base_formula: str = "likelihood * severity"
     max_base_value: float = 100.0
     propagation_decay: float = 0.85
     convergence_multiplier: float = 0.2
+
+
+@dataclass
+class AlertThresholdsConfig:
+    """Alert threshold configuration for high-exposure and TRI breach detection."""
+    high_exposure_threshold: float = 50.0
+    tail_risk_indicator_threshold: float = 25.0
+    enabled: bool = True
 
 
 @dataclass
@@ -295,6 +303,28 @@ class AnalysisConfig:
     cache_timeout_seconds: int = 30
     max_influence_depth: int = 10
     high_exposure_threshold_multiplier: float = 1.2
+    alert_thresholds: AlertThresholdsConfig = field(default_factory=AlertThresholdsConfig)
+
+
+# =============================================================================
+# LIFECYCLE RULES CONFIGURATION
+# =============================================================================
+
+@dataclass
+class QuadrantThresholdsConfig:
+    """Quadrant classification thresholds for risk TRI scoring."""
+    likelihood_threshold: float = 6.0
+    severity_threshold_frequency: float = 6.0
+    severity_threshold_severity: float = 7.0
+
+
+@dataclass
+class LifecycleRulesConfig:
+    """Risk lifecycle engine configuration (parsed from risk_lifecycle_rules YAML block)."""
+    acceptance_threshold: float = 20.0
+    severity_ceiling: float = 7.0
+    archive_retention_days: int = 180
+    quadrant_thresholds: QuadrantThresholdsConfig = field(default_factory=QuadrantThresholdsConfig)
 
 
 # =============================================================================
@@ -332,6 +362,27 @@ class UIConfig:
 
 
 # =============================================================================
+# GRAPH VISUAL CONFIGURATION
+# =============================================================================
+
+@dataclass
+class GraphVisualConfig:
+    """Graph visual behaviour configuration (F32).
+
+    Controls lifecycle-driven node opacity (per status), quadrant border
+    encoding, and the default preset applied on application load.
+    """
+    lifecycle_opacity: Dict[str, float] = field(default_factory=lambda: {
+        "watching": 0.35,
+        "suppressed": 0.15,
+        "accepted": 0.40,
+        "closed": 0.20,
+    })
+    quadrant_border_encoding: bool = True
+    default_preset: str = "analysis"
+
+
+# =============================================================================
 # MAIN SCHEMA CONFIGURATION
 # =============================================================================
 
@@ -360,10 +411,16 @@ class SchemaConfig:
     
     # Analysis
     analysis: AnalysisConfig = field(default_factory=AnalysisConfig)
-    
+
+    # Lifecycle Rules
+    lifecycle_rules: LifecycleRulesConfig = field(default_factory=LifecycleRulesConfig)
+
+    # Graph Visual Behaviour (F32)
+    graph_visual_config: GraphVisualConfig = field(default_factory=GraphVisualConfig)
+
     # UI
     ui: UIConfig = field(default_factory=UIConfig)
-    
+
     # Analysis Scopes
     scopes: List[AnalysisScopeConfig] = field(default_factory=list)
 
@@ -548,13 +605,23 @@ class SchemaLoader:
         
         # Parse analysis config
         schema.analysis = self._parse_analysis(data.get("analysis", {}))
-        
+
+        # Parse lifecycle rules
+        schema.lifecycle_rules = self._parse_lifecycle_rules(
+            data.get("risk_lifecycle_rules", {})
+        )
+
+        # Parse graph visual config (F32)
+        schema.graph_visual_config = self._parse_graph_visual_config(
+            data.get("graph_visual_config", {})
+        )
+
         # Parse UI config
         schema.ui = self._parse_ui(data.get("ui", {}))
-        
+
         # Parse analysis scopes
         schema.scopes = self._parse_scopes(data.get("scopes", []))
-        
+
         return schema
     
     def _parse_risk_entity(self, data: Dict[str, Any]) -> RiskEntityConfig:
@@ -841,19 +908,66 @@ class SchemaLoader:
         """Parse analysis configuration."""
         exposure_data = data.get("exposure", {})
         exposure = ExposureConfig(
-            base_formula=exposure_data.get("base_formula", "likelihood * impact"),
+            base_formula=exposure_data.get("base_formula", "likelihood * severity"),
             max_base_value=exposure_data.get("max_base_value", 100.0),
             propagation_decay=exposure_data.get("propagation_decay", 0.85),
             convergence_multiplier=exposure_data.get("convergence_multiplier", 0.2),
         )
         
+        at_data = data.get("alert_thresholds", {})
+        alert_thresholds = AlertThresholdsConfig(
+            high_exposure_threshold=float(
+                at_data.get("high_exposure_threshold",
+                at_data.get("expected_loss_threshold", 50.0))  # backward compat
+            ),
+            tail_risk_indicator_threshold=float(at_data.get("tail_risk_indicator_threshold", 25.0)),
+            enabled=bool(at_data.get("enabled", True)),
+        )
+
         return AnalysisConfig(
             exposure=exposure,
             cache_timeout_seconds=data.get("cache_timeout_seconds", 30),
             max_influence_depth=data.get("max_influence_depth", 10),
             high_exposure_threshold_multiplier=data.get("high_exposure_threshold_multiplier", 1.2),
+            alert_thresholds=alert_thresholds,
         )
-    
+
+    def _parse_lifecycle_rules(self, data: Dict[str, Any]) -> LifecycleRulesConfig:
+        """Parse risk_lifecycle_rules configuration.
+
+        Missing keys use safe defaults so schemas without this block still load.
+        """
+        qt_data = data.get("quadrant_thresholds", {})
+        return LifecycleRulesConfig(
+            acceptance_threshold=float(data.get("acceptance_threshold", 20.0)),
+            severity_ceiling=float(data.get("severity_ceiling", 7.0)),
+            archive_retention_days=int(data.get("archive_retention_days", 180)),
+            quadrant_thresholds=QuadrantThresholdsConfig(
+                likelihood_threshold=float(qt_data.get("likelihood_threshold", 6.0)),
+                severity_threshold_frequency=float(qt_data.get("severity_threshold_frequency", 6.0)),
+                severity_threshold_severity=float(qt_data.get("severity_threshold_severity", 7.0)),
+            ),
+        )
+
+    def _parse_graph_visual_config(self, data: Dict[str, Any]) -> GraphVisualConfig:
+        """Parse graph_visual_config block.
+
+        Missing keys use safe defaults so schemas without this block still load.
+        """
+        default_opacity = {
+            "watching": 0.35,
+            "suppressed": 0.15,
+            "accepted": 0.40,
+            "closed": 0.20,
+        }
+        raw_opacity = data.get("lifecycle_opacity", {})
+        lifecycle_opacity = {**default_opacity, **{k: float(v) for k, v in raw_opacity.items()}}
+        return GraphVisualConfig(
+            lifecycle_opacity=lifecycle_opacity,
+            quadrant_border_encoding=bool(data.get("quadrant_border_encoding", True)),
+            default_preset=str(data.get("default_preset", "analysis")),
+        )
+
     def _parse_ui(self, data: Dict[str, Any]) -> UIConfig:
         """Parse UI configuration."""
         ui = UIConfig(
@@ -923,6 +1037,8 @@ class SchemaLoader:
                 "mitigates": self._mitigates_rel_to_dict(schema.mitigates),
             },
             "analysis": self._analysis_to_dict(schema.analysis),
+            "risk_lifecycle_rules": self._lifecycle_rules_to_dict(schema.lifecycle_rules),
+            "graph_visual_config": self._graph_visual_config_to_dict(schema.graph_visual_config),
             "ui": self._ui_to_dict(schema.ui),
         }
         
@@ -1153,8 +1269,34 @@ class SchemaLoader:
             "cache_timeout_seconds": analysis.cache_timeout_seconds,
             "max_influence_depth": analysis.max_influence_depth,
             "high_exposure_threshold_multiplier": analysis.high_exposure_threshold_multiplier,
+            "alert_thresholds": {
+                "high_exposure_threshold": analysis.alert_thresholds.high_exposure_threshold,
+                "tail_risk_indicator_threshold": analysis.alert_thresholds.tail_risk_indicator_threshold,
+                "enabled": analysis.alert_thresholds.enabled,
+            },
         }
     
+    def _lifecycle_rules_to_dict(self, rules: LifecycleRulesConfig) -> Dict[str, Any]:
+        """Convert LifecycleRulesConfig to dictionary for YAML serialization."""
+        return {
+            "acceptance_threshold": rules.acceptance_threshold,
+            "severity_ceiling": rules.severity_ceiling,
+            "archive_retention_days": rules.archive_retention_days,
+            "quadrant_thresholds": {
+                "likelihood_threshold": rules.quadrant_thresholds.likelihood_threshold,
+                "severity_threshold_frequency": rules.quadrant_thresholds.severity_threshold_frequency,
+                "severity_threshold_severity": rules.quadrant_thresholds.severity_threshold_severity,
+            },
+        }
+
+    def _graph_visual_config_to_dict(self, cfg: GraphVisualConfig) -> Dict[str, Any]:
+        """Convert GraphVisualConfig to dictionary for YAML serialization."""
+        return {
+            "lifecycle_opacity": dict(cfg.lifecycle_opacity),
+            "quadrant_border_encoding": cfg.quadrant_border_encoding,
+            "default_preset": cfg.default_preset,
+        }
+
     def _ui_to_dict(self, ui: UIConfig) -> Dict[str, Any]:
         """Convert UIConfig to dictionary."""
         return {

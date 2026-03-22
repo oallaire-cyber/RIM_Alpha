@@ -74,7 +74,11 @@ Editing these files affects the live help section — treat as user-facing conte
 1. Write plan to `tasks/todo.md` with checkable items
 2. Check in before implementing if architectural decisions involved
 3. Mark items complete as you go
-4. On task complete: run tests → update `walkthrough.md` → update `CHANGELOG.md` + `ROADMAPv3.md` → provide git commit text
+4. On task complete:
+   a. Run automated tests (`pytest`)
+   b. **Provide manual testing checklist** — stop and wait for user confirmation that manual tests pass
+   c. Only after manual test sign-off: update `walkthrough.md` → update `CHANGELOG.md` + `ROADMAPv3.md`
+   d. Provide git commit text
 5. After any user correction: update `tasks/lessons.md`
 
 ## Environment

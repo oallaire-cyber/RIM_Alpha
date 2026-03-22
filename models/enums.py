@@ -47,19 +47,37 @@ class RiskStatus(str, Enum):
     ACTIVE = "Active"
     CONTINGENT = "Contingent"
     ARCHIVED = "Archived"
-    
+    ACCEPTED = "Accepted"
+    WATCHING = "Watching"
+    SUPPRESSED = "Suppressed"
+    CLOSED = "Closed"
+
     def __str__(self) -> str:
         return self.value
-    
+
     @property
     def icon(self) -> str:
         """Return emoji icon for the status."""
         icons = {
             RiskStatus.ACTIVE: "✅",
             RiskStatus.CONTINGENT: "⚠️",
-            RiskStatus.ARCHIVED: "📦"
+            RiskStatus.ARCHIVED: "📦",
+            RiskStatus.ACCEPTED: "✔️",
+            RiskStatus.WATCHING: "👁️",
+            RiskStatus.SUPPRESSED: "💤",
+            RiskStatus.CLOSED: "🔒",
         }
         return icons.get(self, "⚪")
+
+
+LIFECYCLE_INACTIVE_STATUSES: frozenset = frozenset({
+    RiskStatus.ACCEPTED,
+    RiskStatus.WATCHING,
+    RiskStatus.SUPPRESSED,
+    RiskStatus.CLOSED,
+    RiskStatus.ARCHIVED,
+})
+"""Statuses excluded from active exposure analysis and analytical queries."""
 
 
 class RiskOrigin(str, Enum):

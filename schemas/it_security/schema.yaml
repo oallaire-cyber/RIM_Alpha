@@ -59,7 +59,19 @@ entities:
         label: "Closed"
         description: "Resolved or inactive risks"
         is_active: false
-    
+      - id: "accepted"
+        label: "Accepted"
+        description: "Formally accepted; excluded from active exposure analysis"
+        is_active: false
+      - id: "watching"
+        label: "Watching"
+        description: "Accepted risk monitored for trigger re-activation"
+        is_active: false
+      - id: "suppressed"
+        label: "Suppressed"
+        description: "Exposure dropped below acceptance threshold"
+        is_active: false
+
     origins:
       - id: "internal"
         label: "Internal"
@@ -89,11 +101,11 @@ entities:
         required: false
         default: null
         description: "Likelihood rating (1-10)"
-      - name: "impact"
+      - name: "severity"
         type: "float"
         required: false
         default: null
-        description: "Impact rating (1-10)"
+        description: "Severity rating (1-10) — intrinsic intensity of the risk event"
       - name: "threat_actor"
         type: "string"
         required: false
@@ -102,7 +114,12 @@ entities:
         type: "string"
         required: false
         description: "Attack vector or method"
-    
+      - name: "is_template"
+        type: "boolean"
+        required: false
+        default: false
+        description: "If true, this is a GenericRisk template — excluded from exposure calculations and canvas display"
+
     custom_attributes:
       - id: "cvss_score"
         label: "CVSS Score"
@@ -416,13 +433,29 @@ relationships:
 
 analysis:
   exposure:
-    base_formula: "likelihood * impact"
+    base_formula: "likelihood * severity"
     max_base_value: 100.0
     propagation_decay: 0.85
     convergence_multiplier: 0.2
   cache_timeout_seconds: 30
   max_influence_depth: 10
   high_exposure_threshold_multiplier: 1.2
+  alert_thresholds:
+    high_exposure_threshold: 50.0
+    tail_risk_indicator_threshold: 25.0
+    enabled: true
+
+context_edges:
+  instantiates:
+    label: "Instantiates"
+    neo4j_type: "INSTANTIATES"
+    description: "Links a GenericRisk template to a specific risk instantiation"
+    from_node: "risk"
+    to_node: "risk"
+    color: "#9B59B6"
+    line_style: "dashed"
+    bidirectional: false
+    properties: []
 
 ui:
   app_title: "Security Risk Map (SRM)"
@@ -510,3 +543,11 @@ ui:
           enabled: true
         mitigations:
           enabled: false
+graph_visual_config:
+  lifecycle_opacity:
+    watching: 0.35
+    suppressed: 0.15
+    accepted: 0.40
+    closed: 0.20
+  quadrant_border_encoding: true
+  default_preset: "analysis"

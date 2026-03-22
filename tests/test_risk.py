@@ -40,7 +40,7 @@ class TestRiskCreation:
         assert risk.description == ""
         assert risk.owner == ""
         assert risk.probability is None
-        assert risk.impact is None
+        assert risk.severity is None
 
 
 class TestRiskPostInit:
@@ -68,7 +68,7 @@ class TestRiskPostInit:
             name="Test Risk",
             level=RiskLevel.BUSINESS,
             probability=5.0,
-            impact=8.0
+            severity=8.0
         )
         assert risk.exposure == 40.0
     
@@ -79,7 +79,7 @@ class TestRiskPostInit:
             name="Test Risk",
             level=RiskLevel.BUSINESS,
             probability=5.0,
-            impact=8.0,
+            severity=8.0,
             exposure=50.0  # Different from calculated
         )
         # The __post_init__ only calculates if exposure is None
@@ -152,7 +152,7 @@ class TestRiskMethods:
             name="Test Risk",
             level=RiskLevel.BUSINESS,
             probability=6.0,
-            impact=7.0
+            severity=7.0
         )
         risk.exposure = None  # Reset
         

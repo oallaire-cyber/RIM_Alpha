@@ -2,7 +2,7 @@
 Exposure Calculator Service for RIM.
 
 Calculates risk exposure scores considering:
-- Base exposure (Likelihood × Impact)
+- Base exposure (Likelihood × Severity)
 - Mitigation effectiveness (multiplicative reduction)
 - Influence limitation (upstream risks limit downstream mitigation effectiveness)
 
@@ -34,10 +34,13 @@ INFLUENCE_STRENGTH_SCORES = {
     "Weak": 0.25
 }
 
-# Maximum likelihood and impact values (for normalization)
+# Maximum likelihood and severity values (for normalization)
 MAX_LIKELIHOOD = 10.0
-MAX_IMPACT = 10.0
-MAX_BASE_EXPOSURE = MAX_LIKELIHOOD * MAX_IMPACT  # 100
+MAX_SEVERITY = 10.0
+MAX_BASE_EXPOSURE = MAX_LIKELIHOOD * MAX_SEVERITY  # 100
+
+# TRI exponent — emphasises tail/catastrophic risk
+TRI_ALPHA = 1.5
 
 
 # =============================================================================
@@ -159,24 +162,28 @@ class RiskExposureResult:
     
     # Base values
     likelihood: float
-    impact: float
+    severity: float
     base_exposure: float
-    
+
     # Mitigation effect
     mitigation_factor: float  # 1.0 = no mitigation, 0.1 = 90% mitigated
     mitigated_exposure: float
     mitigation_count: int
-    
+
     # Influence limitation effect
     influence_limitation: float  # 0.0 = no limitation, 1.0 = full limitation
     effective_mitigation_factor: float
     upstream_risk_count: int
-    
+
     # Final result
     final_exposure: float
-    
+
     # Calculation Trace (for verification UI)
     trace: List[str] = field(default_factory=list)
+
+    # Dual-metric exposure (U13) — computed, not persisted to Neo4j
+    tail_risk_indicator: float = 0.0   # likelihood × severity^TRI_ALPHA
+    risk_quadrant: str = "marginal"    # critical / frequency / severity / marginal
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for storage/display."""
@@ -185,8 +192,10 @@ class RiskExposureResult:
             "risk_name": self.risk_name,
             "level": self.level,
             "likelihood": self.likelihood,
-            "impact": self.impact,
+            "severity": self.severity,
             "base_exposure": round(self.base_exposure, 2),
+            "tail_risk_indicator": round(self.tail_risk_indicator, 3),
+            "risk_quadrant": self.risk_quadrant,
             "mitigation_factor": round(self.mitigation_factor, 3),
             "mitigated_exposure": round(self.mitigated_exposure, 2),
             "mitigation_count": self.mitigation_count,
@@ -215,7 +224,7 @@ class GlobalExposureResult:
     
     # Summary statistics
     total_risks: int
-    risks_with_data: int  # Risks with likelihood and impact defined
+    risks_with_data: int  # Risks with likelihood and severity defined
     total_base_exposure: float
     total_final_exposure: float
     
@@ -282,6 +291,31 @@ class GlobalExposureResult:
 
 
 # =============================================================================
+# RISK QUADRANT HELPER (U13)
+# =============================================================================
+
+def _compute_risk_quadrant(likelihood: float, severity: float) -> str:
+    """Classify a risk into one of four quadrants based on likelihood and severity.
+
+    Thresholds (configurable per domain in future schema extension):
+        critical   — L ≥ 6 AND S ≥ 6  (high frequency, high severity)
+        frequency  — L ≥ 6 AND S < 6  (high frequency, low severity)
+        severity   — L < 6 AND S ≥ 7  (low frequency, high severity)
+        marginal   — all others        (low frequency, low severity)
+
+    Returns:
+        One of: "critical", "frequency", "severity", "marginal"
+    """
+    if likelihood >= 6 and severity >= 6:
+        return "critical"
+    if likelihood >= 6 and severity < 6:
+        return "frequency"
+    if likelihood < 6 and severity >= 7:
+        return "severity"
+    return "marginal"
+
+
+# =============================================================================
 # EXPOSURE CALCULATOR CLASS
 # =============================================================================
 
@@ -290,7 +324,7 @@ class ExposureCalculator:
     Calculator for risk exposure considering mitigations and influences.
     
     The calculation follows these steps:
-    1. Calculate base exposure for each risk (Likelihood × Impact)
+    1. Calculate base exposure for each risk (Likelihood × Severity)
     2. Apply mitigation factors (multiplicative)
     3. Calculate influence limitations from upstream risks
     4. Compute final exposure considering all factors
@@ -358,19 +392,19 @@ class ExposureCalculator:
     def _calculate_base_exposure(self, risk: Dict[str, Any]) -> float:
         """
         Calculate base exposure for a risk.
-        
-        Formula: Likelihood × Impact
-        
+
+        Formula: Likelihood × Severity
+
         Args:
             risk: Risk dictionary
-        
+
         Returns:
             Base exposure value (0-100 scale)
         """
         likelihood = risk.get("probability") or risk.get("likelihood") or 0
-        impact = risk.get("impact") or 0
-        
-        return float(likelihood) * float(impact)
+        severity = risk.get("severity") or risk.get("impact") or 0  # impact fallback for legacy data
+
+        return float(likelihood) * float(severity)
     
     def _calculate_mitigation_factor(self, risk_id: str) -> Tuple[float, int]:
         """
@@ -532,21 +566,21 @@ class ExposureCalculator:
         
         # Get base values
         likelihood = risk.get("probability") or risk.get("likelihood") or 0
-        impact = risk.get("impact") or 0
-        
-        # Skip risks without likelihood/impact data
-        if likelihood == 0 or impact == 0:
+        severity = risk.get("severity") or risk.get("impact") or 0  # impact fallback for legacy data
+
+        # Skip risks without likelihood/severity data
+        if likelihood == 0 or severity == 0:
             return None
-        
+
         likelihood = float(likelihood)
-        impact = float(impact)
-        
+        severity = float(severity)
+
         trace = []
         trace.append(f"--- Calculation Trace for {risk.get('name', risk_id)} ---")
-        
+
         # Step 1: Base exposure
         base_exposure = self._calculate_base_exposure(risk)
-        trace.append(f"1. Base Exposure: Likelihood ({likelihood}) × Impact ({impact}) = {base_exposure:.2f}")
+        trace.append(f"1. Base Exposure: Likelihood ({likelihood}) × Severity ({severity}) = {base_exposure:.2f}")
         
         # Step 2: Mitigation factor
         mitigation_factor, mit_count, mit_traces = self._calculate_mitigation_factor(risk_id)
@@ -582,13 +616,18 @@ class ExposureCalculator:
         # Step 5: Final exposure
         final_exposure = base_exposure * effective_mitigation_factor
         trace.append(f"5. Final Exposure: Base ({base_exposure:.2f}) × Effective Factor ({effective_mitigation_factor:.3f}) = {final_exposure:.2f}")
-        
+
+        # Step 6: Dual-metric (U13) — session state only, not persisted to Neo4j
+        tri = likelihood * (severity ** TRI_ALPHA)
+        risk_quadrant = _compute_risk_quadrant(likelihood, severity)
+        trace.append(f"6. TRI: {likelihood} × {severity}^{TRI_ALPHA} = {tri:.3f} | Quadrant: {risk_quadrant}")
+
         return RiskExposureResult(
             risk_id=risk_id,
             risk_name=risk.get("name", "Unknown"),
             level=risk.get("level", "Unknown"),
             likelihood=likelihood,
-            impact=impact,
+            severity=severity,
             base_exposure=base_exposure,
             mitigation_factor=mitigation_factor,
             mitigated_exposure=mitigated_exposure,
@@ -597,6 +636,8 @@ class ExposureCalculator:
             effective_mitigation_factor=effective_mitigation_factor,
             upstream_risk_count=upstream_count,
             final_exposure=final_exposure,
+            tail_risk_indicator=tri,
+            risk_quadrant=risk_quadrant,
             trace=trace
         )
     
@@ -675,9 +716,9 @@ class ExposureCalculator:
         # Residual Risk Percentage
         residual_pct = (total_final / total_base * 100) if total_base > 0 else 0
         
-        # Weighted Risk Score (impact-squared weighting)
-        weighted_sum = sum(r.final_exposure * (r.impact ** 2) for r in results)
-        max_weighted = sum(MAX_BASE_EXPOSURE * (r.impact ** 2) for r in results)
+        # Weighted Risk Score (severity-squared weighting)
+        weighted_sum = sum(r.final_exposure * (r.severity ** 2) for r in results)
+        max_weighted = sum(MAX_BASE_EXPOSURE * (r.severity ** 2) for r in results)
         weighted_score = (weighted_sum / max_weighted * 100) if max_weighted > 0 else 0
         
         # Maximum single exposure

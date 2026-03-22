@@ -7,10 +7,10 @@
 
 // Set default values for risks with NULL numeric fields
 MATCH (r:Risk)
-WHERE r.probability IS NULL OR r.impact IS NULL OR r.score IS NULL
+WHERE r.probability IS NULL OR r.severity IS NULL OR r.score IS NULL
 SET r.probability = COALESCE(r.probability, 5),
-    r.impact = COALESCE(r.impact, 5),
-    r.score = COALESCE(r.score, r.probability * r.impact, 25);
+    r.severity = COALESCE(r.severity, 5),
+    r.score = COALESCE(r.score, r.probability * r.severity, 25);
 
 // Set default strength for influences with NULL values
 MATCH ()-[i:INFLUENCES]->()
@@ -25,7 +25,7 @@ SET i.strength = 5;
 MATCH (r:Risk)
 WHERE r.probability IS NOT NULL
 SET r.probability = toInteger(r.probability),
-    r.impact = toInteger(r.impact),
+    r.severity = toInteger(r.severity),
     r.score = toInteger(r.score);
 
 // Convert influence strength from string to integer
@@ -39,8 +39,8 @@ SET i.strength = toInteger(i.strength);
 
 // Recalculate all risk scores to ensure consistency
 MATCH (r:Risk)
-WHERE r.probability IS NOT NULL AND r.impact IS NOT NULL
-SET r.score = r.probability * r.impact;
+WHERE r.probability IS NOT NULL AND r.severity IS NOT NULL
+SET r.score = r.probability * r.severity;
 
 // ============================================
 // PART 4: Set default categories and statuses
@@ -71,7 +71,7 @@ RETURN
     'Risks with complete data' as category,
     count(r) as count
 WHERE r.probability IS NOT NULL 
-  AND r.impact IS NOT NULL 
+  AND r.severity IS NOT NULL 
   AND r.score IS NOT NULL
   AND r.category IS NOT NULL
   AND r.status IS NOT NULL
@@ -91,7 +91,7 @@ UNION
 // Show any remaining issues
 MATCH (r:Risk)
 WHERE r.probability IS NULL 
-   OR r.impact IS NULL 
+   OR r.severity IS NULL 
    OR r.score IS NULL
 RETURN 
     'Risks still with NULL values' as category,
@@ -103,7 +103,7 @@ RETURN
 
 // Show sample of cleaned risks
 MATCH (r:Risk)
-RETURN r.name, r.category, r.probability, r.impact, r.score, r.status
+RETURN r.name, r.category, r.probability, r.severity, r.score, r.status
 LIMIT 10;
 
 // Show sample of cleaned influences
