@@ -24,13 +24,16 @@ jobs:
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v1
 
+    - name: Docker Auth
+      run: gcloud auth configure-docker europe-west3-docker.pkg.dev --quiet
+
     - name: Configure Docker
       run: gcloud auth configure-docker europe-west3-docker.pkg.dev
 
-    - name: Build and Push Container
-      run: |-
-        docker build -t europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/rim-repo/${{ env.SERVICE_NAME }}:${{ github.sha }} .
-        docker push europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/rim-repo/${{ env.SERVICE_NAME }}:${{ github.sha }}
+    - name: Build and Push Image
+      run: IMAGE_URL="europe-west3-docker.pkg.dev/${{ env.PROJECT_ID }}/rim-repo/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+        docker build -t $IMAGE_URL .
+        docker push $IMAGE_URL
 
     - name: Deploy to Cloud Run
       run: |-
