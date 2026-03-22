@@ -30,13 +30,8 @@ jobs:
 
       - name: Build and Push Image
         run: |
-          # On définit l'URL de l'image de façon propre
           IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rim-repo/${{ env.SERVICE_NAME }}:${{ github.sha }}"
-          
-          # Étape de Build
           docker build -t $IMAGE_TAG .
-          
-          # Étape de Push
           docker push $IMAGE_TAG
 
       - name: Deploy to Cloud Run
