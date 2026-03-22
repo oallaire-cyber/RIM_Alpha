@@ -4,6 +4,40 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.30.0] - 2026-03-22 (F31c/d Lifecycle-Aware Simulation & TRI α Calibration)
+
+### New Features
+
+- **F31c Lifecycle-Aware Simulation (Worst-Case Canvas)** (`pages/2_🎲_Simulation.py`):
+  New "🧟 Worst-Case Canvas" checkbox in Scope-Based mode sidebar. When enabled, the
+  simulation re-activates accepted / watching / suppressed / closed risks
+  (`manager.get_all_risks(exclude_inactive=False)`) to reveal latent tail exposure that
+  is hidden by lifecycle decisions. Results are labelled `[Worst-Case]` throughout the
+  UI and in the Saved Results tab. A banner shows how many lifecycle-inactive risks were
+  re-activated.
+
+- **F31d TRI α Calibration Mode** (`pages/2_🎲_Simulation.py`):
+  New "TRI α Calibration" simulation mode (4th radio option). Sweeps the TRI exponent α
+  over a configurable range (min / max / step) with N runs per α value. For each α,
+  computes per-risk TRI = `L × S^α` and classifies risks into quadrants using the same
+  `_compute_risk_quadrant()` logic as the exposure engine. Outputs:
+  - **Calibration Chart**: Mean TRI vs α with ±1σ band and P95 line; stacked quadrant
+    distribution bar chart vs α; recommended α and current default annotated.
+  - **Calibration Report**: tabular α → Mean TRI / Std TRI / P95 TRI / quadrant %s;
+    highlighted recommended α row; target profile selectbox (Balanced / Tail-Heavy /
+    Frequency-Heavy / Severity-Heavy).
+  - **Raw Data**: full calibration DataFrame with CSV export.
+  - Save to Saved Results (F31b) with dedicated calibration key_metrics.
+  - Worst-Case Canvas toggle shared with F31c.
+  - `_compute_risk_quadrant` and `TRI_ALPHA` imported from `services/exposure_calculator.py`.
+
+**Files Modified:**
+- `pages/2_🎲_Simulation.py` — F31c + F31d additions; `Any` added to typing imports
+
+**Tests:** 445 passing (no regressions).
+
+---
+
 ## [v2.29.0] - 2026-03-21 (F32 Graph Visual Behaviour Panel)
 
 ### New Features

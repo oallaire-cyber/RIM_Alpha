@@ -26,6 +26,8 @@ The **Risk Influence Map** transforms static risk registers into
 | 📋 Risk Templates | Define reusable GenericRisk archetypes; instantiate into specific risks with one click |
 | ⚠️ Threshold Alerts | Automatic EL + TRI breach detection surfaced in the exposure dashboard |
 | 🖼️ Graph Visual Behaviour | Presets, per-status lifecycle opacity, quadrant border encoding, schema-persisted defaults |
+| 🎲 Simulation (Lifecycle-Aware) | Worst-Case Canvas — re-activates accepted/watching/suppressed risks to reveal latent tail exposure |
+| 📐 TRI α Calibration | Sweep TRI exponent α over a configurable range; calibration chart + report + recommended α per target profile |
 
 ---
 

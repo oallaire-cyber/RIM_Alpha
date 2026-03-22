@@ -489,14 +489,46 @@ Coverage gaps are flagged if the unmitigated risk is also:
 
 Access from the **🎲 Simulation** page.
 
-| Mode | Description |
-|------|-------------|
-| **Monte Carlo (Random)** | Random scenario generation for model validation |
-| **Mitigation Path** | Progressive mitigation scenario analysis |
-| **Scope-Based (Real Data)** | Real graph data from active DB connection; scope-aware |
+| Mode | Data Source | Description |
+|------|-------------|-------------|
+| **Monte Carlo (Random)** | Synthetic | Random scenario generation for model validation |
+| **Mitigation Path** | Synthetic | Progressive mitigation scenario analysis |
+| **Scope-Based (Real Data)** | Live DB | Real graph topology; scope- and lifecycle-aware |
+| **TRI α Calibration** | Live DB | Sweep TRI exponent α; calibration report + recommended α |
 
 Scope-Based mode uses actual likelihood/severity values and respects the active scope.
 Saved simulation results can be compared with Δ delta columns and exported to Excel.
+
+#### Lifecycle-Aware Simulation — Worst-Case Canvas (F31c)
+
+The **🧟 Worst-Case Canvas** toggle (available in Scope-Based and TRI α Calibration modes)
+re-activates lifecycle-inactive risks (accepted / watching / suppressed / closed) to surface
+latent tail exposure hidden by lifecycle decisions.
+
+- A banner shows the count of re-activated risks
+- Results are labelled `[Worst-Case]`; the `SimulationRecord` mode is `"Scope-Based (Worst-Case)"`
+- Use to answer: *"What if we reversed all lifecycle decisions?"*
+
+#### TRI α Calibration Mode (F31d)
+
+The TRI exponent α controls tail amplification: `TRI = L × S^α`. The current schema
+default is `α = 1.5`. The calibration mode validates this choice for each domain.
+
+**Steps:**
+1. Select **TRI α Calibration** in the mode radio
+2. Configure α range (min / max / step) and runs per α
+3. Optionally enable Worst-Case Canvas
+4. Click **🚀 Run Calibration**
+5. Select a **target quadrant profile** (Balanced / Tail-Heavy / Frequency-Heavy / Severity-Heavy)
+6. The recommended α is highlighted in the calibration report table
+
+**Outputs:**
+- **Calibration Chart**: Mean TRI ±1σ band and P95 line vs α; stacked quadrant distribution bar
+- **Calibration Report**: α → Mean/Std/P95 TRI + quadrant %s; recommended row highlighted
+- **Raw Data**: CSV download of the full calibration DataFrame
+
+To apply the calibrated α, update `tri_alpha` under `exposure_model` in
+`schemas/[domain]/schema.yaml`.
 
 ---
 
@@ -879,4 +911,4 @@ Each multi-select filter has **All** and **None** buttons for quick selection.
 
 ---
 
-*Last updated: March 2026 | Version 2.29.0*
+*Last updated: March 2026 | Version 2.30.0*

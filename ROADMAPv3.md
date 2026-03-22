@@ -180,11 +180,11 @@ Raw likelihood scores (1–10) are dimensionless ordinal values. The compound lo
 
 *   **[F7] "What-If" Analysis Sandbox** *(Iteration 4)*: Toggle mitigations ON/OFF; in-memory recompute; EL + TRI deltas displayed. Scope-constrained. Lifecycle-aware (suppressed/accepted nodes excluded by default; option to include).
 
-*   **[F31] Scope-Driven Simulation & Results Storage** *(Iteration 4)*:
-    - F31a: scope-based simulation mode with real DB data.
-    - F31b: `SimulationRecord` stores EL + TRI distributions; comparison table; Excel export.
-    - F31c: lifecycle-aware simulation — re-activate all accepted/watching risks to reveal latent tail exposure on worst-case canvas.
-    - F31d *(new)*: TRI alpha calibration mode — vary α over configurable range; observe quadrant distribution shift; output calibration report for domain-appropriate α selection.
+*   **[F31] Scope-Driven Simulation & Results Storage** *(Iteration 4 → 5)* ✅ **Complete**:
+    - F31a: scope-based simulation mode with real DB data. ✅
+    - F31b: `SimulationRecord` stores EL + TRI distributions; comparison table; Excel export. ✅
+    - F31c: lifecycle-aware simulation — "Worst-Case Canvas" toggle re-activates accepted/watching/suppressed/closed risks to reveal latent tail exposure; banner shows latent risk count; results labelled `[Worst-Case]`. ✅ v2.30.0
+    - F31d: TRI α Calibration Mode — 4th simulation mode; sweeps α over configurable range; Monte Carlo per α; outputs calibration chart (Mean TRI ±1σ, P95, quadrant distribution stacked bar), calibration report table, recommended α per target profile. `_compute_risk_quadrant` + `TRI_ALPHA` imported from exposure engine. ✅ v2.30.0
 
 *   **[U16] Frequency Calibration Infrastructure** *(Iteration 6 — requires SPICE/F8)*:
     - Add `annual_probability` (decimal, optional) to the Risk node schema in YAML and Pydantic model.
@@ -228,7 +228,7 @@ Raw likelihood scores (1–10) are dimensionless ordinal values. The compound lo
 | **F5** Alerts | `ui/home.py`, `schema.yaml` | EL + TRI threshold alerts; distinct display; configurable. |
 | **F6** Mitigation View | `pages/3_🔬_Analysis.py` | Business Risk mitigation view; lifecycle filter; EL+TRI delta. |
 | **F32** Visual Panel | `ui/panels/graph_visual_panel.py` (new), `schema.yaml` | Consolidated settings; lifecycle opacity; quadrant encoding; presets persisted to YAML. |
-| **F31c/d** Simulation | `pages/2_🎲_Simulation.py` | Lifecycle-aware mode; TRI alpha calibration mode. |
+| **F31c/d** Simulation ✅ | `pages/2_🎲_Simulation.py` | Lifecycle-aware mode (Worst-Case Canvas); TRI α calibration mode. v2.30.0 |
 
 ---
 

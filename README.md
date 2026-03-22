@@ -84,6 +84,8 @@ streamlit run app.py
 | **Generic Risk Templates** | Define reusable risk archetypes (GenericRisk); instantiate into specific risks with one click; excluded from all exposure math |
 | **Threshold Alerts** | Configurable EL + TRI breach detection surfaced in the exposure dashboard; scope- and lifecycle-aware |
 | **Graph Visual Behaviour** | Consolidated visual panel: 4 presets, per-status lifecycle opacity, quadrant border encoding, schema-persisted defaults |
+| **Lifecycle-Aware Simulation** | Worst-Case Canvas toggle re-activates accepted/watching/suppressed risks to reveal latent tail exposure |
+| **TRI α Calibration** | Sweep TRI exponent α over a range; calibration chart + report + recommended α per target quadrant profile |
 
 ### Visualization
 
@@ -98,7 +100,7 @@ streamlit run app.py
 - **Influence Analysis**: Top propagators, convergence points, critical paths, bottlenecks, clusters (scope-aware)
 - **Mitigation Analysis**: Coverage gaps, treatment explorer, impact analysis (scope-aware)
 - **Exposure Calculation**: Quantitative scoring with influence limitation model (scope-aware with neighbor expansion)
-- **Monte Carlo Simulator**: Model validation and sensitivity analysis (scope-based real-data mode)
+- **Monte Carlo Simulator**: Model validation and sensitivity analysis; scope-based real-data mode; lifecycle-aware Worst-Case Canvas; TRI α Calibration sweep
 - **What-If Analysis**: In-memory mitigation toggle sandbox — EL + TRI deltas, health status change alert, per-risk delta table (scope + lifecycle constrained)
 
 ## 📚 Documentation
@@ -262,4 +264,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.29.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.30.0 | See [CHANGELOG.md](CHANGELOG.md) for history

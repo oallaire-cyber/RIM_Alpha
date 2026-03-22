@@ -80,6 +80,11 @@ ANALYSIS_CACHE_DEFAULTS: Dict[str, Any] = {
 SIMULATION_DEFAULTS: Dict[str, Any] = {
     # Lazily initialised to [] in the simulation page to avoid a shared mutable list.
     "saved_simulations": None,
+    # Last scope-based simulation result (dict with df + metadata). Persists across
+    # reruns so the Save Results button works regardless of which button was last clicked.
+    "last_sb_result": None,
+    # Last TRI α calibration result (dict with calib_df + metadata).
+    "last_tac_result": None,
 }
 
 LIFECYCLE_DEFAULTS: Dict[str, Any] = {

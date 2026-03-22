@@ -95,6 +95,17 @@ and which program objectives are at stake.
 - Quadrant border encoding: coloured borders by risk quadrant (Critical / Frequency / Severity / Marginal)
 - Save as Schema Default — persists settings to `graph_visual_config` in schema YAML
 
+**🎲 Lifecycle-Aware Simulation (Worst-Case Canvas)**
+- Re-activates accepted / watching / suppressed / closed risks in-memory to reveal latent tail exposure
+- Shows count of re-activated risks; results labelled `[Worst-Case]` in Saved Results
+- Available in both Scope-Based and TRI α Calibration modes
+
+**📐 TRI α Calibration**
+- Sweeps TRI exponent α over a configurable range (default 1.0 → 3.0)
+- Monte Carlo per α value: computes TRI = L × S^α and classifies into quadrants
+- Output: calibration chart (Mean TRI ±1σ, P95), stacked quadrant distribution, calibration report
+- Recommends domain-appropriate α based on selected target quadrant profile
+
 **📊 Import/Export**
 - Full Excel import/export
 - Layout save/load for presentations

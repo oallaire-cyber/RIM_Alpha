@@ -534,7 +534,7 @@ a single module: **`utils/state_manager.py`**.
 | `HOME_UI_DEFAULTS` | `physics_enabled`, `color_by`, `capture_mode`, `influence_explorer_enabled`, `selected_node_id` | Home page |
 | `CONFIG_PAGE_DEFAULTS` | `config_connection`, `config_connected`, `active_schema_name`, `active_schema`, `schema_modified`, `db_stats`, `health_report` | Configuration page |
 | `ANALYSIS_CACHE_DEFAULTS` | `influence_analysis_cache`, `influence_analysis_timestamp`, `mitigation_analysis_cache`, `mitigation_analysis_timestamp`, `pending_explore_node` | Analysis panels |
-| `SIMULATION_DEFAULTS` | `saved_simulations` | Simulation page |
+| `SIMULATION_DEFAULTS` | `saved_simulations`, `last_sb_result`, `last_tac_result` | Simulation page — `last_sb_result` / `last_tac_result` persist the most recent compute result so that save/export buttons remain functional across reruns (F31c/d) |
 | `LIFECYCLE_DEFAULTS` | `lifecycle_trigger_result`, `lifecycle_acceptance_result`, `lifecycle_archive_alerts`, `lifecycle_last_run`, `show_accepted_risks` | Data Management page |
 | `WHATIF_DEFAULTS` | `whatif_baseline`, `whatif_modified`, `whatif_raw_risks`, `whatif_raw_influences`, `whatif_raw_mitigations`, `whatif_raw_mitigates`, `whatif_include_inactive` | What-If Analysis page |
 | `MITIGATION_EXPOSURE_DEFAULTS` | `mitexp_baseline`, `mitexp_raw_risks`, `mitexp_raw_influences`, `mitexp_raw_mitigations`, `mitexp_raw_mitigates`, `mitexp_results`, `mitexp_include_inactive`, `mitexp_level_filter` | Mitigation Exposure View page |
@@ -745,4 +745,4 @@ flake8>=6.0.0
 
 ---
 
-*Last updated: March 2026 | Version 2.29.0*
+*Last updated: March 2026 | Version 2.30.0*

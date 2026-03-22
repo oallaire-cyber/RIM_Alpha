@@ -492,7 +492,7 @@ Bottleneck Score = (Paths_Through_Node / Total_Paths) × Avg_Path_Strength
 
 ### Monte Carlo Simulator
 
-The `calibration_simulator.py` tool validates the exposure model:
+The `calibration_simulator.py` tool validates the exposure model across four modes:
 
 **Monte Carlo Mode**:
 1. Generate N random risk networks
@@ -504,11 +504,53 @@ The `calibration_simulator.py` tool validates the exposure model:
 2. Add mitigations progressively
 3. Track exposure reduction curve
 
+**Scope-Based (Real Data) Mode**:
+1. Load actual risk topology from the active Neo4j DB
+2. Respect active scope filter (or use Full Graph)
+3. Run N Monte Carlo iterations with real L×S values (or randomised within ranges)
+4. Results stored as `SimulationRecord` objects; exportable to Excel
+
+**Lifecycle-Aware Simulation — Worst-Case Canvas (F31c)**:
+
+When the **🧟 Worst-Case Canvas** toggle is enabled, lifecycle-inactive risks
+(accepted / watching / suppressed / closed) are re-loaded with `exclude_inactive=False`
+and included in the Monte Carlo run. This reveals latent tail exposure:
+
+> *Worst-Case Residual Risk = exposure if all lifecycle decisions were reversed*
+
+The latent risk count is displayed and results are tagged `[Worst-Case]`.
+
+### TRI α Calibration (F31d)
+
+The TRI exponent α is a domain-configurable parameter controlling tail severity amplification.
+The calibration mode validates the default value (α = 1.5) against domain-specific data.
+
+**Algorithm**: for each α value in [α_min, α_max]:
+1. Run `N_runs` Monte Carlo iterations using real DB topology
+2. For each risk per run, compute: `TRI = Likelihood × Severity^α`
+3. Classify each risk into a quadrant using the standard thresholds:
+   - **Critical**: L ≥ 6 AND S ≥ 6
+   - **Frequency**: L ≥ 6 AND S < 6
+   - **Severity**: L < 6 AND S ≥ 7
+   - **Marginal**: all others
+4. Record: Mean TRI, Std TRI, P95 TRI, quadrant distribution %s
+
+**Recommended α selection**: the α value whose quadrant distribution minimises the
+L2 distance to a selected target profile (Balanced / Tail-Heavy / Frequency-Heavy /
+Severity-Heavy).
+
+**Output**: calibration chart (Mean TRI ±1σ band + P95 line), stacked quadrant
+distribution bar chart, and a calibration report table.
+
+To apply the calibrated α, update `tri_alpha` under `exposure_model` in the domain
+schema YAML. Until then, the exposure engine uses the hardcoded constant `TRI_ALPHA = 1.5`.
+
 ### Key Validation Questions
 
 1. **Sensitivity**: How much does influence strength affect outcomes?
 2. **Diminishing Returns**: Does the mitigation model show realistic diminishing returns?
 3. **Influence Limitation**: Does upstream risk appropriately limit downstream effectiveness?
+4. **TRI α appropriateness**: Does the default α produce a quadrant distribution that matches domain expectations?
 
 ### Expected Behaviors
 
@@ -518,6 +560,8 @@ The `calibration_simulator.py` tool validates the exposure model:
 | Increase influence strength | Target risk exposure should increase |
 | Add multiple weak mitigations | Less effective than one strong mitigation |
 | Fully mitigate all upstream | Downstream mitigations become fully effective |
+| Increase α | Critical % increases; Marginal % decreases |
+| Enable Worst-Case Canvas | Total risk count increases; residual risk % typically increases |
 
 ### Model Limitations
 
@@ -525,6 +569,7 @@ The `calibration_simulator.py` tool validates the exposure model:
 2. **Independent mitigations**: Some may have dependencies
 3. **Static analysis**: Doesn't model time dynamics
 4. **Simplified strengths**: 4-level discrete scale
+5. **α calibration is topology-dependent**: Recommended α changes if the risk portfolio changes significantly
 
 ---
 
@@ -544,4 +589,4 @@ The `calibration_simulator.py` tool validates the exposure model:
 
 ---
 
-*Last updated: March 2026 | Version 2.29.0*
+*Last updated: March 2026 | Version 2.30.0*

@@ -76,6 +76,7 @@ _HELP_FILES = {
     "Templates":   "help_templates.md",
     "Alerts":      "help_alerts.md",
     "Visual Panel": "help_visual_panel.md",
+    "Simulation":  "help_simulation.md",
 }
 
 

@@ -1,42 +1,50 @@
-# Task: v2.28.0 F6 Mitigation Exposure View
+# Task: v2.30.0 F31c/d Lifecycle-Aware Simulation & TRI α Calibration
 **Stream**: A
-**Started**: 2026-03-21
-**Target version**: v2.28.0
+**Started**: 2026-03-22
+**Target version**: v2.30.0
 
 ## Plan
-- [x] Add `MITIGATION_EXPOSURE_DEFAULTS` + `init_mitigation_exposure_state()` to `utils/state_manager.py`
-- [x] Create `pages/4_📊_Mitigation_Exposure.py` — counterfactual per-mitigation impact page
-- [x] Create `docs/help_mitigation_exposure.md`
-- [x] Update `docs/help_overview.md`, `docs/welcome.md`
-- [x] Update `docs/USER_GUIDE.md` — add Mitigation Exposure View section
-- [x] Update `docs/ARCHITECTURE.md` — page diagram + state defaults table
-- [x] Update `CHANGELOG.md` — v2.28.0 entry
-- [x] Update `ROADMAPv3.md` — F6 marked complete
-- [x] Run full test suite → 445 passing
-- [x] Update SESSION_STATE.md + todo.md
+- [x] Add `include_inactive: bool = False` param to `_load_scope_data()` → `manager.get_all_risks(exclude_inactive=not include_inactive)`
+- [x] Add `include_inactive` param to `run_scope_based_simulation_ui()` + worst-case banner
+- [x] Update `_render_save_results_button` call to use `"Scope-Based (Worst-Case)"` mode label when active
+- [x] Add "🧟 Worst-Case Canvas" checkbox to Scope-Based sidebar (shared with TRI α Calibration)
+- [x] Add `"TRI α Calibration"` as 4th `sim_mode` radio option
+- [x] Add TRI α Calibration sidebar block (α range, runs/α, param mode, worst-case toggle)
+- [x] Add `_run_alpha_sweep()` — Monte Carlo per α, TRI + quadrant stats
+- [x] Add `run_tri_alpha_calibration_ui()` — full 3-tab output + recommended α + save
+- [x] Add `_render_tri_alpha_about_expander()` — instructions before first run
+- [x] Import `_compute_risk_quadrant`, `TRI_ALPHA` from `services/exposure_calculator`
+- [x] Run pytest → 445 passing
+- [x] Update `CHANGELOG.md` → v2.30.0 entry
+- [x] Update `ROADMAPv3.md` → F31 complete, Iteration 5 table updated
+- [x] Update `SESSION_STATE.md` + `todo.md`
 
 ## Git Commit
 ```
-feat(v2.28.0): F6 Mitigation Exposure View
+feat(v2.30.0): F31c/d Lifecycle-Aware Simulation & TRI α Calibration
 
-New page: pages/4_📊_Mitigation_Exposure.py
-- Counterfactual per-mitigation impact: for each active mitigation,
-  recomputes portfolio exposure with that mitigation disabled to derive
-  the marginal EL Delta and TRI Delta attributable to it.
-- Scope-aware (respects active FilterManager scope), lifecycle-filtered
-  (inactive risks excluded by default), level filter (All/Business/Operational).
-- 4-column summary header: Active Mitigations, Portfolio EL, EL Reduction,
-  Portfolio TRI.
-- Per-mitigation table: Name | Type | Status | Level | Risks Covered |
-  EL Delta ↑ | TRI Delta ↑ | % Portfolio EL — sorted by EL delta descending.
-- Inline help expander loads docs/help_mitigation_exposure.md.
+F31c — Worst-Case Canvas (pages/2_🎲_Simulation.py):
+- _load_scope_data() gains include_inactive param;
+  calls manager.get_all_risks(exclude_inactive=False) when enabled.
+- "🧟 Worst-Case Canvas" checkbox in sidebar (shared by Scope-Based
+  and TRI α Calibration modes).
+- Banner shows count of lifecycle-inactive risks re-activated.
+- Results labelled "[Worst-Case]"; SimulationRecord mode updated.
 
-State manager (utils/state_manager.py):
-- MITIGATION_EXPOSURE_DEFAULTS dict (mitexp_* keys).
-- init_mitigation_exposure_state() registered in init_all().
+F31d — TRI α Calibration Mode (pages/2_🎲_Simulation.py):
+- 4th simulation mode radio: "TRI α Calibration".
+- Sidebar: α min/max/step, runs per α, param mode, worst-case toggle.
+- _run_alpha_sweep(): sweeps α list; for each α runs N MC iterations
+  computing TRI = L × S^α per risk; classifies quadrants via imported
+  _compute_risk_quadrant(); records mean/std/p95 TRI + quadrant %s.
+- run_tri_alpha_calibration_ui(): loads scope data, runs sweep, renders
+  3-tab output (Calibration Chart / Report / Raw Data).
+  Charts: Mean TRI ±1σ + P95 line; stacked quadrant distribution bar.
+  Target profile selectbox; recommended α highlighted in table.
+  Save to Saved Results (F31b) with calibration key_metrics.
+- Imports: _compute_risk_quadrant + TRI_ALPHA from exposure_calculator.
+- Any added to typing imports (pre-existing gap).
 
-Docs: help_mitigation_exposure.md (new); help_overview.md, welcome.md,
-USER_GUIDE.md, ARCHITECTURE.md updated. CHANGELOG v2.28.0. ROADMAPv3 F6 done.
-
+Closes Iteration 5. CHANGELOG v2.30.0. ROADMAPv3 F31 done.
 445 tests passing.
 ```

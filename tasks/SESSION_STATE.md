@@ -6,24 +6,46 @@
 ---
 
 ## Current Version
-`v2.29.0` — F32 Graph Visual Behaviour Panel. Branch: feature/iteration_4.
+`v2.30.0` — F31c/d Lifecycle-Aware Simulation & TRI α Calibration. Branch: feature/iteration_4.
 
 ## Last Updated
-2026-03-21 — v2.29.0 complete. 445 tests passing.
+2026-03-22 — v2.30.0 complete. 445 tests passing.
 
 ---
 
 ## 🔴 Active Work In Progress
 
-_None. v2.29.0 complete._
+_None. v2.30.0 complete. Iteration 5 fully closed._
 
-**Next feature**: **F31c** Lifecycle-Aware Simulation — see ROADMAPv3.md Iteration 5.
+**Next phase**: **Iteration 6** — SPICE, Financial Layer & LEC (F8, U16, F34).
+Requires SPICE synchronisation session before implementation begins.
 
 ---
 
 ## ✅ Recently Completed (last 2 sessions)
 
-### Session N+11 (this session — v2.29.0 F32 Graph Visual Behaviour Panel)
+### Session N+12 (this session — v2.30.0 F31c/d)
+- **v2.30.0** — **F31c Lifecycle-Aware Simulation & F31d TRI α Calibration**:
+  - `pages/2_🎲_Simulation.py`: all changes.
+    - **F31c**: `_load_scope_data()` gains `include_inactive: bool = False` param.
+      "🧟 Worst-Case Canvas" sidebar checkbox (shared by Scope-Based + TRI α Calibration).
+      Banner shows latent risk count; results labelled `[Worst-Case]`.
+    - **F31d**: 4th radio `"TRI α Calibration"`. `_run_alpha_sweep()` + `_compute_tac_and_store()`
+      + `_render_tac_results()`. Charts: Mean TRI ±1σ + P95; stacked quadrant distribution bar.
+      Target profile selectbox; recommended α highlighted. Save to Saved Results.
+    - **Bugfix (save button)**: Refactored monolithic `run_scope_based_simulation_ui` and
+      `run_tri_alpha_calibration_ui` into compute (`_compute_sb_and_store`, `_compute_tac_and_store`)
+      + render (`_render_sb_results`, `_render_tac_results`) pairs. Results stored in
+      `ss["last_sb_result"]` / `ss["last_tac_result"]`; render always called when stored — this
+      is what makes 💾 Save Results work on the rerun triggered by clicking it.
+      `📥 Export CSV` download button added alongside Save in both result views.
+    - `utils/state_manager.py`: `last_sb_result`, `last_tac_result` added to `SIMULATION_DEFAULTS`.
+    - `docs/help_simulation.md` (NEW); registered in `ui/home.py` `_HELP_FILES`.
+    - Full docs pass: USER_GUIDE, ARCHITECTURE, METHODOLOGY, README, help_overview,
+      welcome, CHANGELOG v2.30.0, ROADMAPv3 F31 complete.
+  - **445 tests passing.**
+
+### Session N+11 (v2.29.0 F32 Graph Visual Behaviour Panel)
 - **v2.29.0** — **F32 Graph Visual Behaviour Panel**:
   - `ui/panels/graph_visual_panel.py`: NEW — consolidated visual settings panel. 4 presets
     (Clean / Analysis / Lifecycle Audit / Sandbox Edit), exposure opacity (F20 moved here),
@@ -161,6 +183,32 @@ _None. v2.29.0 complete._
 
 ## 🧠 Key Decisions Made (not in docs yet)
 
+- **Simulation page save-button pattern (compute/render split)**: The root cause of the
+  save button navigating to landing was that the button lived inside a function only called when
+  `run_button=True`. On the rerun triggered by clicking save, `run_button=False` → function never
+  called → button never rendered → click lost. Fix: split each DB simulation mode into
+  `_compute_*_and_store()` (runs computation, stores result in `ss["last_*_result"]`) and
+  `_render_*_results(stored)` (renders from stored dict, always called when result exists).
+  The main() loop always calls the render function when stored state is set, regardless of
+  which button was clicked. This pattern must be used for ALL future simulation modes.
+
+- **F31c `include_inactive` flows through `_load_scope_data`**: single parameter change;
+  all downstream simulation logic is unchanged. `_compute_sb_and_store` loads scope data
+  twice when worst-case is active (once with, once without inactive) to compute the latent count.
+  This is intentional — a second DB call is cheap compared to N×M simulation runs.
+
+- **F31d quadrant classification uses the exposure engine's `_compute_risk_quadrant`**: imported
+  directly (module-level function). This guarantees parity with the canvas quadrant encoding. Do not
+  duplicate the thresholds (L≥6∧S≥6 = critical, etc.) in the simulation page.
+
+- **F31d saves calibration DF to Saved Results with compatibility stubs**: the `SimulationRecord`
+  `key_metrics` dict always needs the six standard keys (`mean_residual_risk_pct`, etc.) for
+  `_render_saved_results_tab` to render without crashing. Calibration records stub these to 0.0 and
+  add their own meaningful keys (`recommended_alpha`, `n_alpha_values`, etc.).
+
+- **`Any` was missing from typing imports before F31d**: pre-existing gap; fixed opportunistically.
+  445 tests still pass.
+
 - **F32 `risk_quadrant` overlay pattern**: `risk_quadrant` is computed at exposure-calculation time
   and stored only in `exposure_results["risk_results"]`. It is overlaid onto node dicts in
   `render_visualization_tab` alongside `base_exposure`/`exposure`. Without this overlay,
@@ -296,8 +344,8 @@ _None._
 ## 🔁 Resumption Prompt (copy-paste to start next session)
 ```
 Resume RIM development. Read tasks/SESSION_STATE.md first, then continue where we left off.
-v2.29.0 complete (F32 Graph Visual Behaviour Panel), 445 tests passing.
+v2.30.0 complete (F31c/d Lifecycle-Aware Simulation & TRI α Calibration). Iteration 5 closed. 445 tests passing.
 ROADMAPv3.md is the authoritative roadmap.
-Next task: Iteration 5 — F31c Lifecycle-Aware Simulation.
+Next phase: Iteration 6 — SPICE integration. A synchronisation/briefing session on SPICE is required before implementation.
 Branch: feature/iteration_4.
 ```
