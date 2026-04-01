@@ -15,9 +15,16 @@
 
 ## 🔴 Active Work In Progress
 
-_None. v2.30.0 complete. Iteration 5 fully closed._
+**Test & Fix Campaign** — Pre-Iteration 6 manual test execution.
+- `tasks/MANUAL_TEST_SCRIPT.md` — 34 manual tests across 5 groups (A–E)
+- `scripts/tc08_feature_coverage.cypher` — TC08 dataset (7 risks, 3 mitigations, 1 TPO)
+- `schemas/default/schema.yaml` — TC08 scope added (`tc08_feature_coverage`)
+- `pages/1_⚙️_Configuration.py` — Reset Demo Data now loads TC08 as 3rd step (Step 5)
 
-**Next phase**: **Iteration 6** — SPICE, Financial Layer & LEC (F8, U16, F34).
+**Status**: Setup complete. Waiting for user to execute tests A1–E6.
+Bugs to be logged in `tasks/lessons.md`; fixes after each failure.
+
+**Next phase** (after test sign-off): **Iteration 6** — SPICE, Financial Layer & LEC (F8, U16, F34).
 Requires SPICE synchronisation session before implementation begins.
 
 ---

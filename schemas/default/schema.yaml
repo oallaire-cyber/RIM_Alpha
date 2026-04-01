@@ -999,3 +999,16 @@ scopes:
   include_connected_edges: true
   show_boundary_edges: false
   color: '#808080'
+- id: tc08_feature_coverage
+  name: TC08 - Feature Coverage
+  description: 'Manual test dataset: 4 active risks (2 Business, 2 Operational), 2
+    lifecycle-inactive risks, 1 template. Tests lifecycle, TRI, quadrant, alerts,
+    simulation, scope.'
+  node_ids:
+  - tc08-0001-0000-0000-000000000001
+  - tc08-0001-0000-0000-000000000002
+  - tc08-0001-0000-0000-000000000003
+  - tc08-0001-0000-0000-000000000004
+  include_connected_edges: true
+  show_boundary_edges: false
+  color: '#5DADE2'

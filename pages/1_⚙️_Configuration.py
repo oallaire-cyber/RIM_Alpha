@@ -1605,16 +1605,18 @@ def render_demo_reset_section(conn):
     """Render the demo data reset section."""
     st.markdown("### 🔄 Reset Demo Data")
     st.info(
-        "Wipes the **entire database** and reloads both the ODT New Space demo dataset "
-        "and all 7 TC test cases (TC01-TC07) to a clean, reproducible state."
+        "Wipes the **entire database** and reloads the ODT New Space demo dataset, "
+        "all 7 TC test cases (TC01-TC07), and the TC08 feature coverage dataset "
+        "to a clean, reproducible state."
     )
 
     app_root = Path(__file__).parent.parent
-    odt_path = app_root / "scripts" / "demo_data_loader_en.cypher"
-    tc_path  = app_root / "scripts" / "demo_tc_dataset.cypher"
+    odt_path  = app_root / "scripts" / "demo_data_loader_en.cypher"
+    tc_path   = app_root / "scripts" / "demo_tc_dataset.cypher"
+    tc08_path = app_root / "scripts" / "tc08_feature_coverage.cypher"
 
     # Show file availability status
-    col_a, col_b = st.columns(2)
+    col_a, col_b, col_c = st.columns(3)
     with col_a:
         if odt_path.exists():
             st.success(f"✅ ODT file found: `{odt_path.name}`")
@@ -1625,8 +1627,13 @@ def render_demo_reset_section(conn):
             st.success(f"✅ TC file found: `{tc_path.name}`")
         else:
             st.error(f"❌ TC file missing: `demo_tc_dataset.cypher`")
+    with col_c:
+        if tc08_path.exists():
+            st.success(f"✅ TC08 file found: `{tc08_path.name}`")
+        else:
+            st.error(f"❌ TC08 file missing: `tc08_feature_coverage.cypher`")
 
-    files_ok = odt_path.exists() and tc_path.exists()
+    files_ok = odt_path.exists() and tc_path.exists() and tc08_path.exists()
 
     confirmed = st.checkbox(
         "⚠️ I understand this will delete ALL data in the database and reload the demo",
@@ -1639,11 +1646,11 @@ def render_demo_reset_section(conn):
         disabled=(not confirmed or not files_ok),
         key="reset_demo_btn"
     ):
-        _execute_demo_reset(conn, odt_path, tc_path)
+        _execute_demo_reset(conn, odt_path, tc_path, tc08_path)
 
 
-def _execute_demo_reset(conn, odt_path, tc_path):
-    """Execute the full demo reset: wipe all data, reload ODT + TC datasets."""
+def _execute_demo_reset(conn, odt_path, tc_path, tc08_path):
+    """Execute the full demo reset: wipe all data, reload ODT + TC01-07 + TC08 datasets."""
 
     def _parse_statements(cypher_text, skip_purge=False):
         """
@@ -1717,7 +1724,22 @@ def _execute_demo_reset(conn, odt_path, tc_path):
                 )
             tc_progress.empty()
 
-            # Step 5: Count after
+            # Step 5: Load TC08 feature coverage dataset
+            # skip_purge=False: tc08_feature_coverage.cypher uses only MERGE, no purge.
+            tc08_text = tc08_path.read_text(encoding="utf-8")
+            tc08_statements = _parse_statements(tc08_text, skip_purge=False)
+
+            st.write(f"📥 Loading TC08 dataset ({len(tc08_statements)} statements)...")
+            tc08_progress = st.progress(0.0, text="Loading TC08 data...")
+            for i, stmt in enumerate(tc08_statements):
+                conn.execute_write(stmt)
+                tc08_progress.progress(
+                    (i + 1) / len(tc08_statements),
+                    text=f"TC08 (Feature Coverage): {i + 1}/{len(tc08_statements)}"
+                )
+            tc08_progress.empty()
+
+            # Step 6: Count after
             after_result = conn.execute_query("MATCH (n) RETURN count(n) AS cnt")
             after_count = after_result[0]["cnt"] if after_result else 0
 
@@ -1726,7 +1748,7 @@ def _execute_demo_reset(conn, odt_path, tc_path):
                 f"✅ Reset complete — "
                 f"deleted **{before_count}** nodes, "
                 f"loaded **{after_count}** nodes "
-                f"({len(odt_statements)} ODT + {len(tc_statements)} TC statements executed)."
+                f"({len(odt_statements)} ODT + {len(tc_statements)} TC + {len(tc08_statements)} TC08 statements executed)."
             )
 
             # Invalidate cached stats so the Database tab refreshes
