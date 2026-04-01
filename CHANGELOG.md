@@ -4,6 +4,99 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.31.0] - 2026-04-01 (Pre-Iteration 6 Bug Fix Release)
+
+### Bug Fixes
+
+- **BUG 1 — Excel Export & JSON Backup crash** (`services/export_service.py`, `services/backup_service.py`, `database/manager.py`):
+  `EntityTypeDefinition` uses `.id`, not `.type_id`. Both `_collect_context_data` in `manager.py`
+  and the entity loop in `backup_service.py` were calling `.type_id`, raising `AttributeError` and
+  causing Excel export to silently return `None` (shown as "Invalid binary data format" in the UI)
+  and JSON backup to crash. Fixed both call sites to use `.id`.
+
+- **BUG 2 — Backup service docstring** (`services/backup_service.py`):
+  Module docstring referenced stale `tpos` / `tpo_impacts` as top-level backup keys. Updated to
+  reflect the current `context_nodes` / `context_edges` generic structure.
+
+- **BUG 3 — TPO Impact Levels block in Configuration → Relationships tab** (`pages/1_⚙️_Configuration.py`):
+  `render_relationship_config()` was rendering an editor for `impacts_tpo` impact levels inside the
+  Relationships tab. `impacts_tpo` is a context-edge type managed in the Context Edges section —
+  it should not appear as a core relationship. Block removed; Relationships tab now shows only
+  Influence Strengths and Mitigation Effectiveness Levels.
+
+- **BUG 4 — "Top Objective" naming** (schema YAMLs, docs, UI strings):
+  All user-facing occurrences of "Top Programme Objectives", "Top Program Objectives", and "Target
+  Performance Objective" standardised to **"Top Objective" / "Top Objectives"**. Internal code
+  identifiers (`tpo`, `impacts_tpo`, schema keys, class names) are unchanged.
+  Files updated: `schemas/default/schema.yaml`, `schemas/it_security/schema.yaml`,
+  `docs/USER_GUIDE.md`, `docs/ARCHITECTURE.md`, `docs/METHODOLOGY.md`, `docs/help_overview.md`,
+  `docs/welcome.md`, `docs/data_management_guide.md`, `README.md`, `AGENT_RULES_AND_CONTEXT.md`.
+
+- **BUG 5 — Context node tab cross-contamination & canvas invisibility** (`database/queries/generic_entity.py`, `database/queries/analysis.py`):
+  All ContextNodes share the Neo4j label `ContextNode`, differentiated only by the `node_type`
+  property. Two separate failures:
+  1. `get_all_entities` queried all ContextNodes without filtering by `node_type`, so every Data
+     Management tab showed every context node regardless of type.
+  2. `create_entity` never wrote `node_type` to the Neo4j node, making UI-created context nodes
+     invisible to the canvas `entity_filters = {"node_type": entity_id}` query.
+  **Fix**: `create_entity` now injects `node_type = entity_type.id` for all ContextNode types.
+  `get_all_entities` now prepends `WHERE n.node_type = $__node_type` automatically for ContextNode
+  types. Additionally, the legacy skip-guards `if entity_id == "tpo": continue` and
+  `if rel_id == "impacts_tpo": continue` in `get_graph_data` were left over from the old hardcoded
+  TPO rendering path — both removed so Top Objectives flow through the generic context node loop.
+
+- **BUG 6 — Scope lost after "Add to scope" on new risk** (`ui/filters.py`):
+  `add_node_to_scope` was calling `get_active_schema()`, which returns a module-level singleton
+  loaded at process start. If the schema was modified during the session, saving this stale
+  singleton back to YAML overwrote the file with outdated content, potentially removing scopes
+  added in-session. On the next `st.rerun()`, the scope selector found no matching scopes and
+  reset to empty. `remove_node_from_scope` had the same stale-singleton bug plus a broken
+  `load_schema()` import and a missing `schema_name` argument to `save_schema`.
+  **Fix**: both functions now use `SchemaLoader().load_schema(schema_name)` — a fresh disk read —
+  before modifying and saving.
+
+- **Excel export — timezone-aware datetimes** (`services/export_service.py`):
+  Neo4j's Python driver returns `neo4j.time.DateTime` objects (not Python `datetime.datetime`
+  subclasses) which carry `tzinfo`. `openpyxl` cannot serialise tz-aware datetimes. Previous
+  fix used `isinstance(x, datetime)` which silently skipped Neo4j types.
+  **Fix**: new `_coerce_records()` helper duck-types on `hasattr(v, "tzinfo")`, calls `.to_native()`
+  on Neo4j temporal types to get a proper Python `datetime`, then strips `tzinfo`. Applied to all
+  DataFrames in `export_to_excel`, `export_to_excel_bytes`, and both context sheet helpers.
+
+### Demo Data
+
+- **`scripts/demo_data_loader_en.cypher`** and **`scripts/SNR_demo_data_loader_en.cypher`**:
+  TPO nodes were created with the old `:TPO` label. Updated to `:ContextNode {node_type: 'tpo', ...}`
+  to match the schema-driven architecture. All `MATCH (t:TPO ...)` clauses in IMPACTS_TPO
+  relationship creation updated to `MATCH (t:ContextNode ...)`. Verification queries updated.
+  Reset demo data with these files to get a fully working environment with Top Objectives.
+
+### Roadmap
+
+- **[F39] Context Node Scope Membership** added to ROADMAPv3 Stream B, Iteration 6:
+  Allow any ContextNode (Top Objectives, scenarios, etc.) to be added to/removed from named
+  scopes via the UI. Data layer is already ready; gap is the create/edit form widget.
+
+**Files Modified:**
+- `services/backup_service.py` — `.type_id` → `.id`; docstring update; `raise` in except block
+- `services/export_service.py` — `_coerce_records()` + `_coerce_value()` + `_strip_tz()` helpers; applied to all sheet writes; `raise` in `export_to_excel_bytes` except block
+- `database/manager.py` — `_collect_context_data`: `.type_id` → `.id`
+- `database/queries/generic_entity.py` — `create_entity`: inject `node_type`; `get_all_entities`: auto-filter by `node_type` for ContextNodes
+- `database/queries/analysis.py` — `get_graph_data`: removed legacy TPO skip-guards
+- `pages/1_⚙️_Configuration.py` — removed TPO Impact Levels block from `render_relationship_config()`
+- `ui/filters.py` — `add_node_to_scope` + `remove_node_from_scope`: fresh disk load via `SchemaLoader`
+- `schemas/default/schema.yaml` — TPO/impacts_tpo label strings
+- `schemas/it_security/schema.yaml` — TPO/impacts_tpo label strings
+- `scripts/demo_data_loader_en.cypher` — `:TPO` → `:ContextNode {node_type: 'tpo'}`
+- `scripts/SNR_demo_data_loader_en.cypher` — `:TPO` → `:ContextNode {node_type: 'tpo'}`
+- `docs/` — multiple files (label rename + architecture update)
+- `ROADMAPv3.md` — F39 added
+- `tasks/lessons.md` — BUG 7 (hard-to-reproduce graph blank) logged
+
+**Tests:** 445 passing (no regressions).
+
+---
+
 ## [v2.30.0] - 2026-03-22 (F31c/d Lifecycle-Aware Simulation & TRI α Calibration)
 
 ### New Features
@@ -615,7 +708,7 @@ Run `scripts/migrate_impact_to_severity.cypher` once on existing Neo4j databases
 
 - **Unified Dynamic CRUD UI**: Deprecated all independent static CRUD tabs in favor of a single `unified_crud_tab.py` component that dynamically builds data grids, creation forms, and update forms directly from the active `schema.yaml` properties definitions.
 - **Data Management Hub**: Created a new dedicated `pages/2_💾_Data_Management.py` page. This fully uncouples data mutation activities from the main dashboard, allowing the main app to strictly focus on Visualizations and Analysis.
-- **TPO Migration**: TPOs (Top Program Objectives) and their respective impacts have been entirely rebuilt natively using the new Context Node framework, removing over a hundred lines of legacy hardcoded engine pathways.
+- **TPO Migration**: TPOs (Top Objectives) and their respective impacts have been entirely rebuilt natively using the new Context Node framework, removing over a hundred lines of legacy hardcoded engine pathways.
 - **Scope-Awareness Enhancements**: When creating an entity while an Analysis Scope is active, the unified UI will seamlessly insert that new entity directly into the active subgraph without requiring manual association.
 
 **Files Modified:**
@@ -776,7 +869,7 @@ Run `scripts/migrate_impact_to_severity.cypher` once on existing Neo4j databases
 
 - **UI Complexity Toggle:** Introduced a "Simple / Advanced" segmented toggle in the main sidebar. Tailored for non-technical stakeholders, the Simple mode drastically reduces UI clutter by hiding advanced tabs (Mitigations, Influences, Import/Export, Config, etc.) and defaulting to just Visualization and Risks.
 - **Advanced Filters Ghosting:** In Simple mode, the extensive graph filters and layout presets are hidden behind a single "Show Advanced Filters" button. When exposed, all scoping and filtering functionality remains fully operational.
-- **Graph Node & Edge Ghosting:** The visualization algorithm now natively supports a focal transparency mode. In Simple mode, only the Top 10 most exposed risk nodes (configurable) and all Top Program Objectives (TPOs) are rendered fully opaque. All other context nodes, minor risks, and their connecting edges are rendered with 10% opacity, providing orienting context without visual noise.
+- **Graph Node & Edge Ghosting:** The visualization algorithm now natively supports a focal transparency mode. In Simple mode, only the Top 10 most exposed risk nodes (configurable) and all Top Objectives (TPOs) are rendered fully opaque. All other context nodes, minor risks, and their connecting edges are rendered with 10% opacity, providing orienting context without visual noise.
 - **Configurable Simple Mode:** Added `SIMPLE_MODE_CONFIG` to `config/settings.py` allowing administrators to easily tweak which tabs are allowed, the number of top risks to display, and the exact ghosting opacity for the Simple Mode.
 
 ---
@@ -1646,7 +1739,7 @@ rim/
 
 **New Features:**
 
-- **Top Program Objectives (TPO)**
+- **Top Objectives (TPO)**
   - Reference, name, cluster
   - Cluster categories: Product, Business, Industrial, Sustainability, Safety
 

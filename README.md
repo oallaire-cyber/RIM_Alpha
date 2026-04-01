@@ -21,7 +21,7 @@ The Risk Influence Map transforms static risk registers into **dynamic risk inte
 | Business Risk | ◆ Diamond | Consequence-oriented, managed by leadership |
 | Operational Risk | ● Circle | Cause-oriented, managed by functional teams |
 | Mitigation | 🛡️ Rounded Box | Controls and protective actions |
-| TPO | ⬡ Hexagon | Top Program Objectives at risk |
+| TPO | ⬡ Hexagon | Top Objectives at risk |
 | Custom Entities | 📦 Configurable | User-defined types (e.g., Asset, Threat Actor) |
 
 ## 🚀 Quick Start

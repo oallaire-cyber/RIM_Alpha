@@ -1015,10 +1015,11 @@ CREATE (sec14:Risk {
 });
 
 // =============================================================================
-// 12. TOP PROGRAM OBJECTIVES (TPOs) - 6
+// 12. TOP OBJECTIVES - 6
 // =============================================================================
 
-CREATE (tpo01:TPO {
+CREATE (tpo01:ContextNode {
+  node_type: 'tpo',
   id: 'TPO-01',
   reference: 'TPO-01',
   name: 'Achieve EBITDA positive by Q4 2028',
@@ -1028,7 +1029,8 @@ CREATE (tpo01:TPO {
   updated_at: datetime()
 });
 
-CREATE (tpo02:TPO {
+CREATE (tpo02:ContextNode {
+  node_type: 'tpo',
   id: 'TPO-02',
   reference: 'TPO-02',
   name: 'Complete Phase 3 deployment by Q2 2027',
@@ -1038,7 +1040,8 @@ CREATE (tpo02:TPO {
   updated_at: datetime()
 });
 
-CREATE (tpo03:TPO {
+CREATE (tpo03:ContextNode {
+  node_type: 'tpo',
   id: 'TPO-03',
   reference: 'TPO-03',
   name: 'Secure FCC full operational license by Q3 2026',
@@ -1048,7 +1051,8 @@ CREATE (tpo03:TPO {
   updated_at: datetime()
 });
 
-CREATE (tpo04:TPO {
+CREATE (tpo04:ContextNode {
+  node_type: 'tpo',
   id: 'TPO-04',
   reference: 'TPO-04',
   name: 'Win first $10M+ Government contract by Q4 2026',
@@ -1058,7 +1062,8 @@ CREATE (tpo04:TPO {
   updated_at: datetime()
 });
 
-CREATE (tpo05:TPO {
+CREATE (tpo05:ContextNode {
+  node_type: 'tpo',
   id: 'TPO-05',
   reference: 'TPO-05',
   name: 'AURORA-GEO pass PDR gate by Q1 2027',
@@ -1068,7 +1073,8 @@ CREATE (tpo05:TPO {
   updated_at: datetime()
 });
 
-CREATE (tpo06:TPO {
+CREATE (tpo06:ContextNode {
+  node_type: 'tpo',
   id: 'TPO-06',
   reference: 'TPO-06',
   name: 'Maintain zero debris generation incidents',
@@ -1856,7 +1862,7 @@ CREATE (source)-[:INFLUENCES {
 // =============================================================================
 
 // TPO-01: EBITDA positive by Q4 2028
-MATCH (r:Risk {id: 'RC-01'}), (t:TPO {id: 'TPO-01'})
+MATCH (r:Risk {id: 'RC-01'}), (t:ContextNode {id: 'TPO-01'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-01',
   impact_level: 'Critical',
@@ -1864,7 +1870,7 @@ CREATE (r)-[:IMPACTS_TPO {
   created_at: datetime()
 }]->(t);
 
-MATCH (r:Risk {id: 'RC-02'}), (t:TPO {id: 'TPO-01'})
+MATCH (r:Risk {id: 'RC-02'}), (t:ContextNode {id: 'TPO-01'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-02',
   impact_level: 'Critical',
@@ -1872,7 +1878,7 @@ CREATE (r)-[:IMPACTS_TPO {
   created_at: datetime()
 }]->(t);
 
-MATCH (r:Risk {id: 'RH-03'}), (t:TPO {id: 'TPO-01'})
+MATCH (r:Risk {id: 'RH-03'}), (t:ContextNode {id: 'TPO-01'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-03',
   impact_level: 'High',
@@ -1881,7 +1887,7 @@ CREATE (r)-[:IMPACTS_TPO {
 }]->(t);
 
 // TPO-02: Phase 3 deployment by Q2 2027
-MATCH (r:Risk {id: 'RH-01'}), (t:TPO {id: 'TPO-02'})
+MATCH (r:Risk {id: 'RH-01'}), (t:ContextNode {id: 'TPO-02'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-04',
   impact_level: 'Critical',
@@ -1889,7 +1895,7 @@ CREATE (r)-[:IMPACTS_TPO {
   created_at: datetime()
 }]->(t);
 
-MATCH (r:Risk {id: 'RH-02'}), (t:TPO {id: 'TPO-02'})
+MATCH (r:Risk {id: 'RH-02'}), (t:ContextNode {id: 'TPO-02'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-05',
   impact_level: 'Medium',
@@ -1898,7 +1904,7 @@ CREATE (r)-[:IMPACTS_TPO {
 }]->(t);
 
 // TPO-03: FCC license by Q3 2026
-MATCH (r:Risk {id: 'RC-04'}), (t:TPO {id: 'TPO-03'})
+MATCH (r:Risk {id: 'RC-04'}), (t:ContextNode {id: 'TPO-03'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-06',
   impact_level: 'Critical',
@@ -1906,7 +1912,7 @@ CREATE (r)-[:IMPACTS_TPO {
   created_at: datetime()
 }]->(t);
 
-MATCH (r:Risk {id: 'RH-07'}), (t:TPO {id: 'TPO-03'})
+MATCH (r:Risk {id: 'RH-07'}), (t:ContextNode {id: 'TPO-03'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-07',
   impact_level: 'High',
@@ -1915,7 +1921,7 @@ CREATE (r)-[:IMPACTS_TPO {
 }]->(t);
 
 // TPO-04: Government contract $10M+ by Q4 2026
-MATCH (r:Risk {id: 'RH-05'}), (t:TPO {id: 'TPO-04'})
+MATCH (r:Risk {id: 'RH-05'}), (t:ContextNode {id: 'TPO-04'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-08',
   impact_level: 'Critical',
@@ -1923,7 +1929,7 @@ CREATE (r)-[:IMPACTS_TPO {
   created_at: datetime()
 }]->(t);
 
-MATCH (r:Risk {id: 'RC-05'}), (t:TPO {id: 'TPO-04'})
+MATCH (r:Risk {id: 'RC-05'}), (t:ContextNode {id: 'TPO-04'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-09',
   impact_level: 'High',
@@ -1932,7 +1938,7 @@ CREATE (r)-[:IMPACTS_TPO {
 }]->(t);
 
 // TPO-05: AURORA PDR by Q1 2027
-MATCH (r:Risk {id: 'RA-01'}), (t:TPO {id: 'TPO-05'})
+MATCH (r:Risk {id: 'RA-01'}), (t:ContextNode {id: 'TPO-05'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-10',
   impact_level: 'Critical',
@@ -1940,7 +1946,7 @@ CREATE (r)-[:IMPACTS_TPO {
   created_at: datetime()
 }]->(t);
 
-MATCH (r:Risk {id: 'RA-03'}), (t:TPO {id: 'TPO-05'})
+MATCH (r:Risk {id: 'RA-03'}), (t:ContextNode {id: 'TPO-05'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-11',
   impact_level: 'Critical',
@@ -1948,7 +1954,7 @@ CREATE (r)-[:IMPACTS_TPO {
   created_at: datetime()
 }]->(t);
 
-MATCH (r:Risk {id: 'RA-05'}), (t:TPO {id: 'TPO-05'})
+MATCH (r:Risk {id: 'RA-05'}), (t:ContextNode {id: 'TPO-05'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-12',
   impact_level: 'Medium',
@@ -1957,7 +1963,7 @@ CREATE (r)-[:IMPACTS_TPO {
 }]->(t);
 
 // TPO-06: Zero debris incidents
-MATCH (r:Risk {id: 'RC-05'}), (t:TPO {id: 'TPO-06'})
+MATCH (r:Risk {id: 'RC-05'}), (t:ContextNode {id: 'TPO-06'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-13',
   impact_level: 'High',
@@ -1965,7 +1971,7 @@ CREATE (r)-[:IMPACTS_TPO {
   created_at: datetime()
 }]->(t);
 
-MATCH (r:Risk {id: 'RH-02'}), (t:TPO {id: 'TPO-06'})
+MATCH (r:Risk {id: 'RH-02'}), (t:ContextNode {id: 'TPO-06'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-14',
   impact_level: 'Medium',
@@ -2315,13 +2321,13 @@ ORDER BY Type;
 MATCH (r:Risk {status: 'Contingent'})
 RETURN r.id, r.name, r.scope, r.activation_condition, r.activation_decision_date;
 
-// Count TPOs by cluster
-MATCH (t:TPO)
+// Count Top Objectives by cluster
+MATCH (t:ContextNode {node_type: 'tpo'})
 RETURN t.cluster as Cluster, count(t) as Count
 ORDER BY Cluster;
 
-// Display TPOs and their impact count
-MATCH (t:TPO)
+// Display Top Objectives and their impact count
+MATCH (t:ContextNode {node_type: 'tpo'})
 OPTIONAL MATCH (r:Risk)-[i:IMPACTS_TPO]->(t)
 RETURN t.reference as TPO, t.name as Name, t.cluster as Cluster, 
        count(i) as ImpactCount
@@ -2350,7 +2356,7 @@ ORDER BY length(path) DESC;
 
 // Global statistics
 MATCH (r:Risk) WITH count(r) as risks
-MATCH (t:TPO) WITH risks, count(t) as tpos
+MATCH (t:ContextNode {node_type: 'tpo'}) WITH risks, count(t) as tpos
 MATCH (m:Mitigation) WITH risks, tpos, count(m) as mitigations
 MATCH ()-[i:INFLUENCES]->() WITH risks, tpos, mitigations, count(i) as influences
 MATCH ()-[it:IMPACTS_TPO]->() WITH risks, tpos, mitigations, influences, count(it) as tpo_impacts

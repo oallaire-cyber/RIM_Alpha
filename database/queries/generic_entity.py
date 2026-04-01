@@ -41,10 +41,17 @@ def create_entity(
     
     # Prepare data (convert types, apply defaults)
     prepared = entity_type.prepare_data(data)
-    
+
     # Build query with node label
     label = entity_type.neo4j_label
-    
+
+    # For ContextNodes all share the label "ContextNode" — store the schema type
+    # ID as node_type so they can be distinguished per-tab and on the canvas.
+    # This mirrors the entity_filters = {"node_type": entity_id} pattern used by
+    # database/queries/analysis.py to render context nodes on the graph.
+    if entity_type.is_context_node and "node_type" not in prepared:
+        prepared["node_type"] = entity_type.id
+
     # Ensure 'id' is set
     if "id" not in prepared:
         import uuid
@@ -101,7 +108,14 @@ def get_all_entities(
 
     where_clauses = []
     params = {}
-    
+
+    # ContextNodes share a single Neo4j label. Always scope to this entity
+    # type's ID so that each Data Management tab shows only its own nodes,
+    # and so that the canvas entity_filters pattern works correctly.
+    if entity_type.is_context_node:
+        where_clauses.append("n.node_type = $__node_type")
+        params["__node_type"] = entity_type.id
+
     if filters:
         for key, value in filters.items():
             if value is None:

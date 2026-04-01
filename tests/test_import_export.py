@@ -25,7 +25,8 @@ def _make_registry(extra_entity_types=None, extra_rel_types=None):
     if extra_entity_types:
         for type_id, props in extra_entity_types.items():
             et = MagicMock()
-            et.type_id = type_id
+            et.id = type_id          # EntityTypeDefinition uses .id
+            et.type_id = type_id     # kept for legacy test compat
             prop_objs = []
             for p in props:
                 pm = MagicMock()
@@ -325,7 +326,6 @@ class TestBackupService:
         from services.backup_service import export_graph_to_json
 
         registry = _make_registry(extra_entity_types={"scenario": ["name"]})
-        registry.entity_types["scenario"].type_id = "scenario"
 
         mgr = self._make_manager()
         mgr.get_entities.side_effect = lambda tid: (

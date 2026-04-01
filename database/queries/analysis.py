@@ -88,8 +88,6 @@ def get_graph_data(
     
     context_node_ids = set()
     for entity_id, entity_type in registry.get_additional_entity_types().items():
-        if entity_id == "tpo":
-            continue
         if filters.get(f"show_{entity_id}", True):
             entity_filters = {"node_type": entity_id}
             for group_name in entity_type.categorical_groups:
@@ -141,8 +139,6 @@ def get_graph_data(
 
     # Generic context edges
     for rel_id, rel_type in registry.get_additional_relationship_types().items():
-        if rel_id == "impacts_tpo":
-            continue
         if filters.get(f"show_{rel_id}", True):
             rel_filters = {}
             for group_name in rel_type.categorical_groups:

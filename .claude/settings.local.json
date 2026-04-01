@@ -11,7 +11,14 @@
       "Bash(py -m pytest tests/ -q)",
       "Bash(cmd /c \".\\\\venv\\\\Scripts\\\\activate && py -m pytest tests/ -q 2>&1 | more\")",
       "Bash(cmd /c \".\\\\venv\\\\Scripts\\\\python.exe -m pytest tests/ -q 2>&1\")",
-      "Bash(powershell -Command \"Set-Location ''C:\\\\Users\\\\olive\\\\Documents\\\\RIM_Alpha''; & ''.\\\\venv\\\\Scripts\\\\python.exe'' -m pytest tests/ -q --tb=no 2>&1\")"
+      "Bash(powershell -Command \"Set-Location ''C:\\\\Users\\\\olive\\\\Documents\\\\RIM_Alpha''; & ''.\\\\venv\\\\Scripts\\\\python.exe'' -m pytest tests/ -q --tb=no 2>&1\")",
+      "Bash(py -m pytest tests/ -x -q)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/ -x -q)",
+      "Bash(py -m pytest tests/ -v --tb=short)",
+      "Bash(source venv/Scripts/activate)",
+      "Bash(python -m pytest tests/ -v --tb=short)",
+      "Bash(python -m pytest tests/test_import_export.py -v --tb=short)",
+      "Bash(python -m pytest tests/ --tb=short -q)"
     ]
   }
 }

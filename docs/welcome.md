@@ -53,7 +53,7 @@ and which program objectives are at stake.
 > *The mitigation analysis cross-references influence analysis to flag unmitigated
 > risks that are also top propagators, convergence points, or bottlenecks.*
 
-**🏆 Top Program Objectives (TPOs)**
+**🏆 Top Objectives (TPOs)**
 - ⬡ Gold hexagon visualization
 - Cluster-based organization
 - Impact level tracking (Low → Critical)

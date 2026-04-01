@@ -5,7 +5,7 @@ The **Risk Influence Map** transforms static risk registers into
 
 - **Business Risks** (◆ Diamond): Consequence-oriented, managed by leadership
 - **Operational Risks** (● Circle): Cause-oriented, managed by teams  
-- **TPOs** (⬡ Hexagon): Top Program Objectives at risk
+- **Top Objectives** (⬡ Hexagon): Top Objectives at risk
 - **Mitigations** (🛡️ Box): Controls and protective actions
 
 ---
@@ -18,7 +18,7 @@ The **Risk Influence Map** transforms static risk registers into
 | ⚡ Exposure calculation | Quantifies composite risk score with mitigation diminishing returns |
 | 📐 Analysis scopes | Focus all analysis on a named subset of nodes |
 | 🛡️ Mitigation analysis | Coverage gaps, treatment effectiveness, high-priority flags |
-| 🎯 TPO tracking | Links risks to program objectives with impact levels |
+| 🎯 Top Objective tracking | Links risks to program objectives with impact levels |
 | 📊 Statistics | Live dashboard adapts to active scope |
 | ♻️ Lifecycle engine | 6-state risk lifecycle with auto-acceptance, trigger review, and archive alerts |
 | 🔬 What-If Analysis | Toggle mitigations ON/OFF in-memory; observe EL + TRI deltas without DB writes |

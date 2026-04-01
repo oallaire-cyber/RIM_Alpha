@@ -453,6 +453,19 @@ ORDER BY br.name, s.case_type
   `is_template: true` flag; `[:INSTANTIATES]` relationship; template CRUD; instantiation workflow; exclusion from exposure engine; dashed-border visual; parent/sibling section in Node Property Panel.
   **Testing gate:** templates excluded from EL and TRI; INSTANTIATES traversal correct.
 
+- **[F39] Context Node Scope Membership** _(Iteration 6 — Stream A+B)_:
+  Allow any ContextNode (Top Objectives, scenarios, etc.) to be added to and removed from scopes through the UI, just as risks can be via the "Add to scope" checkbox on the risk creation/edit form.
+
+  **Motivation:** The scope model already stores arbitrary node IDs in `scope.node_ids` and `get_graph_data` already intersects `context_node_ids` against the active scope set — so the data-layer is ready. The gap is purely UI: there is currently no way for a user to include a Top Objective or other context node in a named scope without editing the YAML directly.
+
+  **Scope of change:**
+  - `ui/tabs/unified_crud_tab.py`: add "Add to scope" multiselect (same pattern as risk form) to the ContextNode create/edit form, rendered when at least one scope exists in the active schema.
+  - `ui/filters.py` `add_node_to_scope` / `remove_node_from_scope`: already generic (accept any node ID) — no logic change required.
+  - `ui/sidebar.py` scope summary: optionally display count of context nodes in active scope alongside risk count.
+  - No changes to `config/schema_loader.py`, `services/exposure_calculator.py`, or graph query layer.
+
+  **Testing gate:** Create a scope; add a Top Objective to it; activate the scope → only the Top Objective (and its connected risks) should appear on the canvas. Remove it from scope → it disappears. Existing TC01–TC07 continue to pass.
+
 - **[U17] SPICE Integration Schema + Scope Refactor** _(Iteration 7 — MANDATORY before F36, F15, F8 full implementation)_:
   This is the foundational schema task for Pillar 5. Must be completed before any SPICE-related UI features.
   - Add new node labels to schema YAML and Pydantic models: `BusinessPerimeter`, `TechnicalPerimeter`, `SpiceScenario`, `SpiceMitigation`, `Owner`.
@@ -571,6 +584,20 @@ ORDER BY br.name, s.case_type
 | **F6** Mitigation View   | `pages/3_🔬_Analysis.py`                                                                                                              | Business Risk mitigation view; lifecycle filter; EL+TRI delta.                                          |
 | **F32** Visual Panel     | `ui/panels/graph_visual_panel.py` (new), `schema.yaml`                                                                                | Consolidated settings; lifecycle opacity; quadrant encoding; presets persisted to YAML.                 |
 | **F31c/d** Simulation ✅ | `pages/2_🎲_Simulation.py`                                                                                                            | Lifecycle-aware mode (Worst-Case Canvas); TRI α calibration mode. v2.30.0                               |
+
+---
+
+### 🔁 Pre-Iteration 6 Bug Fix Release _(v2.31.0)_
+
+| Task | File(s) | Details |
+|------|---------|---------|
+| **BUG 1** `.type_id` → `.id` | `services/backup_service.py`, `database/manager.py` | Excel export + JSON backup crash fixed |
+| **BUG 3** Remove TPO Impact Levels from Relationships tab | `pages/1_⚙️_Configuration.py` | `impacts_tpo` is a context-edge concern; removed from core relationship editor |
+| **BUG 4** "Top Objective" naming | schema YAMLs, docs | All display strings standardised |
+| **BUG 5** ContextNode `node_type` filtering | `database/queries/generic_entity.py`, `database/queries/analysis.py` | Per-tab isolation fixed; canvas visibility fixed; TPO skip-guards removed |
+| **BUG 6** Scope persistence | `ui/filters.py` | Fresh disk load replaces stale singleton in `add/remove_node_from_scope` |
+| **Excel tz fix** | `services/export_service.py` | `neo4j.time.DateTime` coerced to tz-naive via `_coerce_records()` |
+| **Cypher demo data** | `scripts/demo_data_loader_en.cypher`, `scripts/SNR_demo_data_loader_en.cypher` | TPO nodes use `:ContextNode {node_type: 'tpo'}` |
 
 ---
 

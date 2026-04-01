@@ -1045,52 +1045,8 @@ def render_relationship_config(schema: SchemaConfig):
         st.session_state.schema_modified = True
         st.rerun()
     
-    st.markdown("---")
-    
-    # Impact levels
-    st.markdown("### 📊 TPO Impact Levels")
-    impact_levels = schema.impacts_tpo.impact_levels
-    
-    for i, il in enumerate(impact_levels):
-        with st.expander(f"{il.label} (value: {il.value})", expanded=False):
-            col1, col2 = st.columns([3, 1])
-            
-            with col1:
-                new_id = st.text_input("ID", il.id, key=f"il_id_{i}")
-                new_label = st.text_input("Label", il.label, key=f"il_label_{i}")
-                new_value = st.number_input("Value", 1, 10, il.value, key=f"il_value_{i}")
-                new_desc = st.text_area("Description", il.description, key=f"il_desc_{i}", height=60)
-                new_color = st.color_picker("Color", il.color, key=f"il_color_{i}")
-                
-                if (new_id != il.id or new_label != il.label or
-                    new_value != il.value or new_desc != il.description or
-                    new_color != il.color):
-                    il.id = new_id
-                    il.label = new_label
-                    il.value = new_value
-                    il.description = new_desc
-                    il.color = new_color
-                    st.session_state.schema_modified = True
-            
-            with col2:
-                st.markdown(f"<div style='background:{il.color};color:white;padding:10px;text-align:center;border-radius:5px'>{il.label}</div>", unsafe_allow_html=True)
-                
-                if st.button("🗑️ Delete", key=f"del_il_{i}"):
-                    if len(impact_levels) > 1:
-                        impact_levels.pop(i)
-                        st.session_state.schema_modified = True
-                        st.rerun()
-    
-    if st.button("➕ Add Impact Level"):
-        impact_levels.append(ImpactLevelConfig(
-            id=f"new_impact_{len(impact_levels)}",
-            label="New Level",
-            value=len(impact_levels) + 1,
-            description="",
-            color="#808080"
-        ))
-        st.session_state.schema_modified = True
-        st.rerun()
+    # NOTE: Top Objective impact levels are a context-edge concern (impacts_tpo semantic:context).
+    # They are managed in the Context Edges section, not here.
 
 
 def render_context_nodes_config(schema: SchemaConfig):

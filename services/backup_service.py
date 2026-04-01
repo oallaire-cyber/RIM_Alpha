@@ -11,14 +11,16 @@ Backup format:
         "schema_version": "2.18.0",
         "exported_at": "2026-03-08T18:16:00",
         "risks": [...],
-        "tpos": [...],
-        "influences": [...],
-        "tpo_impacts": [...],
         "mitigations": [...],
+        "influences": [...],
         "mitigates": [...],
         "context_nodes": {"<type_id>": [...], ...},
         "context_edges": {"<rel_type_id>": [...], ...}
     }
+
+    TPOs and other context nodes are stored under "context_nodes" keyed by their
+    schema type ID (e.g. "context_nodes": {"tpo": [...]}). There are no separate
+    top-level "tpos" or "tpo_impacts" keys — all schema-driven types are generic.
 
 Restore behaviour:
     - Inserts in topological order: core nodes first, then core edges,
@@ -84,7 +86,7 @@ def export_graph_to_json(
     # --- ContextNode types ---
     if registry:
         for entity_type in registry.entity_types.values():
-            type_id = entity_type.type_id
+            type_id = entity_type.id  # EntityTypeDefinition uses .id, not .type_id
             # Skip the two hardcoded core types
             if type_id in ("risk", "mitigation"):
                 continue

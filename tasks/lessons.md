@@ -24,6 +24,17 @@
     For any feature with its own UX workflow: create `docs/help_<feature>.md` and register in `ui/home.py` `_HELP_FILES`.
     Do not draft only — apply the changes directly in the same session as the feature implementation.
 
+## Known Unresolved Issues (observed, unable to reproduce)
+
+- [2026-04-01] **Graph canvas blank after likelihood/severity edit** — user observed: after editing
+  a risk's L or S in Data Management while a dedicated scope was active, the risk appeared in the
+  Dashboard metric but not on the canvas graph. Deselecting the scope showed only mitigations.
+  A full browser reload + DB reconnect resolved it. Could not be reproduced in subsequent attempts.
+  Suspected cause: stale session-state graph cache (`exposure_results` / `graph_data` in
+  `ss`) not invalidated after the CRUD edit triggers a DB write. Potentially cleared by implementing
+  an explicit `ss["graph_data"] = None` after any risk update in `unified_crud_tab.py`.
+  **Status**: Open — flag for regression during Iteration 6 testing.
+
 ## Token/Context Efficiency Rules Learned
 - _[example: Re-reading full ROADMAP when only Stream B section was needed]_
   → **Rule**: Read only the relevant stream section. Use Ctrl+F equivalent — ask for specific section by name.

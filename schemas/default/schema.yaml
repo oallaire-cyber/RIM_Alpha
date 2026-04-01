@@ -523,7 +523,7 @@ ui:
     icon: 🎯
     enabled: true
   - id: tpos
-    label: TPOs
+    label: Top Objectives
     icon: 🏆
     enabled: true
   - id: mitigations
@@ -732,7 +732,7 @@ context_nodes:
       default: null
       description: Capability level (1-10)
   tpo:
-    label: Target Performance Objective
+    label: Top Objective
     description: Business objective impacted by risk
     color: '#f1c40f'
     shape: hexagon
@@ -778,7 +778,7 @@ context_edges:
     bidirectional: false
     properties: []
   impacts_tpo:
-    label: Impacts TPO
+    label: Impacts Top Objective
     neo4j_type: IMPACTS_TPO
     description: ''
     from_node: risk
@@ -1012,3 +1012,13 @@ scopes:
   include_connected_edges: true
   show_boundary_edges: false
   color: '#5DADE2'
+- id: sandbox_test
+  name: Sandbox Test
+  description: ''
+  node_ids:
+  - b2ed1416-a5d0-4e69-9b8f-475263e8b3d7
+  - ccb6db4c-51c7-47e8-9f89-2968efe28f4e
+  - 423d64e3-36f6-490b-beea-bcbedadc059e
+  include_connected_edges: true
+  show_boundary_edges: false
+  color: '#808080'

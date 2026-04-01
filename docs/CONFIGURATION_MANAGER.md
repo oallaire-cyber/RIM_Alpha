@@ -72,7 +72,7 @@ Eight sub-tabs for comprehensive schema editing:
 | **🎯 Risk Config** | Levels (with color, shape, emoji), categories, statuses, origins |
 | **🏆 TPO Config** | Cluster definitions with colors |
 | **🛡️ Mitigation Config** | Types (with line styles), statuses |
-| **🔗 Relationships** | Influence strengths, effectiveness levels, impact levels |
+| **🔗 Relationships** | Influence strengths, effectiveness levels |
 | **📦 Custom Entities** | Define custom node types (e.g., Asset, Threat Actor) with attributes |
 | **🔀 Custom Relationships** | Define custom edge types connecting any entities |
 | **📄 YAML Preview** | Raw YAML view/edit mode with validation |

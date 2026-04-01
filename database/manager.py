@@ -1364,7 +1364,7 @@ class RiskGraphManager:
 
         context_nodes_data: Dict[str, list] = {}
         for entity_type in registry.entity_types.values():
-            type_id = entity_type.type_id
+            type_id = entity_type.id  # EntityTypeDefinition uses .id, not .type_id
             if type_id in core_entity_ids:
                 continue
             entities = self.get_entities(type_id) or []
