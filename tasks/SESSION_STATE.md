@@ -6,32 +6,87 @@
 ---
 
 ## Current Version
-`v2.30.0` — F31c/d Lifecycle-Aware Simulation & TRI α Calibration. Branch: feature/iteration_4.
+`v2.31.0` — Pre-Iteration 6 Bug Fix Release. Branch: `fix/test_fix`.
 
 ## Last Updated
-2026-03-22 — v2.30.0 complete. 445 tests passing.
+2026-04-01 — v2.31.0 complete. 445 tests passing. Manual test campaign written (`tasks/test_campaign_v2.31.0.md`). Awaiting user sign-off tomorrow before merging.
 
 ---
 
 ## 🔴 Active Work In Progress
 
-**Test & Fix Campaign** — Pre-Iteration 6 manual test execution.
-- `tasks/MANUAL_TEST_SCRIPT.md` — 34 manual tests across 5 groups (A–E)
-- `scripts/tc08_feature_coverage.cypher` — TC08 dataset (7 risks, 3 mitigations, 1 TPO)
-- `schemas/default/schema.yaml` — TC08 scope added (`tc08_feature_coverage`)
-- `pages/1_⚙️_Configuration.py` — Reset Demo Data now loads TC08 as 3rd step (Step 5)
+**None.** Session closed.
 
-**Status**: Setup complete. Waiting for user to execute tests A1–E6.
-Bugs to be logged in `tasks/lessons.md`; fixes after each failure.
+**Pending before merge:**
+- User to execute `tasks/test_campaign_v2.31.0.md` (TC-01 through TC-13 + R1–R6)
+- Manual sign-off required on all test cases
+- Merge `fix/test_fix` → main after sign-off
+- **Demo data reset required** before testing: load `scripts/demo_data_loader_en.cypher` into Neo4j (old `:TPO` nodes won't work with new code)
 
-**Next phase** (after test sign-off): **Iteration 6** — SPICE, Financial Layer & LEC (F8, U16, F34).
-Requires SPICE synchronisation session before implementation begins.
+**Next phase** (after merge + test sign-off): **Iteration 6** — Financial Layer & LEC (U16, F34, F9).
+A SPICE synchronisation/briefing session is required before implementation begins.
 
 ---
 
 ## ✅ Recently Completed (last 2 sessions)
 
-### Session N+12 (this session — v2.30.0 F31c/d)
+### Session N+13 (this session — v2.31.0 Pre-Iteration 6 Bug Fixes)
+- **v2.31.0** — **7-bug fix release** on branch `fix/test_fix`:
+
+  **BUG 1 — Excel Export & JSON Backup crash** (`services/backup_service.py`, `database/manager.py`):
+  - `EntityTypeDefinition.type_id` → `.id` in both `backup_service` entity loop and
+    `manager._collect_context_data`. Export silently returned `None` (Streamlit: "Invalid binary
+    data format"); backup crashed with AttributeError.
+
+  **BUG 2 — Backup docstring** (`services/backup_service.py`):
+  - Module docstring updated: removed stale `tpos`/`tpo_impacts` top-level key references;
+    corrected to `context_nodes`/`context_edges`.
+
+  **BUG 3 — TPO Impact Levels in Relationships tab** (`pages/1_⚙️_Configuration.py`):
+  - Removed the `impacts_tpo` impact levels block from `render_relationship_config()`.
+    Relationships tab now shows only Influence Strengths + Mitigation Effectiveness Levels.
+
+  **BUG 4 — "Top Objective" naming** (schema YAMLs, docs, UI strings):
+  - All display strings standardised to "Top Objective / Top Objectives". Internal identifiers
+    (`tpo`, `impacts_tpo`) unchanged.
+
+  **BUG 5 — Context node isolation + canvas visibility** (`database/queries/generic_entity.py`,
+  `database/queries/analysis.py`):
+  - `create_entity`: injects `node_type = entity_type.id` for all ContextNode types.
+  - `get_all_entities`: prepends `WHERE n.node_type = $__node_type` for ContextNode types.
+  - `get_graph_data`: removed `if entity_id == "tpo": continue` and
+    `if rel_id == "impacts_tpo": continue` (legacy skip-guards from old hardcoded TPO path).
+
+  **BUG 6 — Scope persistence** (`ui/filters.py`):
+  - `add_node_to_scope` + `remove_node_from_scope`: replaced stale `get_active_schema()` singleton
+    with `SchemaLoader().load_schema(schema_name)` — fresh disk read before every modify+save.
+    Also fixed broken `load_schema()` import and missing `schema_name` arg in `remove_node_from_scope`.
+
+  **BUG 7 — Hard-to-reproduce graph blank** (`tasks/lessons.md`):
+  - Logged as unresolved; suspected stale `ss["graph_data"]` cache. Cannot reproduce reliably.
+
+  **Excel timezone fix** (`services/export_service.py`):
+  - `neo4j.time.DateTime` is NOT a Python `datetime` subclass — `isinstance` checks silently skipped
+    it. New `_coerce_records()` / `_coerce_value()` helpers duck-type on `hasattr(v, "tzinfo")` and
+    call `.to_native()` on Neo4j temporal types before stripping tzinfo. Applied to all DataFrames.
+  - `_strip_tz()` kept as last-resort guard for pandas DatetimeTZDtype columns.
+  - `export_to_excel_bytes` except block changed to `raise` (was silently returning None).
+
+  **Demo data** (`scripts/demo_data_loader_en.cypher`, `scripts/SNR_demo_data_loader_en.cypher`):
+  - All `:TPO` nodes → `:ContextNode {node_type: 'tpo', ...}`.
+  - All `MATCH (t:TPO ...)` → `MATCH (t:ContextNode ...)`.
+  - Verification queries updated.
+
+  **ROADMAPv3** (`ROADMAPv3.md`):
+  - **[F39] Context Node Scope Membership** added to Stream B Iteration 6 backlog.
+    Allow any ContextNode to be added/removed from scopes via UI (data layer already ready).
+
+  **Test campaign** (`tasks/test_campaign_v2.31.0.md`):
+  - 13 test cases + 6 regression checks written and saved.
+
+  **445 tests passing.**
+
+### Session N+12 (v2.30.0 F31c/d)
 - **v2.30.0** — **F31c Lifecycle-Aware Simulation & F31d TRI α Calibration**:
   - `pages/2_🎲_Simulation.py`: all changes.
     - **F31c**: `_load_scope_data()` gains `include_inactive: bool = False` param.
@@ -52,293 +107,62 @@ Requires SPICE synchronisation session before implementation begins.
       welcome, CHANGELOG v2.30.0, ROADMAPv3 F31 complete.
   - **445 tests passing.**
 
-### Session N+11 (v2.29.0 F32 Graph Visual Behaviour Panel)
-- **v2.29.0** — **F32 Graph Visual Behaviour Panel**:
-  - `ui/panels/graph_visual_panel.py`: NEW — consolidated visual settings panel. 4 presets
-    (Clean / Analysis / Lifecycle Audit / Sandbox Edit), exposure opacity (F20 moved here),
-    per-status lifecycle opacity sliders (F21 upgraded — replaces hardcoded 0.5), quadrant
-    border encoding toggle, Save as Schema Default button.
-  - `config/schema_loader.py`: `GraphVisualConfig` dataclass; `_parse_graph_visual_config()`;
-    `_graph_visual_config_to_dict()`; wired into `SchemaConfig`, `_parse_schema()`, `_schema_to_dict()`.
-  - `schemas/default/schema.yaml` + `schemas/it_security/schema.yaml`: `graph_visual_config` block.
-  - `utils/state_manager.py`: `VISUAL_PANEL_DEFAULTS` (`vp_*` keys) + `init_visual_panel_state()`
-    registered in `init_all()`.
-  - `visualization/node_styles.py`: `_QUADRANT_BORDER_COLORS`; `create_node_config()` accepts
-    `visual_config` dict; per-status opacity from map; quadrant border encoding block.
-  - `visualization/graph_renderer.py`: `render_graph()` / `render_subgraph()` accept `visual_config`;
-    `render_graph_streamlit()` builds `visual_config` from `vp_*` state with legacy fallback.
-  - `ui/home.py`: Display Options expander → Color Options (color_by only); visual panel wired
-    after layout management; schema defaults seeded into `vp_*` on first load.
-  - `docs/USER_GUIDE.md`, `docs/ARCHITECTURE.md`, `docs/METHODOLOGY.md`, `docs/CONFIGURATION_MANAGER.md`,
-    `docs/help_overview.md`, `docs/welcome.md`, `docs/help_visual_panel.md` (NEW), `README.md`: updated.
-    `CHANGELOG.md` v2.29.0. `ROADMAPv3.md` F32 done.
-  - **Bug fix**: `UnboundLocalError` on `exposure_results` in `render_visualization_tab` — pre-existing
-    unbound local; fixed by initialising from session state before the quadrant filter block.
-  - **Bug fix**: Quadrant border encoding was NOK — two root causes: (1) `_QUADRANT_BORDER_COLORS` keys
-    were capitalised ("Critical"/"High") but actual values are lowercase ("critical"/"frequency");
-    (2) `risk_quadrant` was not copied onto node dicts in the exposure overlay — added alongside
-    `base_exposure` / `exposure`.
-  - **445 tests passing.**
-
-### Session N+10 (v2.28.1 TRI Delta removal)
-- **v2.28.1** — **TRI Delta removed from Mitigation Exposure & What-If**:
-  - Root cause: `TRI = likelihood × severity^1.5` is mitigation-independent; counterfactual TRI delta was always 0.
-  - `pages/4_📊_Mitigation_Exposure.py`: removed `delta_tri` computation + "TRI Delta ↑" column; added `pct_covered` metric (EL Delta / base_exposure_of_covered_risks × 100) and "% EL (Covered Risks)" column.
-  - `pages/3_🔬_What-If_Analysis.py`: replaced "Total TRI" summary card with "Max Single Risk EL" (responds correctly to mitigation toggles); removed "Baseline TRI", "Modified TRI", "Δ TRI" from per-risk delta table.
-  - `docs/help_mitigation_exposure.md`: column reference updated; explanatory note added on why TRI Delta is absent.
-  - `CLAUDE.md`: development workflow updated — manual-test gate added between pytest and docs/commit steps.
-  - `CHANGELOG.md` v2.28.1 entry. `ROADMAPv3.md` F6 + F7 entries updated.
-  - **445 tests passing.**
-
-### Session N+9 (v2.28.0 F6 Mitigation Exposure View)
-- **v2.28.0** — **F6 Mitigation Exposure View**:
-  - `pages/4_📊_Mitigation_Exposure.py`: NEW — counterfactual per-mitigation impact page. Loads baseline via same pattern as What-If; for each mitigation computes portfolio exposure without it (N+1 `calculate_exposure` runs); displays ranked table (EL Delta ↑, % Portfolio EL, Risks Covered, Level). Scope-aware, lifecycle-filtered, level filter sidebar.
-  - `utils/state_manager.py`: `MITIGATION_EXPOSURE_DEFAULTS` dict + `init_mitigation_exposure_state()` added; registered in `init_all()`.
-  - `docs/help_mitigation_exposure.md`: NEW runtime-loaded help article.
-  - `docs/help_overview.md`, `docs/welcome.md`, `docs/USER_GUIDE.md`, `docs/ARCHITECTURE.md`: updated for F6.
-  - `CHANGELOG.md` v2.28.0 entry. `ROADMAPv3.md` F6 marked complete.
-  - **445 tests passing.**
-
-### Session N+8 (v2.27.1 fixes + subtype selection)
-- **v2.27.1** — Post-release fixes + Subtype Selection:
-  - `config/schema_loader.py`: `expected_loss_threshold` → `high_exposure_threshold`; backward-compat parse fallback.
-  - `schemas/default/schema.yaml` + `schemas/it_security/schema.yaml`: key renamed.
-  - `ui/home.py`: display text "Expected Loss" → "High Exposure" throughout `_render_threshold_alerts`.
-  - `core/attribute.py`: `__post_init__` alias `"boolean"` → `"bool"`, `"integer"` → `"int"` before `AttributeType()` lookup.
-  - `pages/1_⚙️_Configuration.py`: YAML backup `open()` calls now specify `encoding='utf-8'`.
-  - `database/queries/analysis.py`: node-set safety filter strips edges whose source/target is absent from the canvas node list (fixes INSTANTIATES AssertionError).
-  - `ui/tabs/unified_crud_tab.py`: `_render_risk_subtype_fields()` — new helper renders subtype selectbox (filtered by level) + extension fields after generic form. Wired into both create form and edit card.
-  - `tests/test_alerts.py` + `tests/test_templates.py`: field name updated.
-  - Full documentation pass for v2.27.0 (help_templates.md, help_alerts.md, USER_GUIDE, ARCHITECTURE, METHODOLOGY, CONFIGURATION_MANAGER, help_overview, welcome, help_exposure, README).
-  - `/finish` skill + `tasks/lessons.md` updated to enforce doc pass.
-  - **445 tests passing.**
-
-### Session N+7 (v2.27.0 U14 + F5)
-- **v2.27.0** — **U14 Generic Risk Template Architecture** + **F5 Threshold Alerts**:
-  - `models/risk.py`: `is_template: bool = False` field + `is_generic_template` property; `to_dict`/`from_dict` updated.
-  - `database/queries/risks.py`: `create_risk(is_template)`, `update_risk(is_template)`, `get_all_risks(exclude_templates=True)`, `get_risks_with_filters(exclude_templates=True)`; NEW: `get_all_templates()`, `create_instantiates_rel()`, `get_instances_of_template()`, `get_template_of_instance()`.
-  - `database/manager.py`: `create_risk(is_template)`, `update_risk(is_template)`, `get_all_risks(exclude_templates)` wrappers; `create_unified_entity`/`update_unified_entity` pass `is_template` through; 4 new template method wrappers.
-  - `schemas/default/schema.yaml` + `schemas/it_security/schema.yaml`: `is_template` boolean attribute; `instantiates` context edge (INSTANTIATES, dashed); `alert_thresholds` block.
-  - `config/schema_loader.py`: `AlertThresholdsConfig` dataclass; `AnalysisConfig.alert_thresholds`; `_parse_analysis` + `_analysis_to_dict` updated.
-  - `ui/tabs/unified_crud_tab.py`: `_render_template_library()` — template expander with instance counts, instantiation form, delete button.
-  - `ui/panels/node_property_panel.py`: `_render_template_info()` new function; registered as `📋 Template` section in property panel; `_render_exposure()` shows info for templates.
-  - `ui/home.py`: `_render_threshold_alerts()` function; called after quadrant distribution in exposure expander.
-  - `tests/test_templates.py`: NEW — 25 tests.
-  - `tests/test_alerts.py`: NEW — 11 tests.
-  - **445 tests passing.**
-
-### Session N+6 (v2.26.0 documentation pass)
-- Documentation updates for F7 What-If Analysis + broader doc refresh:
-  - `docs/help_whatif.md`: NEW in-app help article; registered in `ui/home.py` `_HELP_FILES`
-  - `docs/help_overview.md`: What-If row added
-  - `docs/welcome.md`: What-If capability block added
-  - `docs/USER_GUIDE.md`: What-If + Lifecycle sections added; navigation updated; health thresholds corrected; version → v2.26.0
-  - `docs/ARCHITECTURE.md`: 5-page diagram; lifecycle services; WHATIF_DEFAULTS; init functions
-  - `README.md`: version v2.26.0; 3 new Key Features; Analysis Tools + nav updated; pages/services structure updated
-  - `CHANGELOG.md`: Documentation section added under v2.26.0
-  - **409 tests passing.**
-
-### Session N+5 (v2.26.0 F7 What-If Analysis)
-- **v2.26.0** — **F7 What-If Analysis Sandbox**:
-  - `pages/3_🔬_What-If_Analysis.py`: NEW — mitigation toggle checkboxes (grouped by type); Compute Baseline button fetches + scopes data; recomputes `GlobalExposureResult` in-memory on every toggle change; portfolio summary (RR%, WRS, TRI) with `st.metric` delta indicators; health status change alert; per-risk delta table (Baseline vs Modified EL + TRI, sorted by Δ EL); Reset Scenario button; "Include inactive risks" worst-case toggle.
-  - `utils/state_manager.py`: `WHATIF_DEFAULTS` + `init_whatif_state()`; registered in `init_all()`.
-  - **409 tests passing.**
-
-### Session N+4 (v2.25.1 U12 polish)
-- **v2.25.1** — **U12 Post-Implementation Fixes**:
-  - `database/queries/risks.py`: Fixed `get_archive_candidates()` — replaced `WHERE NOT EXISTS { MATCH ... WHERE }` (Neo4j 5.x only) with `OPTIONAL MATCH` + `COUNT` aggregation pattern.
-  - `pages/2_💾_Data_Management.py`: Fixed scope detection (`active_scope` → `filter_manager.get_scope_node_ids()`); added **🔓 Force Accept** button for blocked auto-acceptance candidates.
-  - `ui/panels/node_property_panel.py`: Added dedicated **Lifecycle Details** block in `_render_identity()` (trigger_condition, acceptance_date, acceptance_owner, archive_date); lifecycle-aware `st.info()` messages in `_render_exposure()` per inactive status.
-  - `docs/help_lifecycle.md`: NEW runtime-loaded help article (6-state lifecycle, engine sections, Force Accept, YAML config).
-  - `docs/help_overview.md`: Lifecycle Engine row added to Core Capabilities table.
-  - `docs/help_exposure.md`: Lifecycle-aware exclusion note added.
-  - `ui/home.py`: `"Lifecycle": "help_lifecycle.md"` registered in `_HELP_FILES`.
-  - **409 tests passing.**
-
-### Session N+3 (v2.25.0 U12 implementation)
-- **v2.25.0** — **U12 Risk Lifecycle Engine** (Iteration 4):
-  - `models/enums.py`: 4 new `RiskStatus` members (ACCEPTED, WATCHING, SUPPRESSED, CLOSED) + `LIFECYCLE_INACTIVE_STATUSES` frozenset.
-  - `models/risk.py`: `activation_condition` → `trigger_condition`, `activation_decision_date` → `acceptance_date`; new fields `acceptance_owner`, `archive_date`; new `is_inactive` property; migration-safe `from_dict` fallbacks.
-  - `schemas/default/schema.yaml`: 4 new statuses, renamed attributes, `risk_lifecycle_rules` block.
-  - `schemas/it_security/schema.yaml`: 3 new statuses (accepted, watching, suppressed; closed already existed).
-  - `config/schema_loader.py`: `QuadrantThresholdsConfig` + `LifecycleRulesConfig` dataclasses; `_parse_lifecycle_rules`; `_lifecycle_rules_to_dict`; `SchemaConfig.lifecycle_rules` field.
-  - `database/queries/risks.py`: `_INACTIVE_STATUSES` constant; `exclude_inactive=True` param on `get_all_risks` + `get_risks_with_filters`; COALESCE fallbacks in RETURN clauses; renamed params in `create_risk` + `update_risk` with legacy aliases; new `get_archive_candidates()`.
-  - `services/trigger_engine.py`: NEW — `TriggerEngine` (human-review, no auto-eval).
-  - `services/auto_acceptance_engine.py`: NEW — `AutoAcceptanceEngine` with 3 eligibility guards.
-  - `services/archive_engine.py`: NEW — `ArchiveEngine`, alert generation only.
-  - `utils/state_manager.py`: `LIFECYCLE_DEFAULTS` + `init_lifecycle_state()`.
-  - `pages/2_💾_Data_Management.py`: Lifecycle Engine expander + Accepted Risks toggle.
-  - `scripts/migrate_activation_to_lifecycle.cypher`: NEW idempotent rename migration.
-  - `tests/test_lifecycle.py`: NEW — 31 test cases covering all 3 services + exclusion guard.
-
-### Session N+2 (v2.25.0 U13)
-- **v2.25.0** — **U13 Severity Rename + Dual-Metric Exposure** (Iteration 4):
-  - `Risk.impact` → `Risk.severity` across all layers: schemas, model, queries, manager,
-    backup service, exposure calculator, simulation page, UI panels, all tests/fixtures.
-  - `_compute_risk_quadrant()` helper + `TRI = likelihood × severity^1.5` in `exposure_calculator.py`.
-  - `RiskExposureResult` gains `tail_risk_indicator: float` + `risk_quadrant: str` (defaults at end).
-  - Node Property Panel: Severity metric, TRI row, quadrant row with emoji labels.
-  - `ui/home.py`: `_render_quadrant_distribution()` dashboard widget; quadrant multiselect sidebar filter.
-  - 5 root-level cypher files moved to `scripts/` with `impact:` → `severity:` updated.
-  - `docs/New Space/ODT_RIM_SpaceUseCase.cypher`: 52 Risk property references updated.
-  - `scripts/migrate_impact_to_severity.cypher`: new idempotent migration script.
-  - Legacy fallbacks: `r.get("severity") or r.get("impact")` in exposure calc + simulation load;
-    `d.get("severity") or d.get("impact")` in backup `_risk_kwargs`.
-  - Tests: 378 pass.
+### Session N+11 (v2.29.0 F32)
+- **v2.29.0** — **F32 Graph Visual Behaviour Panel** — see previous SESSION_STATE for details.
+  **445 tests passing.**
 
 ---
 
 ## 🧠 Key Decisions Made (not in docs yet)
 
-- **Simulation page save-button pattern (compute/render split)**: The root cause of the
-  save button navigating to landing was that the button lived inside a function only called when
-  `run_button=True`. On the rerun triggered by clicking save, `run_button=False` → function never
-  called → button never rendered → click lost. Fix: split each DB simulation mode into
-  `_compute_*_and_store()` (runs computation, stores result in `ss["last_*_result"]`) and
-  `_render_*_results(stored)` (renders from stored dict, always called when result exists).
-  The main() loop always calls the render function when stored state is set, regardless of
-  which button was clicked. This pattern must be used for ALL future simulation modes.
+- **`neo4j.time.DateTime` is NOT a `datetime` subclass**: isinstance checks silently skip it.
+  Always duck-type with `hasattr(v, "tzinfo")` and convert with `.to_native()`. Pattern is in
+  `services/export_service._coerce_value()`.
 
-- **F31c `include_inactive` flows through `_load_scope_data`**: single parameter change;
-  all downstream simulation logic is unchanged. `_compute_sb_and_store` loads scope data
-  twice when worst-case is active (once with, once without inactive) to compute the latent count.
-  This is intentional — a second DB call is cheap compared to N×M simulation runs.
+- **ContextNode `node_type` must be stored at create time**: `create_entity` injects
+  `node_type = entity_type.id` before the Neo4j CREATE. Nodes created before this fix lack
+  `node_type` and will be invisible to `get_all_entities` and the canvas. They need manual
+  Cypher patching or re-creation.
 
-- **F31d quadrant classification uses the exposure engine's `_compute_risk_quadrant`**: imported
-  directly (module-level function). This guarantees parity with the canvas quadrant encoding. Do not
-  duplicate the thresholds (L≥6∧S≥6 = critical, etc.) in the simulation page.
+- **`get_graph_data` TPO skip-guards are gone**: The `if entity_id == "tpo": continue` and
+  `if rel_id == "impacts_tpo": continue` guards were remnants of the old hardcoded TPO path.
+  Both are removed. TPOs now go through the generic context node loop identically to all other
+  ContextNode types.
 
-- **F31d saves calibration DF to Saved Results with compatibility stubs**: the `SimulationRecord`
-  `key_metrics` dict always needs the six standard keys (`mean_residual_risk_pct`, etc.) for
-  `_render_saved_results_tab` to render without crashing. Calibration records stub these to 0.0 and
-  add their own meaningful keys (`recommended_alpha`, `n_alpha_values`, etc.).
+- **`add_node_to_scope` / `remove_node_from_scope` must use fresh disk load**: The module-level
+  `_active_schema` singleton in `config/settings.py` is loaded once at process start. If the
+  schema changes during the session (e.g. via Config page), saving the singleton overwrites the
+  file with stale content. Always use `SchemaLoader().load_schema(schema_name)` before modifying.
 
-- **`Any` was missing from typing imports before F31d**: pre-existing gap; fixed opportunistically.
-  445 tests still pass.
+- **Demo data cypher files must use `:ContextNode {node_type: 'tpo'}`**: The old `:TPO` label
+  is no longer read by any query. Any dataset using `:TPO` nodes will show 0 Top Objectives in
+  the Data Management tab and canvas. Reset required for all existing databases.
 
-- **F32 `risk_quadrant` overlay pattern**: `risk_quadrant` is computed at exposure-calculation time
-  and stored only in `exposure_results["risk_results"]`. It is overlaid onto node dicts in
-  `render_visualization_tab` alongside `base_exposure`/`exposure`. Without this overlay,
-  `create_node_config()` cannot see the quadrant. This is the same pattern as exposure overlays.
-
-- **F32 `_QUADRANT_BORDER_COLORS` keys are lowercase**: The four values returned by
-  `_compute_risk_quadrant()` are `"critical"`, `"frequency"`, `"severity"`, `"marginal"` — all
-  lowercase. The colour map must use these exact strings. Do not capitalise.
-
-- **F32 quadrant borders require exposure to be calculated first**: If no exposure calculation
-  has been run, nodes have no `risk_quadrant` attribute and borders silently do not appear.
-  This is by design — borders are derived from computed values, not raw node properties.
-
-
-- **`high_exposure_threshold` — not `expected_loss_threshold`**: The raw exposure score
-  is not an "Expected Loss" in the financial sense. EL will be introduced later with the
-  compound Poisson loss model (SPICE calibration, LEC). Until then, threshold alerts compare
-  against `high_exposure_threshold` (same 0-100 scale as `final_exposure`).
-
-- **`boolean` YAML type → `AttributeType.BOOL`**: `AttributeType` enum value is `"bool"`,
-  not `"boolean"`. The alias mapping is in `core/attribute.py` `__post_init__`. Any new
-  schema attribute type of `boolean` or `integer` will be correctly resolved.
-
-- **INSTANTIATES edge safety filter in `get_graph_data`**: After collecting all edges,
-  a `_node_ids` set filter strips any edge whose source or target is not in the canvas.
-  This is a general safety measure, not just for INSTANTIATES. Applied before scope filtering.
-
-- **Subtype selector rendered after `build_entity_form`**: `_render_risk_subtype_fields()`
-  mutates `form_data` in place. It reads `form_data["level"]` (set by the generic form)
-  to filter subtypes. Works for both create (existing_data={}) and edit (pre-fill from node dict).
-
-- **U14 `is_template` exclusion is a second independent axis** (orthogonal to lifecycle):
-  templates are excluded via `(r.is_template IS NULL OR r.is_template = false)` WHERE clause
-  in both `get_all_risks` and `get_risks_with_filters`. `exclude_templates=True` by default,
-  same pattern as `exclude_inactive`. CRUD forms pass both `exclude_inactive=False` and
-  `exclude_templates=False` to see everything.
-
-- **U14 `update_risk` uses COALESCE for is_template**: `r.is_template = COALESCE($is_template_val, r.is_template, false)`.
-  Caller passes `None` meaning "leave unchanged"; any boolean value overwrites the property.
-  Param key is `is_template_val` (not `is_template`) to avoid collision with existing code.
-
-- **Templates excluded from canvas via `get_risks_with_filters`**: `get_graph_data` in
-  `analysis.py` calls `get_risks_with_filters` which now defaults to `exclude_templates=True`.
-  No change needed to `get_graph_data` itself.
-
-- **Template library is a separate expander** in Data Management Risks tab, not mixed into
-  the main risk list. Main list = active specific risks only. Templates only appear in the
-  `📋 Risk Templates` expander for management and instantiation.
-
-
-
-- **U12 field renames are migration-safe**: `from_dict` in `models/risk.py` reads new key first,
-  falls back to old key. `get_all_risks`/`get_risk_by_id` use COALESCE in Cypher RETURN.
-  Migration script (`scripts/migrate_activation_to_lifecycle.cypher`) is idempotent; run after deploy.
-
-- **U12 `exclude_inactive=True` default on analytical DB queries**: `get_all_risks` and
-  `get_risks_with_filters` exclude Accepted/Watching/Suppressed/Closed/Archived by default.
-  Callers needing the full list (CRUD forms, lifecycle UI) pass `exclude_inactive=False`.
-  `get_graph_data` (canvas) was NOT changed — keeps showing all risks; F32 handles opacity.
-
-- **U12 `TriggerEngine` is manual-review only**: trigger_condition is free text; no `eval()`.
-  Future programmatic evaluation: use `simpleeval` library (safe sandboxed evaluator).
-
-- **Force Accept pattern**: Blocked risks can be manually accepted by a reviewer via
-  `🔓 Force Accept` button — same DB write as auto-accept path, no eligibility check.
-  Intent is explicit: human overrides the guard with full awareness.
-
-- **Lifecycle scope detection**: Must use `st.session_state["filter_manager"].get_scope_node_ids()`
-  (not `st.session_state["active_scope"]` which does not exist). Pattern from Simulation page.
-
-- **`get_archive_candidates` Cypher compatibility**: `WHERE NOT EXISTS { MATCH ... WHERE }`
-  is Neo4j 5.x only. Use `OPTIONAL MATCH` + `WITH r, COUNT(m) AS n WHERE n = 0` for all versions.
-
-- **Neo4j "property does not exist" warning on new fields**: Normal before first write.
-  `acceptance_owner`, `archive_date` etc. trigger a `01N52` warning until the first risk goes
-  through the lifecycle engine and writes those properties. Not an error; warning disappears
-  automatically after first acceptance.
-
-- **`render_scope_node_editor` callback pattern**: Config page can't use FilterManager
-  (home.py singleton). Uses caller-supplied `on_add`/`on_remove` callbacks instead.
-
-- **JS click bridge architecture**: PyVis in inner `srcdoc` iframe; `declare_component`
-  outer iframe. `window.parent.postMessage` → outer component → `setComponentValue`.
-  `st.components.v1.html` is one-way only, so the outer wrapper is essential.
-
-- **`render_graph_streamlit()` returns `Optional[dict]`**: `{"action": "click"|"contextmenu",
-  "node_id": str|None}`. Legacy string fallback preserved. Background click → `node_id: null`.
-
-- **No `st.rerun()` after contextmenu event**: Streamlit components retain their last
-  `setComponentValue` across reruns. Calling `st.rerun()` after setting
-  `scope_sandbox_pending_node` causes an infinite loop (same event re-fires each run).
-  The sandbox action panel renders in the same script pass — no rerun needed.
-
-- **`network.getNodeAt(params.pointer.DOM)` required for right-click**: `params.nodes`
-  in vis.js `oncontext` is unreliable — often empty even when clicking a node directly.
-
-- **Sandbox border must be applied LAST in graph_renderer.py**: `create_node_config`
-  rebuilds `color` from scratch. Transparency code overwrites border colors. Sandbox
-  border block must run after both, and `_sandbox_in_scope` nodes must be excluded
-  from `transparent_node_ids` in Simple mode.
-
-- **`net.generate_html()` is the correct PyVis API**: `net.html` is only populated
-  as a side-effect of `write_html()`. Always use `generate_html()` for in-memory HTML.
-
-- **`cdn_resources="in_line"` required**: Avoids 404 on `lib/bindings/utils.js` inside
-  the srcdoc iframe.
-
-- **`create_unified_entity` return type inconsistency**: risk/mitigation → `str`,
-  context nodes → `dict`. Branch on `isinstance(new_item, str)` at all call sites.
+- **Simulation page save-button pattern (compute/render split)**: See Session N+12 note.
+- **F32 `risk_quadrant` overlay pattern**: See Session N+12 note.
+- **F32 `_QUADRANT_BORDER_COLORS` keys are lowercase**: See Session N+12 note.
 
 ---
 
 ## ⚠️ Known Issues / Tech Debt
 
+- **BUG 7 — Hard-to-reproduce: graph canvas blank after L/S edit** (logged in `tasks/lessons.md`):
+  Suspected stale `ss["graph_data"]` / `ss["exposure_results"]` cache after a CRUD DB write.
+  Potential fix: explicit `ss["graph_data"] = None` after any risk update in `unified_crud_tab.py`.
+  Cannot reproduce reliably. Flag for regression during Iteration 6 testing.
+
+- **Existing `:TPO` nodes in any live DB** need manual patching before the app will show them:
+  ```cypher
+  MATCH (t:TPO)
+  SET t:ContextNode, t.node_type = 'tpo'
+  REMOVE t:TPO
+  ```
+
 - **F22 and F23 appear twice each in `ROADMAPv2.md`** Stream B section —
   deduplicate when next touching that file.
 
 - **`pydantic` and `openpyxl` must be installed via venv** — always run tests
-  with `.\venv\Scripts\python.exe -m pytest tests/` (409 pass).
-
-- **Canvas opacity for Watching/Suppressed risks** (F32 deferred) — inactive risks still
-  show at full opacity on the canvas. `get_graph_data` intentionally not changed; F32
-  Visual Panel will handle lifecycle-driven opacity encoding.
+  with `.\venv\Scripts\python.exe -m pytest tests/` (445 pass).
 
 ---
 
@@ -351,8 +175,8 @@ _None._
 ## 🔁 Resumption Prompt (copy-paste to start next session)
 ```
 Resume RIM development. Read tasks/SESSION_STATE.md first, then continue where we left off.
-v2.30.0 complete (F31c/d Lifecycle-Aware Simulation & TRI α Calibration). Iteration 5 closed. 445 tests passing.
+v2.31.0 complete (Pre-Iteration 6 bug fix release). Branch: fix/test_fix. 445 tests passing.
+Manual test campaign at tasks/test_campaign_v2.31.0.md — awaiting user sign-off before merging.
+After merge: Iteration 6 begins. SPICE synchronisation session required first.
 ROADMAPv3.md is the authoritative roadmap.
-Next phase: Iteration 6 — SPICE integration. A synchronisation/briefing session on SPICE is required before implementation.
-Branch: feature/iteration_4.
 ```
