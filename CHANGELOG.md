@@ -4,6 +4,179 @@ All notable changes to the Risk Influence Map (RIM) application.
 
 ---
 
+## [v2.32.0] - 2026-05-04 (Pre-Iteration 6 Bug Fix Release — Manual Test Campaign Fixes)
+
+### Bug Fixes
+
+- **BUG-1 — Excel import crashes on every row** (`services/import_service.py`):
+  U13 renamed `impact` → `severity` on `create_risk()` but the import caller still passed `impact=`.
+  Fixed: extract column as `severity = row.get('severity') or row.get('impact')` (backward-compatible
+  fallback for older export files) and pass as `severity=` to `create_risk()`.
+
+- **BUG-2 — Context edge editing crashes** (`ui/tabs/unified_crud_tab.py`):
+  `build_relationship_form()` does not accept `default_values=` or `is_edit=True` — function uses
+  `existing_data=`. Fixed call at line 434: removed unsupported kwargs, replaced with `existing_data=edge`.
+
+- **BUG-3 — Node edit from main interface crashes** (`ui/panels/editor_panel.py`):
+  `build_entity_form()` does not accept `is_edit=True` — edit mode is implicit when `existing_data`
+  is provided. Removed the stale `is_edit=True` keyword arg from the editor panel call.
+
+- **BUG-4 — JSON backup restore creates duplicate edges on re-import** (`services/backup_service.py`):
+  Three root causes fixed:
+  1. **Missing source/target names in context edge export**: `get_all_relationships()` returns
+     `_source`/`_target` nested dicts, not top-level `source_name`/`target_name`. Export now extracts
+     `source_name` and `target_name` from `_source.name` / `_target.name` before writing the backup.
+  2. **Wrong `create_relationship()` call signature**: restore was calling with 4 args; function requires
+     6 (`rel_type_id, source_id, target_id, source_entity_type_id, target_entity_type_id, data`).
+     Fixed: entity type IDs sourced from `rel_type.from_entity_types[0]` / `rel_type.to_entity_types[0]`.
+  3. **No deduplication on re-import**: all three restore loops (influences, mitigates, context edges)
+     used bare `CREATE`. Pre-restore sets now detect existing edges and skip duplicates; sets are updated
+     as new edges are created within the same restore run.
+  Also: mitigations added to `node_name_to_id` map so mitigates edges can resolve their endpoints.
+
+- **BUG-9 — Excel import crashes: `EntityTypeDefinition has no attribute 'properties'`** (`services/import_service.py`, `tests/test_import_export.py`):
+  `_import_context_nodes` and `_import_context_edges` iterated over `entity_type.properties` /
+  `rel_type.properties` — but `EntityTypeDefinition` uses `.attributes`. Fixed all 4 call sites to
+  `.attributes`; warning message strings updated to match; test mock and assertion corrected.
+
+- **BUG-10 — TC06/TC08 test TPO nodes use old `:TPO` label** (`scripts/demo_tc_dataset.cypher`, `scripts/tc08_feature_coverage.cypher`):
+  `demo_tc_dataset.cypher` and `tc08_feature_coverage.cypher` were not migrated in v2.31.0.
+  Both still created TPO nodes as `:TPO {id: ...}`, which are invisible to `get_entities('tpo')`
+  (queries `:ContextNode WHERE node_type = 'tpo'`). This caused the 4 remaining backup-restore
+  "could not resolve" errors for TC06/TC08 test scope data.
+  Fixed: both files migrated to `:ContextNode {id: ...} ON CREATE SET node_type = 'tpo', ...`
+  and all `MATCH (t:TPO ...)` → `MATCH (t:ContextNode ...)`.
+
+- **BUG-6 — Excel import: all risks duplicated** (`services/import_service.py`):
+  `_import_risks` had no existence check — it created every row regardless of whether a risk with
+  that name already existed in the DB. Fixed: existing risk names are fetched at method entry;
+  each row is skipped if its name is already present. The in-memory set is updated on successful
+  creation to guard against duplicates within the same import file.
+
+- **BUG-7 — Excel import crashes with `get_all_tpos` AttributeError** (`services/import_service.py`):
+  TPOs are now ContextNodes (`:ContextNode {node_type: 'tpo'}`). The old `self.get_all_tpos()`
+  method no longer exists on the manager. Fixed: replaced with `self.get_generic_entities('tpo')`
+  guarded by an attribute check. TPOs are now indexed in `tpo_ref_to_id` by both `name` and
+  `reference` (fallback) to stay compatible with both old and new Excel formats.
+
+- **BUG-8 — JSON backup restore: `impacts_tpo` edges always skipped** (`services/backup_service.py`):
+  Existing context nodes (e.g. TPO nodes already in the DB before restore) were being skipped
+  without being added to `node_name_to_id`. Their names were therefore unresolvable when the
+  context edge loop ran, causing all `impacts_tpo` edges (and any other context edges pointing
+  to pre-existing context nodes) to be skipped with "could not resolve" errors. Fixed: the
+  skip path now writes `node_name_to_id[name] = existing_cn[name]` before continuing.
+
+- **BUG-5 — Scope description stale in Configuration after sandbox node add** (`ui/home.py`):
+  `_commit_sandbox()` persisted scope changes to disk but did not refresh `st.session_state.active_schema`.
+  Configuration page reads `active_schema` from session state → showed stale node membership.
+  Fixed: `_commit_sandbox()` now reloads `active_schema` from disk via `SchemaLoader` before `st.rerun()`.
+
+- **BUG-11 — Excel import: mitigations, influences, mitigates, and context nodes re-created on every import** (`services/import_service.py`, `database/manager.py`, `database/queries/influences.py`, `database/queries/mitigations.py`):
+  `_import_mitigations`, `_import_influences`, `_import_mitigates`, and `_import_context_nodes` had no
+  existence checks — re-importing the same file against an existing dataset created duplicate records.
+
+  **Application-layer dedup** (prevents re-creation if entity already in DB):
+  - `_import_mitigations`: existing names fetched from `get_all_mitigations()` at method entry; in-memory
+    set updated on success.
+  - `_import_influences`: existing `(source_id, target_id)` pairs fetched from `get_all_influences()`;
+    new optional `get_all_influences_fn` added to `ExcelImporter` constructor.
+  - `_import_mitigates`: existing `(mitigation_id, risk_id)` pairs fetched from
+    `get_all_mitigates_relationships()`; new optional `get_all_mitigates_fn` added to constructor.
+  - `_import_context_nodes`: per-type existing name set fetched via `get_generic_entities(type_id)` before
+    each sheet's row loop.
+  `database/manager.py` `import_from_excel()` updated to pass `get_all_influences_fn` and
+  `get_all_mitigates_fn` to the `ExcelImporter` constructor.
+
+  **Database-layer dedup** (idempotent CREATE — second line of defence for any DB state):
+  - `database/queries/influences.py` `create_influence`: added `WHERE NOT EXISTS((source)-[:INFLUENCES]->(target))`
+    before `CREATE`. Returns no rows → `None` → importer counts as skipped.
+  - `database/queries/mitigations.py` `create_mitigates_relationship`: added
+    `WHERE NOT EXISTS((m)-[:MITIGATES]->(r))` before `CREATE`. Same pattern — idempotent at DB level.
+
+  **Round 3 — Prefer exported node IDs over name lookup** (`services/import_service.py`):
+  `_import_influences` and `_import_mitigates` detect whether the Excel sheet contains `source_id`/`target_id`
+  or `mitigation_id`/`risk_id` columns (present in all RIM-generated exports) and prefer those exact IDs
+  over name-based lookup. The earlier rounds left dedup correct for clean Risk→Risk pairs but ineffective
+  whenever the export sheet contained data shaped differently than what `get_all_influences()` returned.
+
+- **BUG-11 ROOT CAUSE — Excel + JSON export contamination** (`database/manager.py`, `services/backup_service.py`):
+  After three rounds of dedup hardening, TC-11 still showed 64 INFLUENCES + 67 MITIGATES re-created on
+  identical-state re-import. Root cause: `database/manager.py:1265` and `:1287` (Excel export) and
+  `services/backup_service.py:79` (JSON backup) fed the Influences sheet/key from
+  `manager.get_semantic_influences()`, which **concatenates kernel `INFLUENCES` (Risk→Risk) PLUS kernel
+  `MITIGATES` (Mitigation→Risk, normalized into `source_id`/`target_id`) into a single list**. The
+  re-imported Influences sheet therefore contained 131 rows = 64 actual influences + 67 mitigates rows
+  whose `source_id` was a Mitigation UUID. App-layer dedup (`existing_infs` from `get_all_influences()`,
+  Risk→Risk only) didn't recognise the 67 mitigates pairs; DB-layer dedup (`MATCH (source:Risk)`) silently
+  failed for those rows since the source was a Mitigation, not a Risk — the importer incorrectly counted
+  them as skips while the same data was *also* re-created via the dedicated Mitigates sheet path.
+  **Fix**: switched export to `manager.get_all_influences()` (Risk→Risk only). Mitigates remain captured
+  via the dedicated Mitigates sheet/key fed by `get_all_mitigates_relationships()`. JSON restore-dedup
+  set in `backup_service.py:175` switched to match. The exposure engine and analysis paths in
+  `database/manager.py:539, :886, :1415`, `pages/3_🔬_What-If_Analysis.py:51`, and
+  `pages/4_📊_Mitigation_Exposure.py:54` continue to use `get_semantic_influences()` (correct
+  behaviour for math, where INFLUENCES and MITIGATES are both influence-semantic).
+  TC-11 verified: re-import of fresh export against same DB now returns 0 created across all entity types.
+
+### Schema & Code Cleanup (Phase A coherence audit)
+
+- **A1 — Trim legacy `entities.tpo` block** (`schemas/default/schema.yaml`):
+  Since v2.31.0 BUG-5, TPOs are stored as `:ContextNode {node_type:'tpo'}` and their attributes are defined
+  in `context_nodes.tpo.properties`. The legacy `entities.tpo` block redundantly declared
+  `neo4j_label: TPO`, an `attributes:` list, and `custom_attributes: []` — none of which were read by any
+  live query. Trimmed `entities.tpo` to just the `clusters:` registry (the only block still consumed —
+  via `_active_schema.tpo.clusters` for cluster colour/label lookup and the layout engine).
+
+- **A3 — Remove dead `_import_tpos` and `_import_tpo_impacts`** (`services/import_service.py`):
+  Both methods called manager APIs (`self.create_tpo`, `self.create_tpo_impact`) that were removed during
+  the v2.31.0 ContextNode migration. The methods only fired for legacy-format Excel sheets named `TPOs` /
+  `TPO_Impacts` (the current export emits `CN_tpo` / `CE_impacts_tpo`), so they were silently no-op
+  time-bombs that would crash on a vintage file. Removed both methods, their call sites in
+  `import_from_excel`, and the now-unused `TPO_CLUSTERS` / `IMPACT_LEVELS` imports from `config.settings`.
+
+- **A5 — ContextNode `node_type` casing** (`ui/layouts.py`):
+  Five comparisons of `node.get("node_type") == "TPO"` (uppercase) matched zero nodes, because
+  `database/queries/analysis.py:100` writes `node["node_type"] = entity_id` (lowercase, e.g. `"tpo"`)
+  for every context node fetched via the canvas pipeline. Fixed all five sites to lowercase. Restores
+  the TPO Cluster Layout button (`generate_tpo_cluster_layout`), the TPO band in
+  `generate_layered_layout`, and the upper-zone routing in `generate_zone_aware_layout`.
+
+### Context Node / Edge Round-Trip Hardening
+
+- **CN_tpo / CE_impacts_tpo schema warnings** (`schemas/default/schema.yaml`,
+  `services/import_service.py`):
+  After the TC-11 fix, re-imports surfaced two `[SCHEMA]` warnings flagging unrecognized columns on the
+  `CN_tpo` and `CE_impacts_tpo` sheets. Two-part fix:
+  1. **Real data columns added to schema** so future imports persist them:
+     - `context_nodes.tpo.properties`: added `reference` and `description`.
+     - `context_edges.impacts_tpo.properties`: added `impact_level` and `description`.
+  2. **Export-only metadata silenced** in the importer: introduced module-level constant
+     `EXPORT_RESERVED_COLUMNS = {"_element_id", "_source", "_target", "created_at", "updated_at"}` and
+     subtracted it from the unknown-columns set in both `_import_context_nodes` and
+     `_import_context_edges`. These columns exist in the workbook for round-trip readability but are
+     either Neo4j-internal (`_element_id`), derived from edge endpoints (`_source`/`_target`), or
+     auto-set on creation (`created_at`/`updated_at`) — re-importing them would clobber correct values.
+
+### Admin
+
+- **CLAUDE.md**: all references updated from `ROADMAPv3.md` → `ROADMAPv4.md` (now authoritative).
+- **ROADMAPv4.md**: v2.32.0 release table extended with BUG-6 → BUG-10, the BUG-11 root-cause entry,
+  the A1/A3/A5 cleanup rows, and the CN/CE round-trip row. New backlog item `[F-CN-IMPORT]` added under
+  Stream B for the deferred follow-ups: `relationships.impacts_tpo` stub removal (cascades into a broken
+  sample-data generator), `AttributeConfig` enum-values support, sample-data generator rewrite, and
+  Excel/JSON column contract review.
+
+### Deferred (tracked under [F-CN-IMPORT] in ROADMAPv4)
+
+- Empty `relationships.impacts_tpo: { impact_levels: [] }` stub in `schema.yaml` — kept because removing
+  it cascades into `pages/1_⚙️_Configuration.py:2062` (`random.choice(impact_levels)` in the sample-data
+  generator, which already emits legacy `:TPO` cypher and is itself broken).
+- Cluster enum on `context_nodes.tpo.properties.cluster` — requires extending `AttributeConfig` /
+  `_parse_context_node` to read a `values:` list. Single-edge-case change deferred until a second
+  context-node type needs the same treatment.
+
+---
+
 ## [v2.31.0] - 2026-04-01 (Pre-Iteration 6 Bug Fix Release)
 
 ### Bug Fixes

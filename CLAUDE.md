@@ -67,7 +67,7 @@ Editing these files affects the live help section — treat as user-facing conte
 
 ## Before ANY Code Task
 1. Check `tasks/SESSION_STATE.md` for current work-in-progress
-2. Read the relevant stream section of `ROADMAPv3.md` (not the whole file)
+2. Read the relevant stream section of `ROADMAPv4.md` (not the whole file)
 3. For entity logic: read relevant section of schema YAML, not the whole file
 
 ## Development Workflow
@@ -77,7 +77,7 @@ Editing these files affects the live help section — treat as user-facing conte
 4. On task complete:
    a. Run automated tests (`pytest`)
    b. **Provide manual testing checklist** — stop and wait for user confirmation that manual tests pass
-   c. Only after manual test sign-off: update `walkthrough.md` → update `CHANGELOG.md` + `ROADMAPv3.md`
+   c. Only after manual test sign-off: update `walkthrough.md` → update `CHANGELOG.md` + `ROADMAPv4.md`
    d. Provide git commit text
 5. After any user correction: update `tasks/lessons.md`
 
@@ -97,6 +97,6 @@ Top: Business Objectives → Middle: Business Risks (C-suite) → Bottom: Operat
 
 ## Full Reference Docs (load on demand, not by default)
 - `AGENT_RULES_AND_CONTEXT.md` — complete golden rules
-- `ROADMAPv3.md` — all features, streams, dependency map
+- `ROADMAPv4.md` — all features, streams, dependency map (authoritative — supersedes v3)
 - `ROADMAP_ARCHITECTURAL_REFERENCE.md` — deep architecture & phase history
 - `tasks/SESSION_STATE.md` — current session state for handoff

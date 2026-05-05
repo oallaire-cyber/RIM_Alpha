@@ -10,9 +10,14 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from config.settings import (
     RISK_LEVELS, RISK_STATUSES, RISK_ORIGINS, RISK_CATEGORIES,
-    TPO_CLUSTERS, MITIGATION_TYPES, MITIGATION_STATUSES,
-    INFLUENCE_STRENGTHS, IMPACT_LEVELS, MITIGATION_EFFECTIVENESS
+    MITIGATION_TYPES, MITIGATION_STATUSES,
+    INFLUENCE_STRENGTHS, MITIGATION_EFFECTIVENESS
 )
+
+# Export-only metadata columns that the importer must always silently ignore
+# (they exist in the workbook for round-trip readability/debugging but are
+# either auto-generated on create or derived from edge endpoints).
+EXPORT_RESERVED_COLUMNS = {"_element_id", "_source", "_target", "created_at", "updated_at"}
 
 
 @dataclass
@@ -88,10 +93,12 @@ class ExcelImporter:
         get_generic_entities_fn: Optional[Callable] = None,
         create_generic_relationship_fn: Optional[Callable] = None,
         registry=None,
+        get_all_influences_fn: Optional[Callable] = None,
+        get_all_mitigates_fn: Optional[Callable] = None,
     ):
         """
         Initialize the importer with database operation functions.
-        
+
         Args:
             create_risk_fn: Function to create a risk
             create_influence_fn: Function to create an influence
@@ -103,6 +110,8 @@ class ExcelImporter:
             get_generic_entities_fn: Function to get ContextNodes (type_id) -> list
             create_generic_relationship_fn: Function to create a ContextEdge
             registry: SchemaRegistry instance for ContextNode/ContextEdge type lookup
+            get_all_influences_fn: Function to get all influence relationships (for dedup)
+            get_all_mitigates_fn: Function to get all mitigates relationships (for dedup)
         """
         self.create_risk = create_risk_fn
         self.create_influence = create_influence_fn
@@ -114,6 +123,8 @@ class ExcelImporter:
         self.get_generic_entities = get_generic_entities_fn
         self.create_generic_relationship = create_generic_relationship_fn
         self.registry = registry
+        self.get_all_influences = get_all_influences_fn
+        self.get_all_mitigates = get_all_mitigates_fn
     
     def import_from_excel(self, filepath: str) -> ImportResult:
         """
@@ -146,22 +157,26 @@ class ExcelImporter:
                 risk_name_to_id[risk['name']] = risk['id']
             result.log(f"Mapped {len(risk_name_to_id)} risks by name")
             
-            # Import TPOs
-            self._import_tpos(filepath, result)
-            
-            # Build TPO reference mapping
+            # Build TPO reference mapping — TPOs are ContextNodes; use get_generic_entities
+            # (Legacy "TPOs" sheet handler removed; live path is _import_context_nodes for CN_tpo)
             result.log("Building TPO reference mapping from database...")
-            all_tpos = self.get_all_tpos()
-            for tpo in all_tpos:
-                tpo_ref_to_id[tpo['reference']] = tpo['id']
-            result.log(f"Mapped {len(tpo_ref_to_id)} TPOs by reference")
+            if self.get_generic_entities:
+                all_tpos = self.get_generic_entities('tpo') or []
+                for tpo in all_tpos:
+                    name = tpo.get('name', '')
+                    ref = tpo.get('reference', '')
+                    tpo_id = tpo.get('id', '')
+                    if name and tpo_id:
+                        tpo_ref_to_id[name] = tpo_id
+                    if ref and tpo_id and ref != name:
+                        tpo_ref_to_id[ref] = tpo_id
+            result.log(f"Mapped {len(tpo_ref_to_id)} TPOs by name/reference")
             
             # Import Influences
             self._import_influences(filepath, result, risk_name_to_id)
-            
-            # Import TPO Impacts
-            self._import_tpo_impacts(filepath, result, risk_name_to_id, tpo_ref_to_id)
-            
+
+            # (Legacy "TPO_Impacts" sheet handler removed; live path is _import_context_edges for CE_impacts_tpo)
+
             # Import Mitigations
             self._import_mitigations(filepath, result)
             
@@ -213,11 +228,14 @@ class ExcelImporter:
     def _import_risks(self, filepath: str, result: ImportResult):
         """Import risks from Excel."""
         import pandas as pd
-        
+
         result.log("Processing Risks sheet...")
         try:
             df = pd.read_excel(filepath, sheet_name='Risks')
             result.log(f"Found {len(df)} risks in Excel file")
+
+            # Build existing-name set for deduplication
+            existing_risk_names = {r['name'] for r in (self.get_all_risks() or []) if r.get('name')}
             
             # Detect ext_* columns
             ext_columns = [c for c in df.columns if c.startswith("ext_")]
@@ -258,7 +276,7 @@ class ExcelImporter:
                     
                     owner = self._safe_string(row.get('owner', ''))
                     probability = self._safe_float(row.get('probability'))
-                    impact = self._safe_float(row.get('impact'))
+                    severity = self._safe_float(row.get('severity') or row.get('impact'))
                     
                     activation_condition = None
                     if not pd.isna(row.get('activation_condition')):
@@ -286,6 +304,12 @@ class ExcelImporter:
                             else:
                                 ext_fields[col] = str(val)
                     
+                    # Skip if risk with this name already exists in DB
+                    if risk_name in existing_risk_names:
+                        result.risks_skipped += 1
+                        result.log(f"Skipped (already exists): {risk_name}")
+                        continue
+
                     # Create risk
                     if self.create_risk(
                         name=risk_name,
@@ -297,11 +321,12 @@ class ExcelImporter:
                         activation_decision_date=activation_date,
                         owner=owner,
                         probability=probability,
-                        impact=impact,
+                        severity=severity,
                         origin=origin,
                         subtype=subtype,
                         ext_fields=ext_fields if ext_fields else None,
                     ):
+                        existing_risk_names.add(risk_name)
                         result.risks_created += 1
                         result.log(f"Created risk: {risk_name}")
                     else:
@@ -320,51 +345,6 @@ class ExcelImporter:
         except Exception as e:
             result.errors.append(f"Risks sheet error: {str(e)}")
     
-    def _import_tpos(self, filepath: str, result: ImportResult):
-        """Import TPOs from Excel."""
-        import pandas as pd
-        
-        result.log("Processing TPOs sheet...")
-        try:
-            df = pd.read_excel(filepath, sheet_name='TPOs')
-            result.log(f"Found {len(df)} TPOs in Excel file")
-            
-            for idx, row in df.iterrows():
-                row_num = idx + 2
-                try:
-                    tpo_ref = row.get('reference', 'Unknown')
-                    
-                    if pd.isna(row.get('reference')) or pd.isna(row.get('name')):
-                        result.warnings.append(f"TPO Row {row_num}: Missing reference or name, skipped")
-                        result.tpos_skipped += 1
-                        continue
-                    
-                    cluster = row.get('cluster', 'Business Efficiency')
-                    if pd.isna(cluster) or cluster not in TPO_CLUSTERS:
-                        cluster = 'Business Efficiency'
-                    
-                    description = self._safe_string(row.get('description', ''))
-                    
-                    if self.create_tpo(
-                        reference=row['reference'],
-                        name=row['name'],
-                        cluster=cluster,
-                        description=description
-                    ):
-                        result.tpos_created += 1
-                        result.log(f"Created TPO: {tpo_ref}")
-                    else:
-                        result.tpos_skipped += 1
-                
-                except Exception as e:
-                    result.tpos_skipped += 1
-                    result.errors.append(f"TPO Row {row_num} - Error: {str(e)}")
-        
-        except ValueError:
-            result.log("No 'TPOs' sheet found", "WARNING")
-        except Exception as e:
-            result.log(f"TPOs sheet error: {str(e)}", "WARNING")
-    
     def _import_influences(
         self,
         filepath: str,
@@ -378,33 +358,62 @@ class ExcelImporter:
         try:
             df = pd.read_excel(filepath, sheet_name='Influences')
             result.log(f"Found {len(df)} influences in Excel file")
-            
+
+            # Build existing (source_id, target_id) set for deduplication
+            existing_infs: set = set()
+            if self.get_all_influences:
+                for inf in (self.get_all_influences() or []):
+                    s = inf.get('source_id', '')
+                    t = inf.get('target_id', '')
+                    if s and t:
+                        existing_infs.add((s, t))
+
+            # Detect whether Excel has exported source_id/target_id columns.
+            # When present (RIM-generated export) we prefer them over name lookup so that
+            # the WHERE NOT EXISTS guard in create_influence hits the EXACT same node pair.
+            has_direct_ids = 'source_id' in df.columns and 'target_id' in df.columns
+
             for idx, row in df.iterrows():
                 row_num = idx + 2
                 try:
                     source_name = row.get('source_name')
                     target_name = row.get('target_name')
-                    
+
                     if pd.isna(source_name) or pd.isna(target_name):
                         result.warnings.append(f"Influence Row {row_num}: Missing names, skipped")
                         result.influences_skipped += 1
                         continue
-                    
-                    source_id = risk_name_to_id.get(source_name)
-                    target_id = risk_name_to_id.get(target_name)
-                    
+
+                    # Prefer exported IDs (same-DB re-import); fall back to name lookup
+                    if has_direct_ids:
+                        raw_sid = row.get('source_id')
+                        raw_tid = row.get('target_id')
+                        source_id = (str(raw_sid) if not pd.isna(raw_sid) and raw_sid else None) \
+                                    or risk_name_to_id.get(str(source_name))
+                        target_id = (str(raw_tid) if not pd.isna(raw_tid) and raw_tid else None) \
+                                    or risk_name_to_id.get(str(target_name))
+                    else:
+                        source_id = risk_name_to_id.get(str(source_name))
+                        target_id = risk_name_to_id.get(str(target_name))
+
                     if not source_id or not target_id:
                         result.warnings.append(f"Influence Row {row_num}: Risk not found, skipped")
                         result.influences_skipped += 1
                         continue
-                    
+
+                    # Skip if influence already exists (application-layer check)
+                    if (source_id, target_id) in existing_infs:
+                        result.influences_skipped += 1
+                        result.log(f"Skipped (already exists): {source_name} → {target_name}")
+                        continue
+
                     strength = row.get('strength', 'Moderate')
                     if pd.isna(strength) or strength not in INFLUENCE_STRENGTHS:
                         strength = 'Moderate'
-                    
+
                     confidence = self._safe_float(row.get('confidence'), 0.8)
                     description = self._safe_string(row.get('description', ''))
-                    
+
                     if self.create_influence(
                         source_id=source_id,
                         target_id=target_id,
@@ -413,10 +422,13 @@ class ExcelImporter:
                         description=description,
                         confidence=confidence
                     ):
+                        existing_infs.add((source_id, target_id))
                         result.influences_created += 1
                         result.log(f"Created influence: {source_name} → {target_name}")
                     else:
+                        existing_infs.add((source_id, target_id))  # DB-layer dedup fired; count as skip
                         result.influences_skipped += 1
+                        result.log(f"Skipped (already exists): {source_name} → {target_name}")
                 
                 except Exception as e:
                     result.influences_skipped += 1
@@ -427,66 +439,6 @@ class ExcelImporter:
         except Exception as e:
             result.log(f"Influences sheet error: {str(e)}", "WARNING")
     
-    def _import_tpo_impacts(
-        self,
-        filepath: str,
-        result: ImportResult,
-        risk_name_to_id: Dict[str, str],
-        tpo_ref_to_id: Dict[str, str]
-    ):
-        """Import TPO impacts from Excel."""
-        import pandas as pd
-        
-        result.log("Processing TPO_Impacts sheet...")
-        try:
-            df = pd.read_excel(filepath, sheet_name='TPO_Impacts')
-            result.log(f"Found {len(df)} TPO impacts in Excel file")
-            
-            for idx, row in df.iterrows():
-                row_num = idx + 2
-                try:
-                    risk_name = row.get('risk_name')
-                    tpo_reference = row.get('tpo_reference')
-                    
-                    if pd.isna(risk_name) or pd.isna(tpo_reference):
-                        result.warnings.append(f"TPO Impact Row {row_num}: Missing names, skipped")
-                        result.tpo_impacts_skipped += 1
-                        continue
-                    
-                    risk_id = risk_name_to_id.get(risk_name)
-                    tpo_id = tpo_ref_to_id.get(tpo_reference)
-                    
-                    if not risk_id or not tpo_id:
-                        result.warnings.append(f"TPO Impact Row {row_num}: Entity not found, skipped")
-                        result.tpo_impacts_skipped += 1
-                        continue
-                    
-                    impact_level = row.get('impact_level', 'Medium')
-                    if pd.isna(impact_level) or impact_level not in IMPACT_LEVELS:
-                        impact_level = 'Medium'
-                    
-                    description = self._safe_string(row.get('description', ''))
-                    
-                    if self.create_tpo_impact(
-                        risk_id=risk_id,
-                        tpo_id=tpo_id,
-                        impact_level=impact_level,
-                        description=description
-                    ):
-                        result.tpo_impacts_created += 1
-                        result.log(f"Created TPO impact: {risk_name} → {tpo_reference}")
-                    else:
-                        result.tpo_impacts_skipped += 1
-                
-                except Exception as e:
-                    result.tpo_impacts_skipped += 1
-                    result.errors.append(f"TPO Impact Row {row_num} - Error: {str(e)}")
-        
-        except ValueError:
-            result.log("No 'TPO_Impacts' sheet found", "WARNING")
-        except Exception as e:
-            result.log(f"TPO_Impacts sheet error: {str(e)}", "WARNING")
-    
     def _import_mitigations(self, filepath: str, result: ImportResult):
         """Import mitigations from Excel."""
         import pandas as pd
@@ -495,17 +447,26 @@ class ExcelImporter:
         try:
             df = pd.read_excel(filepath, sheet_name='Mitigations')
             result.log(f"Found {len(df)} mitigations in Excel file")
-            
+
+            # Build existing-name set for deduplication
+            existing_mit_names = {m['name'] for m in (self.get_all_mitigations() or []) if m.get('name')}
+
             for idx, row in df.iterrows():
                 row_num = idx + 2
                 try:
                     mit_name = row.get('name', 'Unknown')
-                    
+
                     if pd.isna(row.get('name')):
                         result.warnings.append(f"Mitigation Row {row_num}: Missing name, skipped")
                         result.mitigations_skipped += 1
                         continue
-                    
+
+                    # Skip if mitigation with this name already exists in DB
+                    if mit_name in existing_mit_names:
+                        result.mitigations_skipped += 1
+                        result.log(f"Skipped (already exists): {mit_name}")
+                        continue
+
                     mit_type = row.get('type', 'Dedicated')
                     if pd.isna(mit_type) or mit_type not in MITIGATION_TYPES:
                         mit_type = 'Dedicated'
@@ -526,6 +487,7 @@ class ExcelImporter:
                         owner=owner,
                         source_entity=source_entity
                     ):
+                        existing_mit_names.add(mit_name)
                         result.mitigations_created += 1
                         result.log(f"Created mitigation: {mit_name}")
                     else:
@@ -554,42 +516,72 @@ class ExcelImporter:
         try:
             df = pd.read_excel(filepath, sheet_name='Mitigates')
             result.log(f"Found {len(df)} mitigates relationships in Excel file")
-            
+
+            # Build existing (mitigation_id, risk_id) set for deduplication
+            existing_mits: set = set()
+            if self.get_all_mitigates:
+                for rel in (self.get_all_mitigates() or []):
+                    m = rel.get('mitigation_id', '')
+                    r = rel.get('risk_id', '')
+                    if m and r:
+                        existing_mits.add((m, r))
+
+            # Detect whether Excel has exported ID columns (same-DB re-import path)
+            has_direct_ids = 'mitigation_id' in df.columns and 'risk_id' in df.columns
+
             for idx, row in df.iterrows():
                 row_num = idx + 2
                 try:
                     mitigation_name = row.get('mitigation_name')
                     risk_name = row.get('risk_name')
-                    
+
                     if pd.isna(mitigation_name) or pd.isna(risk_name):
                         result.warnings.append(f"Mitigates Row {row_num}: Missing names, skipped")
                         result.mitigates_skipped += 1
                         continue
-                    
-                    mitigation_id = mitigation_name_to_id.get(mitigation_name)
-                    risk_id = risk_name_to_id.get(risk_name)
-                    
+
+                    # Prefer exported IDs (same-DB re-import); fall back to name lookup
+                    if has_direct_ids:
+                        raw_mid = row.get('mitigation_id')
+                        raw_rid = row.get('risk_id')
+                        mitigation_id = (str(raw_mid) if not pd.isna(raw_mid) and raw_mid else None) \
+                                        or mitigation_name_to_id.get(str(mitigation_name))
+                        risk_id = (str(raw_rid) if not pd.isna(raw_rid) and raw_rid else None) \
+                                  or risk_name_to_id.get(str(risk_name))
+                    else:
+                        mitigation_id = mitigation_name_to_id.get(str(mitigation_name))
+                        risk_id = risk_name_to_id.get(str(risk_name))
+
                     if not mitigation_id or not risk_id:
                         result.warnings.append(f"Mitigates Row {row_num}: Entity not found, skipped")
                         result.mitigates_skipped += 1
                         continue
-                    
+
+                    # Skip if mitigates relationship already exists (app-layer guard)
+                    if (mitigation_id, risk_id) in existing_mits:
+                        result.mitigates_skipped += 1
+                        result.log(f"Skipped (already exists): {mitigation_name} → {risk_name}")
+                        continue
+
                     effectiveness = row.get('effectiveness', 'Medium')
                     if pd.isna(effectiveness) or effectiveness not in MITIGATION_EFFECTIVENESS:
                         effectiveness = 'Medium'
-                    
+
                     description = self._safe_string(row.get('description', ''))
-                    
+
                     if self.create_mitigates(
                         mitigation_id=mitigation_id,
                         risk_id=risk_id,
                         effectiveness=effectiveness,
                         description=description
                     ):
+                        existing_mits.add((mitigation_id, risk_id))
                         result.mitigates_created += 1
                         result.log(f"Created mitigates: {mitigation_name} → {risk_name}")
                     else:
+                        existing_mits.add((mitigation_id, risk_id))  # DB-layer dedup fired
                         result.mitigates_skipped += 1
+                        result.log(f"Skipped (already exists): {mitigation_name} → {risk_name}")
                 
                 except Exception as e:
                     result.mitigates_skipped += 1
@@ -713,11 +705,11 @@ class ExcelImporter:
                 continue
 
             # --- Column mismatch check ---
-            schema_prop_names = {p.name for p in entity_type.properties}
+            schema_prop_names = {p.name for p in entity_type.attributes}
             sheet_cols = set(df.columns.tolist())
-            unknown_cols = sheet_cols - schema_prop_names - {"name"}
+            unknown_cols = sheet_cols - schema_prop_names - {"name"} - EXPORT_RESERVED_COLUMNS
             if unknown_cols:
-                loc = f"context_nodes.{type_id}.properties"
+                loc = f"context_nodes.{type_id}.attributes"
                 result.warnings.append(
                     f"\n[SCHEMA] Sheet '{sheet_name}': unrecognized columns {sorted(unknown_cols)} ignored.\n"
                     f"These are not declared in schema.yaml under '{loc}'.\n"
@@ -729,6 +721,14 @@ class ExcelImporter:
                     + f"\nto the '{loc}' list.\n"
                 )
                 result.log(f"[SCHEMA] Sheet '{sheet_name}': {len(unknown_cols)} unknown column(s) ignored", "WARNING")
+
+            # --- Build existing name set for deduplication ---
+            existing_cn_names: set = set()
+            if self.get_generic_entities:
+                for entity in (self.get_generic_entities(type_id) or []):
+                    name = entity.get('name', '')
+                    if name:
+                        existing_cn_names.add(name)
 
             # --- Import rows ---
             result.log(f"Importing '{sheet_name}' ({len(df)} rows) ...")
@@ -744,7 +744,14 @@ class ExcelImporter:
                         result.context_nodes_skipped += 1
                         continue
 
-                    for prop in entity_type.properties:
+                    # Skip if context node with this name/type already exists
+                    node_name = data.get("name", "")
+                    if node_name and node_name in existing_cn_names:
+                        result.context_nodes_skipped += 1
+                        result.log(f"Skipped (already exists): {type_id} '{node_name}'")
+                        continue
+
+                    for prop in entity_type.attributes:
                         if prop.name in df.columns:
                             val = row.get(prop.name)
                             if not pd.isna(val):
@@ -752,6 +759,7 @@ class ExcelImporter:
 
                     created = self.create_generic_entity(type_id, data)
                     if created:
+                        existing_cn_names.add(node_name)
                         result.context_nodes_created += 1
                         result.log(f"Created {type_id}: {data.get('name', '?')}")
                     else:
@@ -832,12 +840,12 @@ class ExcelImporter:
                 continue
 
             # --- Column mismatch check ---
-            schema_prop_names = {p.name for p in rel_type.properties}
-            reserved = {"source_name", "target_name"}
+            schema_prop_names = {p.name for p in rel_type.attributes}
+            reserved = {"source_name", "target_name"} | EXPORT_RESERVED_COLUMNS
             sheet_cols = set(df.columns.tolist())
             unknown_cols = sheet_cols - schema_prop_names - reserved
             if unknown_cols:
-                loc = f"relationship_types.{rel_type_id}.properties"
+                loc = f"relationship_types.{rel_type_id}.attributes"
                 result.warnings.append(
                     f"\n[SCHEMA] Sheet '{sheet_name}': unrecognized columns {sorted(unknown_cols)} ignored.\n"
                     f"These are not declared in schema.yaml under '{loc}'.\n"
@@ -877,7 +885,7 @@ class ExcelImporter:
 
                     # Build property data dict (schema-declared props only)
                     data: Dict[str, Any] = {}
-                    for prop in rel_type.properties:
+                    for prop in rel_type.attributes:
                         if prop.name in df.columns:
                             val = row.get(prop.name)
                             if not pd.isna(val):

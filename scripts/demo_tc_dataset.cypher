@@ -105,9 +105,9 @@ MERGE (m_cb922f4b485f:Mitigation {id: 'cb922f4b-485f-5223-933b-0c4942f74f7a'}) O
 MERGE (m_683fc75026a4:Mitigation {id: '683fc750-26a4-5034-a862-ccb16c136b97'}) ON CREATE SET m_683fc75026a4.name = '[TC06] Mit Chain2 Target', m_683fc75026a4.type = 'Dedicated', m_683fc75026a4.status = 'Implemented', m_683fc75026a4.description = 'Medium mitigation', m_683fc75026a4.created_at = datetime(), m_683fc75026a4.updated_at = datetime();
 MERGE (m_20077d073bed:Mitigation {id: '20077d07-3bed-5b74-bf7b-4a4c8e7aa04d'}) ON CREATE SET m_20077d073bed.name = '[TC06] Mit Final', m_20077d073bed.type = 'Dedicated', m_20077d073bed.status = 'Implemented', m_20077d073bed.description = 'High mitigation', m_20077d073bed.created_at = datetime(), m_20077d073bed.updated_at = datetime();
 
-// TC06 - Full Chain - TPOs
-MERGE (t_a6507c61ac70:TPO {id: 'a6507c61-ac70-565c-9c92-d9963ec98872'}) ON CREATE SET t_a6507c61ac70.reference = '[TC06] TPO-1', t_a6507c61ac70.name = '[TC06] Cost Target', t_a6507c61ac70.cluster = 'Business Efficiency', t_a6507c61ac70.description = 'Cost reduction objective', t_a6507c61ac70.created_at = datetime(), t_a6507c61ac70.updated_at = datetime();
-MERGE (t_fcec3040db53:TPO {id: 'fcec3040-db53-50b2-a562-cb18f607b720'}) ON CREATE SET t_fcec3040db53.reference = '[TC06] TPO-2', t_fcec3040db53.name = '[TC06] Schedule Target', t_fcec3040db53.cluster = 'Business Efficiency', t_fcec3040db53.description = 'Schedule objective', t_fcec3040db53.created_at = datetime(), t_fcec3040db53.updated_at = datetime();
+// TC06 - Full Chain - TPOs (ContextNode with node_type='tpo')
+MERGE (t_a6507c61ac70:ContextNode {id: 'a6507c61-ac70-565c-9c92-d9963ec98872'}) ON CREATE SET t_a6507c61ac70.node_type = 'tpo', t_a6507c61ac70.reference = '[TC06] TPO-1', t_a6507c61ac70.name = '[TC06] Cost Target', t_a6507c61ac70.cluster = 'Business Efficiency', t_a6507c61ac70.description = 'Cost reduction objective', t_a6507c61ac70.created_at = datetime(), t_a6507c61ac70.updated_at = datetime();
+MERGE (t_fcec3040db53:ContextNode {id: 'fcec3040-db53-50b2-a562-cb18f607b720'}) ON CREATE SET t_fcec3040db53.node_type = 'tpo', t_fcec3040db53.reference = '[TC06] TPO-2', t_fcec3040db53.name = '[TC06] Schedule Target', t_fcec3040db53.cluster = 'Business Efficiency', t_fcec3040db53.description = 'Schedule objective', t_fcec3040db53.created_at = datetime(), t_fcec3040db53.updated_at = datetime();
 
 // ===========================================================================
 // TC07 - INFLUENCE STRENGTHS
@@ -187,9 +187,9 @@ MATCH (m:Mitigation {id: '49da137c-098b-5441-9c11-d2ec77101da3'}), (r:Risk {id: 
 // RELATIONSHIPS - IMPACTS_TPO
 // =============================================================================
 
-MATCH (r:Risk {id: '04c48648-3240-512c-9311-2737a110a26b'}), (t:TPO {id: 'a6507c61-ac70-565c-9c92-d9963ec98872'}) MERGE (r)-[rel:IMPACTS_TPO {id: '3d9e6eee-95bb-5f5b-a984-ab32c869505d'}]->(t) ON CREATE SET rel.impact_level = 'High', rel.description = 'Cost impact', rel.created_at = datetime();
-MATCH (r:Risk {id: '0145477a-1d33-5723-9c4e-ac997b92bd52'}), (t:TPO {id: 'a6507c61-ac70-565c-9c92-d9963ec98872'}) MERGE (r)-[rel:IMPACTS_TPO {id: 'f0929a59-248c-5894-9ae2-c5cc0d2e639a'}]->(t) ON CREATE SET rel.impact_level = 'Critical', rel.description = 'Major cost impact', rel.created_at = datetime();
-MATCH (r:Risk {id: '579d302c-c4e2-517b-bd3b-adbcf9ad3df5'}), (t:TPO {id: 'fcec3040-db53-50b2-a562-cb18f607b720'}) MERGE (r)-[rel:IMPACTS_TPO {id: 'bfdf7d11-2992-58ad-afba-662949abe0f0'}]->(t) ON CREATE SET rel.impact_level = 'Critical', rel.description = 'Schedule impact', rel.created_at = datetime();
+MATCH (r:Risk {id: '04c48648-3240-512c-9311-2737a110a26b'}), (t:ContextNode {id: 'a6507c61-ac70-565c-9c92-d9963ec98872'}) MERGE (r)-[rel:IMPACTS_TPO {id: '3d9e6eee-95bb-5f5b-a984-ab32c869505d'}]->(t) ON CREATE SET rel.impact_level = 'High', rel.description = 'Cost impact', rel.created_at = datetime();
+MATCH (r:Risk {id: '0145477a-1d33-5723-9c4e-ac997b92bd52'}), (t:ContextNode {id: 'a6507c61-ac70-565c-9c92-d9963ec98872'}) MERGE (r)-[rel:IMPACTS_TPO {id: 'f0929a59-248c-5894-9ae2-c5cc0d2e639a'}]->(t) ON CREATE SET rel.impact_level = 'Critical', rel.description = 'Major cost impact', rel.created_at = datetime();
+MATCH (r:Risk {id: '579d302c-c4e2-517b-bd3b-adbcf9ad3df5'}), (t:ContextNode {id: 'fcec3040-db53-50b2-a562-cb18f607b720'}) MERGE (r)-[rel:IMPACTS_TPO {id: 'bfdf7d11-2992-58ad-afba-662949abe0f0'}]->(t) ON CREATE SET rel.impact_level = 'Critical', rel.description = 'Schedule impact', rel.created_at = datetime();
 
 // =============================================================================
 // SCOPE NODE IDs REFERENCE (copy into schema.yaml scopes section)

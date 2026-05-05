@@ -42,16 +42,19 @@ def create_influence(
     query = """
     MATCH (source:Risk {id: $source_id})
     MATCH (target:Risk {id: $target_id})
-    
+
     // Determine type based on levels
     WITH source, target,
-         CASE 
+         CASE
             WHEN source.level = 'Operational' AND target.level = 'Business' THEN 'Level1_Op_to_Bus'
             WHEN source.level = 'Business' AND target.level = 'Business' THEN 'Level2_Bus_to_Bus'
             WHEN source.level = 'Operational' AND target.level = 'Operational' THEN 'Level3_Op_to_Op'
             ELSE 'Unknown'
          END as determined_type
-    
+
+    // Only create if no INFLUENCES relationship already exists between these two risks
+    WHERE NOT EXISTS((source)-[:INFLUENCES]->(target))
+
     CREATE (source)-[i:INFLUENCES {
         id: randomUUID(),
         influence_type: determined_type,

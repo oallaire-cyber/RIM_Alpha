@@ -10,6 +10,28 @@
 - _[example: 2025-01 — Wrote exposure calculation without checking scope_node_ids]_
   → **Rule**: Every query touching the graph must accept and propagate scope_node_ids. Check Golden Rule B before writing any query.
 
+## Architecture / Methodology Notes
+
+- [2026-05-05] **`get_semantic_influences()` is a math view, not a file-format view.**
+  `get_semantic_influences()` concatenates kernel `INFLUENCES` (Risk→Risk) PLUS kernel `MITIGATES`
+  (Mitigation→Risk, normalized to `source_id`/`target_id`) so the exposure engine can treat both as
+  influence-semantic edges uniformly. **Do NOT use it for export / file format paths** — those need
+  the kernel separation that the dedicated Mitigates sheet/key already provides. Three rounds of
+  TC-11 dedup hardening missed the bug because the contamination was upstream of the dedup logic.
+  → **Rule**: Export / serialization paths use kernel-specific getters (`get_all_influences`,
+    `get_all_mitigates_relationships`). Math / analysis paths use the semantic view.
+
+- [2026-05-05] **Coherence audit before patching repeated bug rounds.**
+  TC-11 had three rounds of dedup fixes that did not resolve the bug. After the user requested a
+  coherence audit of the data structure / schema / demo data, the actual root cause (export
+  contamination) surfaced in 30 minutes of static reading. The audit also revealed accumulated
+  glitches from prior iterations (legacy `entities.tpo` block duplicating `context_nodes.tpo`,
+  uppercase `"TPO"` filter that matches no nodes, dead `_import_tpos` method calling a removed
+  manager API).
+  → **Rule**: After two rounds of patching the same symptom without resolution, **STOP** and audit
+    the surrounding code for accumulated drift before round 3. Static reading of related schema +
+    parser + UI consumers often reveals upstream contamination that downstream patches cannot fix.
+
 ## Process Mistakes to Avoid
 - _[example: Started implementing before reading ROADMAPv2.md stream assignment]_
   → **Rule**: Always check stream assignment first. Do not do out-of-lane refactoring.

@@ -18,7 +18,8 @@
       "Bash(source venv/Scripts/activate)",
       "Bash(python -m pytest tests/ -v --tb=short)",
       "Bash(python -m pytest tests/test_import_export.py -v --tb=short)",
-      "Bash(python -m pytest tests/ --tb=short -q)"
+      "Bash(python -m pytest tests/ --tb=short -q)",
+      "Bash(.\\\\venv\\\\Scripts\\\\activate)"
     ]
   }
 }

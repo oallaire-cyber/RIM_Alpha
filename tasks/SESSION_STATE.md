@@ -6,177 +6,151 @@
 ---
 
 ## Current Version
-`v2.31.0` — Pre-Iteration 6 Bug Fix Release. Branch: `fix/test_fix`.
+`v2.32.0` — Pre-Iteration 6 Bug Fix Release. Branch: `fix/test_fix`.
 
 ## Last Updated
-2026-04-01 — v2.31.0 complete. 445 tests passing. Manual test campaign written (`tasks/test_campaign_v2.31.0.md`). Awaiting user sign-off tomorrow before merging.
+2026-05-05 — TC-11 ROOT CAUSE FIXED. Manual re-import test verified: 0 created across all entity types.
+Phase A coherence cleanup (A1, A3, A5) + context node/edge round-trip hardening committed alongside.
+445 tests passing. Ready for commit + merge to main.
 
 ---
 
-## 🔴 Active Work In Progress
+## ✅ TC-11 RESOLVED
 
-**None.** Session closed.
+**Root cause**: Excel + JSON export used `manager.get_semantic_influences()` which **concatenates kernel
+INFLUENCES (Risk→Risk) PLUS kernel MITIGATES (Mitigation→Risk, normalized to `source_id`/`target_id`)**
+into a single Influences sheet. The same MITIGATES rows were also written to the dedicated Mitigates
+sheet — so every export emitted MITIGATES twice. App-layer + DB-layer dedup were correct for clean
+Risk→Risk pairs, but the contaminated Influences sheet caused 67 mitigates rows to fail the importer's
+`MATCH (source:Risk)` check (silently counted as skips while the same data was re-created via the
+Mitigates sheet path), and the 64 Risk→Risk influences were treated as duplicates of edges that didn't
+exist on the right node pair under the contaminated shape.
 
-**Pending before merge:**
-- User to execute `tasks/test_campaign_v2.31.0.md` (TC-01 through TC-13 + R1–R6)
-- Manual sign-off required on all test cases
-- Merge `fix/test_fix` → main after sign-off
-- **Demo data reset required** before testing: load `scripts/demo_data_loader_en.cypher` into Neo4j (old `:TPO` nodes won't work with new code)
+**Fix**: switched export to `manager.get_all_influences()` (Risk→Risk only). Mitigates remain captured
+via the dedicated Mitigates sheet/key fed by `get_all_mitigates_relationships()`. JSON restore-dedup
+set in `backup_service.py:175` switched to match. Exposure engine and analysis paths still use
+`get_semantic_influences()` (correct for math).
 
-**Next phase** (after merge + test sign-off): **Iteration 6** — Financial Layer & LEC (U16, F34, F9).
-A SPICE synchronisation/briefing session is required before implementation begins.
+**Verification (manual, by user, 2026-05-05)**:
+```
+Import Summary
+Created:  Risks: 0, TPOs: 0, Influences: 0, TPO Impacts: 0, Mitigations: 0, Mitigates: 0
+Skipped:  Risks: 89, TPOs: 0, Influences: 64, TPO Impacts: 0, Mitigations: 49, Mitigates: 67,
+          Context Nodes: 9, Context Edges: 18
+```
+
+---
+
+## 🧹 Phase A Cleanup (also in v2.32.0)
+
+| Step | File | Change |
+|------|------|--------|
+| **A1** | `schemas/default/schema.yaml` | Trimmed legacy `entities.tpo` block to just `clusters:` registry — dropped duplicate `neo4j_label` / `attributes` / `custom_attributes` (live attribute definitions are in `context_nodes.tpo`). |
+| **A3** | `services/import_service.py` | Removed dead `_import_tpos` (called non-existent `manager.create_tpo`) and `_import_tpo_impacts` (called non-existent `manager.create_tpo_impact`). Removed call sites in `import_from_excel`. Dropped `TPO_CLUSTERS` / `IMPACT_LEVELS` from `config.settings` import list. |
+| **A5** | `ui/layouts.py` | 5 occurrences of `node_type == "TPO"` → `"tpo"`. The graph-data builder writes `node_type = entity_id` (lowercase) for context nodes; uppercase comparisons matched zero. |
+
+## 🛡️ Context Node / Edge Round-Trip Hardening
+
+After the TC-11 fix, re-imports surfaced `[SCHEMA]` warnings on `CN_tpo` and `CE_impacts_tpo` sheets:
+
+- **Real data columns added to schema**:
+  - `context_nodes.tpo.properties` += `reference`, `description`
+  - `context_edges.impacts_tpo.properties` += `impact_level`, `description`
+- **Export-only metadata silenced**: `services/import_service.py` introduces module-level constant
+  `EXPORT_RESERVED_COLUMNS = {"_element_id", "_source", "_target", "created_at", "updated_at"}` and
+  subtracts it from the unknown-columns warning set in both `_import_context_nodes` and
+  `_import_context_edges`. These columns exist for round-trip readability/debugging but are
+  Neo4j-internal, edge-derived, or auto-set — re-importing them would clobber correct values.
+
+---
+
+## ⏭️ Deferred follow-ups (tracked as [F-CN-IMPORT] in ROADMAPv4 Stream B backlog)
+
+- **A2** — Remove the empty `relationships.impacts_tpo: { impact_levels: [] }` stub from `schema.yaml`.
+  Cascades into `pages/1_⚙️_Configuration.py:2062` (`random.choice(impact_levels)` in the sample-data
+  generator), which is itself already broken (emits legacy `:TPO {reference}` cypher and
+  `IMPACTS_TPO {impact_level}` edges that no live query reads).
+- **A4** — Cluster enum on `context_nodes.tpo.properties.cluster`. Requires extending `AttributeConfig`
+  / `_parse_context_node` to read a `values:` list. Defer until a second context-node type needs the
+  same treatment.
+- **Sample-data generator rewrite** — `pages/1_⚙️_Configuration.py:2055-2069` generates cypher targeting
+  the legacy `:TPO` label and `IMPACTS_TPO {impact_level}` shape; rewrite against
+  `:ContextNode {node_type:'tpo'}` and the live `context_edges.impacts_tpo` properties.
+- **Excel/JSON column contract** — review what gets emitted on context node + edge sheets (CN_*, CE_*).
+  Ideally export should not emit `_element_id`/`_source`/`_target`/`created_at`/`updated_at` at all,
+  or label them as such; current importer-side silent-ignore is a workaround.
+- **Demo cypher idempotency** — `scripts/demo_data_loader_en.cypher` uses bare `CREATE` for all 169
+  statements; convert to `MERGE` so the script becomes idempotent against existing DB state.
 
 ---
 
 ## ✅ Recently Completed (last 2 sessions)
 
-### Session N+13 (this session — v2.31.0 Pre-Iteration 6 Bug Fixes)
-- **v2.31.0** — **7-bug fix release** on branch `fix/test_fix`:
+### Session N+16 (this session — v2.32.0 TC-11 root-cause fix + cleanup)
+- Diagnosed TC-11 export contamination via `get_semantic_influences()`.
+- Phase A coherence audit + cleanup (A1, A3, A5; A2/A4 deferred to backlog).
+- Phase A6 export switch — Excel + JSON.
+- Context node / edge round-trip hardening (schema additions + `EXPORT_RESERVED_COLUMNS`).
+- ROADMAPv4 v2.32.0 release table extended; new backlog item `[F-CN-IMPORT]` filed.
+- CHANGELOG v2.32.0 updated with full root-cause analysis.
+- 445 tests passing.
 
-  **BUG 1 — Excel Export & JSON Backup crash** (`services/backup_service.py`, `database/manager.py`):
-  - `EntityTypeDefinition.type_id` → `.id` in both `backup_service` entity loop and
-    `manager._collect_context_data`. Export silently returned `None` (Streamlit: "Invalid binary
-    data format"); backup crashed with AttributeError.
+### Session N+15 (v2.32.0 TC-11 dedup investigation Round 3)
+- Round 3 ID-from-Excel preference logic added to `_import_influences` / `_import_mitigates`.
+  Did not resolve TC-11 — root cause was upstream of dedup (export emitted contaminated sheet).
 
-  **BUG 2 — Backup docstring** (`services/backup_service.py`):
-  - Module docstring updated: removed stale `tpos`/`tpo_impacts` top-level key references;
-    corrected to `context_nodes`/`context_edges`.
+### Session N+14 (v2.32.0 Manual Test Campaign Fixes)
+- BUG-1 → BUG-10 (impact→severity arg, edit form crashes, JSON restore, mitigation/influence/context
+  node dedup, TPO mapping migration, demo cypher migration).
 
-  **BUG 3 — TPO Impact Levels in Relationships tab** (`pages/1_⚙️_Configuration.py`):
-  - Removed the `impacts_tpo` impact levels block from `render_relationship_config()`.
-    Relationships tab now shows only Influence Strengths + Mitigation Effectiveness Levels.
-
-  **BUG 4 — "Top Objective" naming** (schema YAMLs, docs, UI strings):
-  - All display strings standardised to "Top Objective / Top Objectives". Internal identifiers
-    (`tpo`, `impacts_tpo`) unchanged.
-
-  **BUG 5 — Context node isolation + canvas visibility** (`database/queries/generic_entity.py`,
-  `database/queries/analysis.py`):
-  - `create_entity`: injects `node_type = entity_type.id` for all ContextNode types.
-  - `get_all_entities`: prepends `WHERE n.node_type = $__node_type` for ContextNode types.
-  - `get_graph_data`: removed `if entity_id == "tpo": continue` and
-    `if rel_id == "impacts_tpo": continue` (legacy skip-guards from old hardcoded TPO path).
-
-  **BUG 6 — Scope persistence** (`ui/filters.py`):
-  - `add_node_to_scope` + `remove_node_from_scope`: replaced stale `get_active_schema()` singleton
-    with `SchemaLoader().load_schema(schema_name)` — fresh disk read before every modify+save.
-    Also fixed broken `load_schema()` import and missing `schema_name` arg in `remove_node_from_scope`.
-
-  **BUG 7 — Hard-to-reproduce graph blank** (`tasks/lessons.md`):
-  - Logged as unresolved; suspected stale `ss["graph_data"]` cache. Cannot reproduce reliably.
-
-  **Excel timezone fix** (`services/export_service.py`):
-  - `neo4j.time.DateTime` is NOT a Python `datetime` subclass — `isinstance` checks silently skipped
-    it. New `_coerce_records()` / `_coerce_value()` helpers duck-type on `hasattr(v, "tzinfo")` and
-    call `.to_native()` on Neo4j temporal types before stripping tzinfo. Applied to all DataFrames.
-  - `_strip_tz()` kept as last-resort guard for pandas DatetimeTZDtype columns.
-  - `export_to_excel_bytes` except block changed to `raise` (was silently returning None).
-
-  **Demo data** (`scripts/demo_data_loader_en.cypher`, `scripts/SNR_demo_data_loader_en.cypher`):
-  - All `:TPO` nodes → `:ContextNode {node_type: 'tpo', ...}`.
-  - All `MATCH (t:TPO ...)` → `MATCH (t:ContextNode ...)`.
-  - Verification queries updated.
-
-  **ROADMAPv3** (`ROADMAPv3.md`):
-  - **[F39] Context Node Scope Membership** added to Stream B Iteration 6 backlog.
-    Allow any ContextNode to be added/removed from scopes via UI (data layer already ready).
-
-  **Test campaign** (`tasks/test_campaign_v2.31.0.md`):
-  - 13 test cases + 6 regression checks written and saved.
-
-  **445 tests passing.**
-
-### Session N+12 (v2.30.0 F31c/d)
-- **v2.30.0** — **F31c Lifecycle-Aware Simulation & F31d TRI α Calibration**:
-  - `pages/2_🎲_Simulation.py`: all changes.
-    - **F31c**: `_load_scope_data()` gains `include_inactive: bool = False` param.
-      "🧟 Worst-Case Canvas" sidebar checkbox (shared by Scope-Based + TRI α Calibration).
-      Banner shows latent risk count; results labelled `[Worst-Case]`.
-    - **F31d**: 4th radio `"TRI α Calibration"`. `_run_alpha_sweep()` + `_compute_tac_and_store()`
-      + `_render_tac_results()`. Charts: Mean TRI ±1σ + P95; stacked quadrant distribution bar.
-      Target profile selectbox; recommended α highlighted. Save to Saved Results.
-    - **Bugfix (save button)**: Refactored monolithic `run_scope_based_simulation_ui` and
-      `run_tri_alpha_calibration_ui` into compute (`_compute_sb_and_store`, `_compute_tac_and_store`)
-      + render (`_render_sb_results`, `_render_tac_results`) pairs. Results stored in
-      `ss["last_sb_result"]` / `ss["last_tac_result"]`; render always called when stored — this
-      is what makes 💾 Save Results work on the rerun triggered by clicking it.
-      `📥 Export CSV` download button added alongside Save in both result views.
-    - `utils/state_manager.py`: `last_sb_result`, `last_tac_result` added to `SIMULATION_DEFAULTS`.
-    - `docs/help_simulation.md` (NEW); registered in `ui/home.py` `_HELP_FILES`.
-    - Full docs pass: USER_GUIDE, ARCHITECTURE, METHODOLOGY, README, help_overview,
-      welcome, CHANGELOG v2.30.0, ROADMAPv3 F31 complete.
-  - **445 tests passing.**
-
-### Session N+11 (v2.29.0 F32)
-- **v2.29.0** — **F32 Graph Visual Behaviour Panel** — see previous SESSION_STATE for details.
-  **445 tests passing.**
+### Session N+13 (v2.31.0 Pre-Iteration 6 Bug Fixes)
+- 7-bug fix release. See CHANGELOG.
 
 ---
 
-## 🧠 Key Decisions Made (not in docs yet)
+## 🧠 Key decisions made this session
 
-- **`neo4j.time.DateTime` is NOT a `datetime` subclass**: isinstance checks silently skip it.
-  Always duck-type with `hasattr(v, "tzinfo")` and convert with `.to_native()`. Pattern is in
-  `services/export_service._coerce_value()`.
-
-- **ContextNode `node_type` must be stored at create time**: `create_entity` injects
-  `node_type = entity_type.id` before the Neo4j CREATE. Nodes created before this fix lack
-  `node_type` and will be invisible to `get_all_entities` and the canvas. They need manual
-  Cypher patching or re-creation.
-
-- **`get_graph_data` TPO skip-guards are gone**: The `if entity_id == "tpo": continue` and
-  `if rel_id == "impacts_tpo": continue` guards were remnants of the old hardcoded TPO path.
-  Both are removed. TPOs now go through the generic context node loop identically to all other
-  ContextNode types.
-
-- **`add_node_to_scope` / `remove_node_from_scope` must use fresh disk load**: The module-level
-  `_active_schema` singleton in `config/settings.py` is loaded once at process start. If the
-  schema changes during the session (e.g. via Config page), saving the singleton overwrites the
-  file with stale content. Always use `SchemaLoader().load_schema(schema_name)` before modifying.
-
-- **Demo data cypher files must use `:ContextNode {node_type: 'tpo'}`**: The old `:TPO` label
-  is no longer read by any query. Any dataset using `:TPO` nodes will show 0 Top Objectives in
-  the Data Management tab and canvas. Reset required for all existing databases.
-
-- **Simulation page save-button pattern (compute/render split)**: See Session N+12 note.
-- **F32 `risk_quadrant` overlay pattern**: See Session N+12 note.
-- **F32 `_QUADRANT_BORDER_COLORS` keys are lowercase**: See Session N+12 note.
+- **`get_semantic_influences()` is for math, not export.** It exists so the exposure engine can treat
+  INFLUENCES and MITIGATES uniformly as influence-semantic edges; the export path needs the kernel
+  separation that the dedicated Mitigates sheet already provides. Future kernel relationships with
+  `semantic: influence` should follow the same rule — exposure-engine pulls semantic, file-format
+  paths pull kernel-specific.
+- **JSON dedup mirrors Excel**, per user direction. The BUG-4 dedup work in `backup_service.py` was
+  the right direction; A6 keeps the dedup set's shape matching the export shape so the dedup actually
+  fires on the right pairs.
+- **Demo cypher CREATE→MERGE deferred** per user direction. No current dupes confirmed by
+  `MATCH (r:Risk) WITH r.name … count > 1` query, so non-blocking. Idempotency hardening is a
+  separate small task.
 
 ---
 
-## ⚠️ Known Issues / Tech Debt
+## ⚠️ Known issues / tech debt
 
-- **BUG 7 — Hard-to-reproduce: graph canvas blank after L/S edit** (logged in `tasks/lessons.md`):
-  Suspected stale `ss["graph_data"]` / `ss["exposure_results"]` cache after a CRUD DB write.
-  Potential fix: explicit `ss["graph_data"] = None` after any risk update in `unified_crud_tab.py`.
-  Cannot reproduce reliably. Flag for regression during Iteration 6 testing.
-
-- **Existing `:TPO` nodes in any live DB** need manual patching before the app will show them:
+- **Configuration.py:2062 sample-data generator broken** — emits legacy `:TPO` cypher; tracked under
+  [F-CN-IMPORT] in ROADMAPv4 Stream B backlog.
+- **Existing `:TPO` nodes in any live DB** still need the v2.31.0 patch:
   ```cypher
-  MATCH (t:TPO)
-  SET t:ContextNode, t.node_type = 'tpo'
-  REMOVE t:TPO
+  MATCH (t:TPO) SET t:ContextNode, t.node_type = 'tpo' REMOVE t:TPO
   ```
-
-- **F22 and F23 appear twice each in `ROADMAPv2.md`** Stream B section —
-  deduplicate when next touching that file.
-
-- **`pydantic` and `openpyxl` must be installed via venv** — always run tests
-  with `.\venv\Scripts\python.exe -m pytest tests/` (445 pass).
+- **`pydantic` and `openpyxl`** must be installed via venv — always `.\venv\Scripts\python.exe -m pytest tests/` (445 pass).
 
 ---
 
-## 📋 Open Questions Pending User Decision
+## 📋 Open questions pending user decision
 
 _None._
 
 ---
 
-## 🔁 Resumption Prompt (copy-paste to start next session)
+## 🔁 Resumption prompt (copy-paste to start next session)
 ```
-Resume RIM development. Read tasks/SESSION_STATE.md first, then continue where we left off.
-v2.31.0 complete (Pre-Iteration 6 bug fix release). Branch: fix/test_fix. 445 tests passing.
-Manual test campaign at tasks/test_campaign_v2.31.0.md — awaiting user sign-off before merging.
-After merge: Iteration 6 begins. SPICE synchronisation session required first.
-ROADMAPv3.md is the authoritative roadmap.
+Resume RIM development. Read tasks/SESSION_STATE.md first.
+v2.32.0 COMPLETE on branch fix/test_fix. TC-11 fixed and verified manually (0 created on re-import).
+445 tests passing. Awaiting user-driven commit + merge to main.
+
+After merge: Iteration 6 begins (Financial Layer & LEC: U16, F34, F9). SPICE synchronisation
+briefing required first (ROADMAPv4.md is the sync document).
+
+ROADMAPv4.md is the authoritative roadmap. New backlog item [F-CN-IMPORT] in Stream B captures
+the context-node round-trip follow-ups (sample-data generator rewrite, schema enum support, etc.).
 ```

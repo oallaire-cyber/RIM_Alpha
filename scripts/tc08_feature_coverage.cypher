@@ -189,8 +189,9 @@ ON CREATE SET
 // TC08 — TPO (Target Performance Objective)
 // ===========================================================================
 
-MERGE (t_tc08_tpo1:TPO {id: 'tc08-0003-0000-0000-000000000001'})
+MERGE (t_tc08_tpo1:ContextNode {id: 'tc08-0003-0000-0000-000000000001'})
 ON CREATE SET
+  t_tc08_tpo1.node_type   = 'tpo',
   t_tc08_tpo1.reference   = '[TC08] TPO-1',
   t_tc08_tpo1.name        = '[TC08] Programme Cost Objective',
   t_tc08_tpo1.cluster     = 'Business Efficiency',
@@ -256,7 +257,7 @@ ON CREATE SET
 
 // BR1 → TPO-1 (programme cost objective impacted by Business Risk Alpha)
 MATCH (r:Risk {id: 'tc08-0001-0000-0000-000000000001'}),
-      (t:TPO  {id: 'tc08-0003-0000-0000-000000000001'})
+      (t:ContextNode {id: 'tc08-0003-0000-0000-000000000001'})
 MERGE (r)-[rel:IMPACTS_TPO {id: 'tc08-tpo-0000-0000-000000000001'}]->(t)
 ON CREATE SET
   rel.created_at = datetime();
