@@ -466,6 +466,31 @@ ORDER BY br.name, s.case_type
 
   **Testing gate:** Create a scope; add a Top Objective to it; activate the scope → only the Top Objective (and its connected risks) should appear on the canvas. Remove it from scope → it disappears. Existing TC01–TC07 continue to pass.
 
+- **[F-EXP] Excel Export Structure Review** _(Backlog — Stream B)_:
+  Audit the Excel export produced by `services/export_service.py` for all entity types. Define expected column ordering, column naming conventions, empty-value representation, and a per-entity-type output contract. Fix any structural inconsistencies found (e.g. column name mismatches vs. import expectations, missing properties, inconsistent date formatting).
+  **Testing gate:** Export then re-import via Excel roundtrip — no data loss, no column errors.
+
+- **[F-CTX-DASH] Context Nodes & Edges — Statistics Dashboard Panel** _(Backlog — Stream A)_:
+  Add a foldable section to the Statistics Dashboard (in `ui/home.py` or equivalent) showing context node counts by type and context edge counts by relationship type. Follows the existing statistics card pattern.
+  **Testing gate:** Panel shows correct counts per type; collapses/expands without error; zero counts shown as 0, not hidden.
+
+- **[F-DEF-ATTR] Default Attributes Review** _(Backlog — Stream B)_:
+  Audit and define canonical default property values for all core node/edge types (BusinessRisk, OperationalRisk, Mitigation, influences, mitigates) and pre-defined context node/edge types in both schema YAML files. Ensure create forms pre-populate sensible defaults and that the schema YAML `default:` keys are consistently set.
+  **Testing gate:** New node created with all fields empty uses defined defaults; no `None` written where a default is available.
+
+- **[F-RISK-PAGE] Dedicated Risk Management Page** _(Backlog — Stream A+B)_:
+  Create `pages/4_⚠️_Risk_Management.py` as a dedicated hub for risk-focused operations. First feature to move in: the Lifecycle Engine (currently in Data Management). This reduces the Data Management page scope and gives risk managers a focused workspace.
+  **Dependencies:** None — purely UI restructuring. No exposure math changes.
+  **Testing gate:** Lifecycle Engine works identically in new page; Data Management page no longer shows it; all existing lifecycle tests pass.
+
+- **[F-CN-IMPORT] Context Node / Edge Import-Export Hardening** _(Backlog — Stream B, deferred from v2.32.0)_:
+  The TC-11 fix surfaced several follow-ups in the context-node round-trip path:
+  - **Schema cleanup A2**: remove the empty `relationships.impacts_tpo: { impact_levels: [] }` stub in `schemas/default/schema.yaml`. Currently retained because removing it cascades into `pages/1_⚙️_Configuration.py:2062` (`random.choice(impact_levels)` in the sample-data generator, which is itself broken — emits legacy `:TPO {reference}` cypher and `IMPACTS_TPO {impact_level: ...}` edges that no live query reads).
+  - **Schema cleanup A4**: extend `AttributeConfig` (or introduce `PropertyConfig`) parsing so `context_nodes.{type}.properties.{name}` can declare `type: enum` with a `values:` list, then express the TPO cluster taxonomy on `cluster` itself instead of as a free string. Removes the last reason `entities.tpo.clusters` exists.
+  - **Sample-data generator rewrite**: `pages/1_⚙️_Configuration.py:2055-2069` generates cypher that targets the legacy `:TPO` label and `IMPACTS_TPO {impact_level}` shape. Rewrite against `:ContextNode {node_type:'tpo'}` and the live `context_edges.impacts_tpo` properties.
+  - **Excel/JSON column contract**: review what gets emitted for context node + context edge sheets (CN_*, CE_*) — column ordering, required vs. optional, treatment of `_element_id`/`_source`/`_target`/`created_at`/`updated_at` (currently silent-ignored on import via `EXPORT_RESERVED_COLUMNS`; ideally export should not emit them either, or label them as such).
+  **Testing gate:** export → re-import roundtrip produces zero `[SCHEMA] Sheet '...': unrecognized columns` warnings; sample-data generator produces cypher that round-trips through the canvas.
+
 - **[U17] SPICE Integration Schema + Scope Refactor** _(Iteration 7 — MANDATORY before F36, F15, F8 full implementation)_:
   This is the foundational schema task for Pillar 5. Must be completed before any SPICE-related UI features.
   - Add new node labels to schema YAML and Pydantic models: `BusinessPerimeter`, `TechnicalPerimeter`, `SpiceScenario`, `SpiceMitigation`, `Owner`.
@@ -601,6 +626,29 @@ ORDER BY br.name, s.case_type
 
 ---
 
+### 🔁 Pre-Iteration 6 Bug Fix Release _(v2.32.0)_
+
+| Task | File(s) | Details |
+|------|---------|---------|
+| **BUG-1** `impact=` → `severity=` in Excel import | `services/import_service.py` | TC-11: create_risk() arg name fixed; backward-compatible column fallback (`severity` then `impact`) |
+| **BUG-2** `build_relationship_form()` bad kwargs | `ui/tabs/unified_crud_tab.py` | TC-04: `default_values=, is_edit=True` → `existing_data=`; context edge editing no longer crashes |
+| **BUG-3** `build_entity_form()` bad kwarg | `ui/panels/editor_panel.py` | `is_edit=True` removed; node edit from main interface no longer crashes |
+| **BUG-4** JSON backup restore — 3-part fix | `services/backup_service.py` | TC-12: (a) context edge export enriched with `source_name`/`target_name`; (b) `create_relationship()` call fixed with entity type IDs from `rel_type.from_entity_types`; (c) deduplication added for influences, mitigates, context edges |
+| **BUG-5** Scope description stale after sandbox commit | `ui/home.py` | `_commit_sandbox()` reloads `st.session_state.active_schema` from disk before rerun |
+| **BUG-6** Excel risk re-import duplicates | `services/import_service.py` | `_import_risks` existing-name set built at method entry; skip if name already in DB |
+| **BUG-7** Excel import crash on TPO mapping | `services/import_service.py` | Replaced stale `get_all_tpos()` with `get_generic_entities('tpo')`; map by both name and reference |
+| **BUG-8** JSON restore drops `impacts_tpo` edges | `services/backup_service.py` | Pre-existing context node names now seeded into `node_name_to_id` before continue, so edge resolution succeeds |
+| **BUG-9** Excel import `entity_type.properties` AttributeError | `services/import_service.py`, `tests/test_import_export.py` | Migrated 4 call sites + test mock to `EntityTypeDefinition.attributes` |
+| **BUG-10** TC06 / TC08 cypher uses old `:TPO` label | `scripts/demo_tc_dataset.cypher`, `scripts/tc08_feature_coverage.cypher` | Both migrated to `:ContextNode {node_type:'tpo'}`; `MATCH` clauses updated |
+| **TC-11 ROOT** Excel re-import recreates 64 INFLUENCES + 67 MITIGATES | `database/manager.py`, `services/backup_service.py` | Excel + JSON export switched from `get_semantic_influences()` (which concatenates kernel INFLUENCES + kernel MITIGATES into one Influences sheet) to `get_all_influences()` (Risk→Risk only). Mitigates remain captured via the dedicated Mitigates sheet/key. JSON restore-dedup set switched to match. Exposure engine and analysis paths still use semantic flavour. |
+| **A1** Trim legacy `entities.tpo` block | `schemas/default/schema.yaml` | Dropped duplicate `neo4j_label` / `attributes` / `custom_attributes` (live attribute definitions live in `context_nodes.tpo`). `clusters:` registry preserved as the only consumer of `entities.tpo`. |
+| **A3** Remove dead `_import_tpos` / `_import_tpo_impacts` | `services/import_service.py` | Both methods called non-existent `manager.create_tpo` / `create_tpo_impact`; legacy path replaced by `_import_context_nodes` (`CN_tpo`) and `_import_context_edges` (`CE_impacts_tpo`) since v2.31.0. Call sites in `import_from_excel` removed. |
+| **A5** ContextNode `node_type` casing | `ui/layouts.py` | 5 occurrences of `node_type == "TPO"` → `"tpo"`. Graph-data builder writes `node_type = entity_id` (lowercase) for context nodes; uppercase comparisons matched zero. |
+| **CN/CE round-trip** Schema warnings on `CN_tpo` / `CE_impacts_tpo` | `schemas/default/schema.yaml`, `services/import_service.py` | Added `description`, `reference` to `context_nodes.tpo.properties`; added `impact_level`, `description` to `context_edges.impacts_tpo.properties`. Importer now silently ignores Neo4j export-metadata columns (`_element_id`, `_source`, `_target`, `created_at`, `updated_at`) via `EXPORT_RESERVED_COLUMNS` set. |
+| **Admin** CLAUDE.md roadmap reference | `CLAUDE.md` | All references updated from ROADMAPv3.md → ROADMAPv4.md |
+
+---
+
 ### 🔁 Iteration 6 — Financial Layer & LEC _(v2.30.0+, Phase 3)_
 
 | Task                      | File(s)                                                                                                       | Details                                                                                                                                                                        |
@@ -645,6 +693,147 @@ ORDER BY br.name, s.case_type
 
 ---
 
+## Phase 6 — Enterprise Production Readiness
+
+**Motivation:** The current RIM platform is a functional POC: it demonstrates the methodology, runs the analytical engine, and produces correct outputs. However, it lacks the enterprise-grade infrastructure required for production deployment within a corporate IT environment. Phase 6 addresses this gap systematically. These are not feature enhancements — they are non-negotiable prerequisites for any tool that will be used operationally by FZR, accessed by FZ leadership, and potentially subject to internal audit, IT security review, and data protection governance.
+
+**Phase 6 is independent of Phases 3–5 functional development.** Work streams G and H below can be executed in parallel with the analytical feature roadmap. The sooner they start, the sooner the platform is deployable in a controlled enterprise environment.
+
+---
+
+### 🌊 Work Stream G — Identity, Access Control & Security
+
+#### [P1] Identity and Access Management (IAM)
+
+**Current state:** The POC has no authentication or authorisation layer. Any user with network access to the Streamlit instance can perform any operation — create, modify, delete risks, mitigations, and objectives; run simulations; export data.
+
+**Target state:** Role-based access control (RBAC) integrated with the corporate identity provider.
+
+| Sub-task | Description | Priority |
+| -------- | ----------- | -------- |
+| **P1a** SSO/OIDC integration | Integrate Streamlit authentication with the corporate SSO provider (SAML 2.0 or OIDC). All access requires authenticated corporate identity. No local accounts. | **Critical** |
+| **P1b** Role model definition | Define RBAC roles aligned with the RIM user personas: `rim_admin` (FZR core team — full CRUD on all entities + schema management + system configuration), `rim_analyst` (FZR analysts — CRUD on risks/mitigations/relationships within assigned scopes, read all, run simulations), `rim_viewer` (FZ leadership, division heads, Board members — read-only access to dashboards, graphs, and reports), `rim_data_steward` (delegated FZR officers in functions — CRUD on risks/mitigations within their subgraph, read-only on others). | **Critical** |
+| **P1c** Scope-level access control | Enforce that `rim_data_steward` users can only modify nodes and edges within their assigned SubGraph / scope. Read access to other scopes is permitted for cross-functional visibility. Write access is blocked. | **High** |
+| **P1d** API-level authorisation | If the platform exposes any API (REST, GraphQL, or Neo4j Bolt), all endpoints must enforce the same RBAC model. No unauthenticated API access. | **High** |
+| **P1e** Session management | Session timeout, secure cookie handling, CSRF protection. Streamlit's native session model needs hardening for enterprise use. | **High** |
+
+**Implementation options:**
+- **Streamlit Community Cloud + OAuth proxy** (short-term): an OAuth2 reverse proxy (e.g. OAuth2-proxy, Authelia) in front of the Streamlit app enforces SSO. Role metadata is passed via HTTP headers or JWT claims. Lowest development effort; limited granularity.
+- **Streamlit with custom auth middleware** (medium-term): custom Python middleware intercepts requests, validates JWT tokens from the corporate IdP, resolves roles from LDAP/AD group membership, and injects a `current_user` context into the Streamlit session. Enables scope-level access control.
+- **Migration to a framework with native auth** (long-term): if Streamlit's architecture proves too limiting for fine-grained RBAC (it was not designed for multi-user enterprise applications), migrate the frontend to a framework with native auth support (e.g. FastAPI + React, or Django). The Neo4j backend and all analytical services remain unchanged.
+
+**Testing gate:** No unauthenticated access possible. Role-based write restrictions enforced at both UI and data layer. Role assignment via corporate directory groups. Session cannot be hijacked or replayed.
+
+---
+
+#### [P2] Audit Trail and Traceability
+
+**Current state:** No audit log. Changes to the graph are not attributed to specific users or timestamped beyond Neo4j's internal transaction log.
+
+**Target state:** Every data modification is attributed, timestamped, and queryable — meeting internal audit and regulatory traceability requirements.
+
+| Sub-task | Description | Priority |
+| -------- | ----------- | -------- |
+| **P2a** Write audit log | Every create, update, and delete operation on any node or relationship writes a record to an append-only audit log: `{timestamp, user_id, user_role, operation_type, entity_type, entity_id, property_changed, old_value, new_value, scope_context}`. | **Critical** |
+| **P2b** Audit storage | Audit records stored outside the Neo4j graph (e.g. dedicated PostgreSQL table, Elasticsearch index, or structured log file). Must be immutable — no user role can delete or modify audit entries. | **Critical** |
+| **P2c** Audit query UI | Admin-accessible page to query audit history by: user, date range, entity, operation type, scope. Export to CSV/Excel. | **High** |
+| **P2d** Risk lifecycle audit | Every lifecycle state transition (active → accepted, watching → active, etc.) recorded with: user who triggered, trigger condition that fired (if automatic), acceptance rationale (free-text field). This enriches the existing lifecycle engine (U12). | **High** |
+| **P2e** Simulation provenance | Each simulation run records: user, timestamp, scope, parameters, input dataset hash. Simulation results are linked to their provenance record. This enables audit of which analysis produced which recommendation. | **Medium** |
+
+**Testing gate:** Every graph mutation produces an audit record. Audit records cannot be modified or deleted. Lifecycle transitions carry full provenance. Simulation results are traceable to their input conditions.
+
+---
+
+#### [P3] Data Protection and Confidentiality
+
+**Current state:** Risk data is stored in a Neo4j Aura cloud instance. No encryption at application level. No data classification enforcement.
+
+**Target state:** Data handling compliant with corporate information security policy and GDPR where applicable.
+
+| Sub-task | Description | Priority |
+| -------- | ----------- | -------- |
+| **P3a** Data classification | Define data classification for RIM content. Risk descriptions, SPICE financial scenarios, and mitigation cost data are likely `Confidential` or `Restricted` under most corporate classification schemes. Classification drives all downstream controls. | **Critical** |
+| **P3b** Encryption at rest | Ensure Neo4j instance uses encrypted storage (Aura provides this by default; on-premise or Docker deployments must enable disk-level encryption). | **High** |
+| **P3c** Encryption in transit | All connections (browser ↔ Streamlit, Streamlit ↔ Neo4j, any API) must use TLS 1.2+. No cleartext connections, even on internal networks. | **High** |
+| **P3d** Data residency | Confirm that the Neo4j instance (Aura or on-premise) stores data in a jurisdiction acceptable to corporate policy. For EU-headquartered organisations, this typically means EU data centres. | **High** |
+| **P3e** Backup and recovery | Automated, encrypted backups with defined RPO (Recovery Point Objective) and RTO (Recovery Time Objective). The existing JSON backup capability must be supplemented with scheduled, automated, off-site backups. | **High** |
+| **P3f** Data retention and purging | Policy-aligned retention for archived risk nodes and audit records. Automated purge after retention period for GDPR compliance where personal data is involved (Owner nodes carry names and email addresses). | **Medium** |
+| **P3g** Export control | Ensure that Excel/JSON export operations respect the RBAC model — users can only export data within their authorised scope. Exported files carry appropriate classification markings. | **Medium** |
+
+**Testing gate:** No cleartext data in transit. Encrypted at rest confirmed. Backup tested with successful restore. Export respects role-based scope restrictions. Owner PII purge-able on request.
+
+---
+
+### 🌊 Work Stream H — Infrastructure, Operations & Enterprise Integration
+
+#### [P4] Deployment Hardening
+
+**Current state:** Deployment via GCP Cloud Run with GitHub Actions CI/CD. Suitable for POC but not production-grade in terms of availability, monitoring, or change management.
+
+| Sub-task | Description | Priority |
+| -------- | ----------- | -------- |
+| **P4a** Environment separation | Establish at minimum three environments: `dev` (feature development), `staging/UAT` (pre-production validation by FZR), `prod` (live operational instance). Each environment with its own Neo4j instance and configuration. No shared databases between environments. | **Critical** |
+| **P4b** Infrastructure-as-Code | All infrastructure (compute, database, networking, secrets, IAM policies) defined in IaC (Terraform, Pulumi, or cloud-native equivalent). No manual infrastructure changes in production. | **High** |
+| **P4c** Container security | Container image scanning (Trivy, Snyk, or cloud-native scanner) in the CI/CD pipeline. No deployment with known critical/high CVEs. Base image pinned and regularly updated. | **High** |
+| **P4d** Secrets management | All credentials (Neo4j connection strings, API keys, OIDC client secrets) stored in a secrets manager (GCP Secret Manager, HashiCorp Vault, or equivalent). No secrets in code, environment variables, or Docker images. | **Critical** |
+| **P4e** Health monitoring and alerting | Application health endpoint; Neo4j connectivity check; response time monitoring; error rate tracking. Alerts to operations team on: service unavailability, Neo4j connection failure, abnormal error rates. Integration with corporate monitoring platform if applicable. | **High** |
+| **P4f** Availability target | Define and document the availability SLA (e.g. 99.5% during business hours for an internal tool). Size infrastructure accordingly. Consider auto-scaling if user count justifies it. | **Medium** |
+
+---
+
+#### [P5] Change Management and Release Governance
+
+**Current state:** Continuous deployment from `main` branch to production. No formal change approval process, no release notes governance, no rollback procedure.
+
+| Sub-task | Description | Priority |
+| -------- | ----------- | -------- |
+| **P5a** Release process | Formalise: feature branch → PR with review → merge to `main` → automated deployment to `staging` → FZR validation on staging → manual promotion to `prod`. No direct push to production. | **High** |
+| **P5b** Schema migration governance | Neo4j schema changes (new node labels, property renames, relationship types) require a migration script, a rollback script, and FZR sign-off before execution on production. The existing Cypher migration pattern (e.g. `impact → severity` rename) is the template. | **High** |
+| **P5c** Rollback procedure | Documented and tested procedure to revert the production instance to the previous release within a defined RTO. Includes both application rollback (container image revert) and database rollback (schema migration reversal). | **High** |
+| **P5d** Release notes | Each release to production accompanied by structured release notes: version, date, features added/changed, bugs fixed, schema changes, breaking changes, FZR sign-off. Stored in the repository and accessible from the application UI. | **Medium** |
+
+---
+
+#### [P6] Enterprise System Integration
+
+**Current state:** RIM operates as a standalone application. No integration with corporate ERM, CMDB, ISMS, or reporting platforms.
+
+| Sub-task | Description | Priority |
+| -------- | ----------- | -------- |
+| **P6a** ARM synchronisation | Implement a connector to Sword Active Risk Manager (ARM) for bidirectional or unidirectional data exchange. Minimum viable: scheduled export from ARM (Excel/CSV) → automated import into RIM via the existing import pipeline. Enhanced: API-based sync if ARM exposes one. Risk register data (descriptions, owners, scores, status) flows from ARM to RIM; RIM-specific enrichments (influence relationships, exposure scores, TRI, LEC outputs) flow back as supplementary attributes or a linked report. | **High** |
+| **P6b** CMDB / asset registry integration | `TechnicalPerimeter` nodes carry an `external_id` property reserved for CMDB or ISMS cross-reference. P6b implements the link: a scheduled import or lookup that enriches TechnicalPerimeter nodes with up-to-date asset metadata (status, owner, criticality) from the corporate asset registry. | **Medium** |
+| **P6c** Reporting platform integration | If the organisation uses a BI/reporting platform (Power BI, Tableau, or equivalent), provide a read-only data export (scheduled Neo4j → flat file or Neo4j → data warehouse view) that feeds corporate risk dashboards. This allows RIM analytical outputs (EL, TRI, LEC statistics, quadrant classification) to appear in existing governance reporting without requiring stakeholders to access the RIM UI directly. | **Medium** |
+| **P6d** Email / notification integration | Trigger-based notifications: when a risk transitions from `watching` to `active` (trigger fires), when a lifecycle archive alert is generated, when a simulation produces a result above a configured threshold — send email notifications to the relevant Risk Steward and/or Risk Bearer. Integration with corporate email (SMTP) or messaging (Teams/Slack webhook). | **Low** |
+
+---
+
+#### [P7] Performance, Scalability, and Operational Readiness
+
+| Sub-task | Description | Priority |
+| -------- | ----------- | -------- |
+| **P7a** Performance baseline | Establish performance benchmarks for: graph load time (full graph, scoped subgraph), exposure calculation time (full recalculation), Monte Carlo simulation time (10K runs), LEC generation time. Document acceptable thresholds. | **High** |
+| **P7b** Scalability assessment | Test with realistic enterprise-scale graph: 500+ risk nodes, 200+ mitigations, 50+ objectives, 10 SubGraphs. Identify bottlenecks (Cypher query performance, Streamlit session state limits, PyVis rendering limits). Document scaling strategy. | **High** |
+| **P7c** User documentation | End-user guide for FZR operators and FZ leadership (dashboard navigation, interpretation of outputs). Admin guide (schema configuration, domain setup, data import). Hosted within the application or on an internal wiki. | **High** |
+| **P7d** Training programme | Structured onboarding for: FZR core team (full platform training, 2 days), delegated FZR officers (risk entry and relationship mapping, 0.5 day), FZ leadership and viewers (dashboard interpretation, 1 hour). | **Medium** |
+| **P7e** Disaster recovery | Documented DR plan: Neo4j backup restore procedure, application redeployment from IaC, data reconciliation with ARM after outage. Tested annually. | **Medium** |
+
+---
+
+### Phase 6 Implementation Sequence
+
+Phase 6 tasks are not all equally urgent. The recommended implementation sequence prioritises security and traceability first (gates for any production use), then operational robustness, then integrations:
+
+| Wave | Tasks | Rationale | Estimated Effort |
+| ---- | ----- | --------- | ---------------- |
+| **Wave 1 — Security Gate** | P1a (SSO), P1b (Roles), P2a–b (Audit log), P3a (Classification), P3c (TLS), P4d (Secrets) | Minimum viable security posture for any production deployment. No operational use before this wave is complete. | 4–6 weeks |
+| **Wave 2 — Operational Foundation** | P4a (Env separation), P4b (IaC), P4e (Monitoring), P5a (Release process), P5c (Rollback), P7a (Performance baseline) | Enables controlled, observable, recoverable production operations. | 3–4 weeks |
+| **Wave 3 — Enterprise Integration** | P1c (Scope ACL), P2c (Audit UI), P3b/d/e (Encryption, residency, backup), P5b (Schema governance), P6a (ARM sync), P7c (Documentation) | Connects RIM into the enterprise ecosystem. ARM sync is the critical path for FZR adoption. | 4–6 weeks |
+| **Wave 4 — Maturity** | P2d–e (Lifecycle/simulation audit), P3f–g (Retention, export control), P4c (Container security), P6b–d (CMDB, BI, notifications), P7b/d/e (Scale test, training, DR) | Full enterprise maturity. Can proceed incrementally after Waves 1–3. | 6–8 weeks (incremental) |
+
+**Total estimated effort for full Phase 6:** 17–24 weeks of dedicated engineering, parallelisable with functional development (Phases 3–5). Wave 1 is the hard prerequisite; subsequent waves can overlap with each other and with analytical feature delivery.
+
+---
+
 ## Open Questions
 
 **Q1** Cross-stream dependency handover protocol to prevent merge conflicts during parallel execution.
@@ -678,6 +867,14 @@ ORDER BY br.name, s.case_type
 **Q-F** TechnicalPerimeter nodes. **CLOSED — decision: standalone for Iteration 7**, with `external_id` property reserved for future CMDB/ISMS integration. Implement in U17.
 
 **Q-G** TCO node type. **Resolve in U17 schema RFC** before coding. Options: distinct Neo4j label `TopCompanyObjective` vs. existing `ContextNode` with `is_tco: true` flag. This decision affects all future objective-axis traversals.
+
+**Q-P1** Streamlit long-term viability for multi-user enterprise deployment. Streamlit was designed for single-user data applications, not multi-tenant enterprise tools. P1 (IAM) can be solved with an auth proxy, but P1c (scope-level ACL) may require middleware that fights Streamlit's session architecture. **Decision required before Wave 2:** evaluate whether the production frontend should remain Streamlit or migrate to FastAPI + React (keeping all Neo4j services and analytical engines unchanged). The POC Workstream 3 should include this assessment.
+
+**Q-P2** Audit log storage backend. Options: (a) PostgreSQL (structured, queryable, well-understood), (b) Elasticsearch (scalable, full-text search, good for large audit volumes), (c) append-only log files with a query layer (simplest, but limited query capability). Decision driven by expected audit volume and corporate infrastructure preferences.
+
+**Q-P3** ARM integration depth. The minimum viable sync is unidirectional (ARM → RIM, periodic Excel import). Bidirectional sync (RIM enrichments → ARM) is technically possible but raises data ownership questions: who is the authoritative source for each field? This must be agreed with FZR and IT before implementation.
+
+**Q-P4** Corporate IT review process. Any production deployment will likely require: IT security review (penetration test, vulnerability assessment), architecture review board approval, data protection impact assessment (if Owner nodes contain PII), and potentially a change advisory board submission. The timeline for these reviews should be factored into the Phase 6 schedule. The POC Workstream 3 should identify which reviews are required.
 
 ---
 
@@ -731,6 +928,18 @@ graph TD
     F8 --> F36
     F34 --> F15
     F38 --> F15
+
+    %% Phase 6 — Production Readiness
+    P1a[P1a: SSO/OIDC] --> P1b[P1b: Role Model]
+    P1b --> P1c[P1c: Scope ACL]
+    P1a --> P2a[P2a: Audit Log]
+    P2a --> P2c[P2c: Audit UI]
+    P2a --> P2d[P2d: Lifecycle Audit]
+    P4a[P4a: Env Separation] --> P5a[P5a: Release Process]
+    P4d[P4d: Secrets Mgmt] --> P4a
+    P1b --> P6a[P6a: ARM Sync]
+    U17 --> P6b[P6b: CMDB Integration]
+    F16 --> P6c[P6c: SubGraph ACL]
 ```
 
 ---

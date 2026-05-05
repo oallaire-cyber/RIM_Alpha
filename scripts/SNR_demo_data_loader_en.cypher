@@ -305,10 +305,11 @@ CREATE (ro07:Risk {
 });
 
 // =============================================================================
-// 4. CREATION OF TOP PROGRAM OBJECTIVES (TPOs) - 3 examples
+// 4. CREATION OF TOP OBJECTIVES - 3 examples
 // =============================================================================
 
-CREATE (tpo01:TPO {
+CREATE (tpo01:ContextNode {
+  node_type: 'tpo',
   id: 'TPO-01',
   reference: 'TPO-01',
   name: 'Achieve profitability by 2032',
@@ -318,7 +319,8 @@ CREATE (tpo01:TPO {
   updated_at: datetime()
 });
 
-CREATE (tpo02:TPO {
+CREATE (tpo02:ContextNode {
+  node_type: 'tpo',
   id: 'TPO-02',
   reference: 'TPO-02',
   name: 'NRC safety certification before end of 2029',
@@ -328,7 +330,8 @@ CREATE (tpo02:TPO {
   updated_at: datetime()
 });
 
-CREATE (tpo03:TPO {
+CREATE (tpo03:ContextNode {
+  node_type: 'tpo',
   id: 'TPO-03',
   reference: 'TPO-03',
   name: 'Series production start Q1 2030',
@@ -743,7 +746,7 @@ CREATE (source)-[:INFLUENCES {
 // =============================================================================
 
 // RS-01 (Profitability failure) → TPO-01 (Profitability 2032)
-MATCH (r:Risk {id: 'RS-01'}), (t:TPO {id: 'TPO-01'})
+MATCH (r:Risk {id: 'RS-01'}), (t:ContextNode {id: 'TPO-01'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-01',
   impact_level: 'Critical',
@@ -752,7 +755,7 @@ CREATE (r)-[:IMPACTS_TPO {
 }]->(t);
 
 // RS-02 (Production delay) → TPO-01 (Profitability 2032)
-MATCH (r:Risk {id: 'RS-02'}), (t:TPO {id: 'TPO-01'})
+MATCH (r:Risk {id: 'RS-02'}), (t:ContextNode {id: 'TPO-01'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-02',
   impact_level: 'High',
@@ -761,7 +764,7 @@ CREATE (r)-[:IMPACTS_TPO {
 }]->(t);
 
 // RS-02 (Production delay) → TPO-03 (Production start Q1 2030)
-MATCH (r:Risk {id: 'RS-02'}), (t:TPO {id: 'TPO-03'})
+MATCH (r:Risk {id: 'RS-02'}), (t:ContextNode {id: 'TPO-03'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-03',
   impact_level: 'Critical',
@@ -770,7 +773,7 @@ CREATE (r)-[:IMPACTS_TPO {
 }]->(t);
 
 // RS-04 (Safety non-compliance) → TPO-02 (NRC Certification 2029)
-MATCH (r:Risk {id: 'RS-04'}), (t:TPO {id: 'TPO-02'})
+MATCH (r:Risk {id: 'RS-04'}), (t:ContextNode {id: 'TPO-02'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-04',
   impact_level: 'Critical',
@@ -779,7 +782,7 @@ CREATE (r)-[:IMPACTS_TPO {
 }]->(t);
 
 // RS-04 (Safety non-compliance) → TPO-03 (Production start Q1 2030)
-MATCH (r:Risk {id: 'RS-04'}), (t:TPO {id: 'TPO-03'})
+MATCH (r:Risk {id: 'RS-04'}), (t:ContextNode {id: 'TPO-03'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-05',
   impact_level: 'High',
@@ -788,7 +791,7 @@ CREATE (r)-[:IMPACTS_TPO {
 }]->(t);
 
 // RS-07 (Capacity insufficiency) → TPO-03 (Production start Q1 2030)
-MATCH (r:Risk {id: 'RS-07'}), (t:TPO {id: 'TPO-03'})
+MATCH (r:Risk {id: 'RS-07'}), (t:ContextNode {id: 'TPO-03'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-06',
   impact_level: 'High',
@@ -797,7 +800,7 @@ CREATE (r)-[:IMPACTS_TPO {
 }]->(t);
 
 // RS-08 (Budget overrun) → TPO-01 (Profitability 2032)
-MATCH (r:Risk {id: 'RS-08'}), (t:TPO {id: 'TPO-01'})
+MATCH (r:Risk {id: 'RS-08'}), (t:ContextNode {id: 'TPO-01'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-07',
   impact_level: 'High',
@@ -806,7 +809,7 @@ CREATE (r)-[:IMPACTS_TPO {
 }]->(t);
 
 // RS-03 (Tech advantage loss) → TPO-01 (Profitability 2032)
-MATCH (r:Risk {id: 'RS-03'}), (t:TPO {id: 'TPO-01'})
+MATCH (r:Risk {id: 'RS-03'}), (t:ContextNode {id: 'TPO-01'})
 CREATE (r)-[:IMPACTS_TPO {
   id: 'IMP-08',
   impact_level: 'Medium',
@@ -1071,13 +1074,13 @@ ORDER BY Type;
 MATCH (r:Risk {status: 'Contingent'})
 RETURN r.id, r.name, r.origin, r.activation_condition, r.activation_decision_date;
 
-// Count TPOs by cluster
-MATCH (t:TPO)
+// Count Top Objectives by cluster
+MATCH (t:ContextNode {node_type: 'tpo'})
 RETURN t.cluster as Cluster, count(t) as Count
 ORDER BY Cluster;
 
-// Display TPOs and their impacts
-MATCH (t:TPO)
+// Display Top Objectives and their impacts
+MATCH (t:ContextNode {node_type: 'tpo'})
 OPTIONAL MATCH (r:Risk)-[i:IMPACTS_TPO]->(t)
 RETURN t.reference as TPO, t.name as Name, t.cluster as Cluster, 
        count(i) as ImpactCount
@@ -1119,15 +1122,15 @@ ORDER BY
     WHEN 'Low' THEN 4 
   END;
 
-// Display TPO impact details
-MATCH (r:Risk)-[i:IMPACTS_TPO]->(t:TPO)
+// Display Top Objective impact details
+MATCH (r:Risk)-[i:IMPACTS_TPO]->(t:ContextNode {node_type: 'tpo'})
 RETURN r.id as RiskID, r.name as Risk, r.origin as Origin,
        t.reference as TPO, i.impact_level as ImpactLevel
 ORDER BY t.reference, i.impact_level DESC;
 
 // Global statistics
 MATCH (r:Risk) WITH count(r) as risks
-MATCH (t:TPO) WITH risks, count(t) as tpos
+MATCH (t:ContextNode {node_type: 'tpo'}) WITH risks, count(t) as tpos
 MATCH (m:Mitigation) WITH risks, tpos, count(m) as mitigations
 MATCH ()-[i:INFLUENCES]->() WITH risks, tpos, mitigations, count(i) as influences
 MATCH ()-[it:IMPACTS_TPO]->() WITH risks, tpos, mitigations, influences, count(it) as tpo_impacts

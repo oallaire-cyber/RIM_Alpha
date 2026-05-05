@@ -241,14 +241,15 @@ class FilterManager:
                 break # Node added to active_scopes, exit loop
         
         # Also try to update the schema file if the scope exists there.
-        # Use config.settings helpers (not the bare schema_loader) which know
-        # the active schema name and already hold the loaded schema object.
+        # Always load fresh from disk (not the module-level singleton from
+        # config.settings) so that schema changes made during the session —
+        # e.g. via the Configuration page — are not silently overwritten.
         if added:
             try:
-                from config.settings import get_active_schema, get_active_schema_name
-                from config.schema_loader import save_schema
-                schema = get_active_schema()
+                from config.settings import get_active_schema_name
+                from config.schema_loader import SchemaLoader, save_schema
                 schema_name = get_active_schema_name() or "default"
+                schema = SchemaLoader().load_schema(schema_name)
                 if schema and schema.scopes:
                     for s in schema.scopes:
                         if s.id == scope_id and node_id not in s.node_ids:
@@ -270,16 +271,19 @@ class FilterManager:
                     removed = True
                     break # Node removed from active_scopes, exit loop
                     
-        # Also try to update the schema file if the scope exists there
+        # Also try to update the schema file if the scope exists there.
+        # Load fresh from disk — same pattern as add_node_to_scope.
         if removed:
             try:
-                from config.schema_loader import load_schema, save_schema
-                schema = load_schema()
+                from config.settings import get_active_schema_name
+                from config.schema_loader import SchemaLoader, save_schema
+                schema_name = get_active_schema_name() or "default"
+                schema = SchemaLoader().load_schema(schema_name)
                 if schema and schema.scopes:
                     for s in schema.scopes:
                         if s.id == scope_id and node_id in s.node_ids:
                             s.node_ids.remove(node_id)
-                    save_schema(schema)
+                    save_schema(schema, schema_name)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning(f"Failed to persist scope update: {e}")

@@ -11,14 +11,16 @@ Backup format:
         "schema_version": "2.18.0",
         "exported_at": "2026-03-08T18:16:00",
         "risks": [...],
-        "tpos": [...],
-        "influences": [...],
-        "tpo_impacts": [...],
         "mitigations": [...],
+        "influences": [...],
         "mitigates": [...],
         "context_nodes": {"<type_id>": [...], ...},
         "context_edges": {"<rel_type_id>": [...], ...}
     }
+
+    TPOs and other context nodes are stored under "context_nodes" keyed by their
+    schema type ID (e.g. "context_nodes": {"tpo": [...]}). There are no separate
+    top-level "tpos" or "tpo_impacts" keys — all schema-driven types are generic.
 
 Restore behaviour:
     - Inserts in topological order: core nodes first, then core edges,
@@ -74,7 +76,7 @@ def export_graph_to_json(
         "risks": [dict(r) for r in manager.get_all_risks()],
         "mitigations": [dict(m) for m in manager.get_all_mitigations()],
         # Core edges
-        "influences": [dict(i) for i in manager.get_semantic_influences()],
+        "influences": [dict(i) for i in manager.get_all_influences()],
         "mitigates": [dict(r) for r in manager.get_all_mitigates_relationships()],
         # Context data - populated below
         "context_nodes": {},
@@ -84,7 +86,7 @@ def export_graph_to_json(
     # --- ContextNode types ---
     if registry:
         for entity_type in registry.entity_types.values():
-            type_id = entity_type.type_id
+            type_id = entity_type.id  # EntityTypeDefinition uses .id, not .type_id
             # Skip the two hardcoded core types
             if type_id in ("risk", "mitigation"):
                 continue
@@ -100,7 +102,15 @@ def export_graph_to_json(
                 continue
             edges = manager.get_relationships(rel_id) or []
             if edges:
-                data["context_edges"][rel_id] = [dict(e) for e in edges]
+                enriched = []
+                for e in edges:
+                    d = dict(e)
+                    d["source_name"] = (e.get("_source") or {}).get("name", "")
+                    d["target_name"] = (e.get("_target") or {}).get("name", "")
+                    d.pop("_source", None)
+                    d.pop("_target", None)
+                    enriched.append(d)
+                data["context_edges"][rel_id] = enriched
 
     return data
 
@@ -159,6 +169,18 @@ def import_graph_from_json(
     existing_risks = {r["name"]: r["id"] for r in manager.get_all_risks()}
     existing_mits = {m["name"]: m["id"] for m in manager.get_all_mitigations()}
 
+    # Pre-build existing-edge sets for deduplication — prevents duplicates on re-import
+    existing_infs = {
+        (i["source_id"], i["target_id"])
+        for i in (manager.get_all_influences() or [])
+        if i.get("source_id") and i.get("target_id")
+    }
+    existing_mits_edges = {
+        (r.get("mitigation_id", ""), r.get("risk_id", ""))
+        for r in (manager.get_all_mitigates_relationships() or [])
+        if r.get("mitigation_id") and r.get("risk_id")
+    }
+
     # ------------------------------------------------------------------
     # 1. Core Nodes
     # ------------------------------------------------------------------
@@ -211,6 +233,9 @@ def import_graph_from_json(
         if not src_id or not tgt_id:
             summary["influences_skipped"] += 1
             continue
+        if (src_id, tgt_id) in existing_infs:
+            summary["influences_skipped"] += 1
+            continue
         try:
             result = manager.create_influence(
                 source_id=src_id,
@@ -221,6 +246,7 @@ def import_graph_from_json(
                 description=inf.get("description", ""),
             )
             if result:
+                existing_infs.add((src_id, tgt_id))
                 summary["influences_created"] += 1
             else:
                 summary["influences_skipped"] += 1
@@ -235,6 +261,9 @@ def import_graph_from_json(
         if not mit_id or not risk_id:
             summary["mitigates_skipped"] += 1
             continue
+        if (mit_id, risk_id) in existing_mits_edges:
+            summary["mitigates_skipped"] += 1
+            continue
         try:
             result = manager.create_mitigates_relationship(
                 mitigation_id=mit_id,
@@ -243,6 +272,7 @@ def import_graph_from_json(
                 description=rel.get("description", ""),
             )
             if result:
+                existing_mits_edges.add((mit_id, risk_id))
                 summary["mitigates_created"] += 1
             else:
                 summary["mitigates_skipped"] += 1
@@ -257,6 +287,7 @@ def import_graph_from_json(
     # Build unified name → id map for edge resolution later
     node_name_to_id: Dict[str, str] = {}
     node_name_to_id.update(existing_risks)
+    node_name_to_id.update(existing_mits)
 
     if registry:
         for type_id, entities in data.get("context_nodes", {}).items():
@@ -275,6 +306,8 @@ def import_graph_from_json(
             for entity_data in entities:
                 name = entity_data.get("name", "")
                 if name in existing_cn:
+                    # Node already in DB — still add it to the name map so context edges can resolve it
+                    node_name_to_id[name] = existing_cn[name]
                     summary["context_nodes_skipped"] += 1
                     continue
                 try:
@@ -310,6 +343,14 @@ def import_graph_from_json(
                 )
                 continue
 
+            src_type_id = rel_type.from_entity_types[0] if rel_type.from_entity_types else ""
+            tgt_type_id = rel_type.to_entity_types[0] if rel_type.to_entity_types else ""
+            existing_ctx_edges = {
+                (e.get("source_id", ""), e.get("target_id", ""))
+                for e in (manager.get_relationships(rel_type_id) or [])
+                if e.get("source_id") and e.get("target_id")
+            }
+
             for edge_data in edges:
                 src_name = edge_data.get("source_name", "")
                 tgt_name = edge_data.get("target_name", "")
@@ -324,14 +365,21 @@ def import_graph_from_json(
                     )
                     continue
 
+                if (src_id, tgt_id) in existing_ctx_edges:
+                    summary["context_edges_skipped"] += 1
+                    continue
+
                 try:
                     props = {
                         k: v for k, v in edge_data.items()
                         if k not in ("id", "element_id", "source_name", "target_name",
                                      "source_id", "target_id")
                     }
-                    result = manager.create_relationship(rel_type_id, src_id, tgt_id, props)
+                    result = manager.create_relationship(
+                        rel_type_id, src_id, tgt_id, src_type_id, tgt_type_id, data=props
+                    )
                     if result:
+                        existing_ctx_edges.add((src_id, tgt_id))
                         summary["context_edges_created"] += 1
                     else:
                         summary["context_edges_skipped"] += 1

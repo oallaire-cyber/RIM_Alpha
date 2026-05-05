@@ -96,6 +96,7 @@ mnt/
 
 # AI Agents
 .claude/settings.json
+.claude/settings.local.json
 .claude/worktrees/
 
 # Secrets

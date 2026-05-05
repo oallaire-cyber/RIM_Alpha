@@ -609,8 +609,9 @@ Each consumer calls the narrowest init function it needs:
     updated_at: DateTime
 })
 
-// TPO
-(:TPO {
+// Top Objective (ContextNode with node_type = 'tpo')
+(:ContextNode {
+    node_type: 'tpo',
     reference: String!,
     name: String!,
     cluster: String,
@@ -630,11 +631,11 @@ Each consumer calls the narrowest init function it needs:
     description: String
 }]->(r2:Risk)
 
-// Risk impacts TPO
+// Risk impacts Top Objective
 (r:Risk)-[:IMPACTS_TPO {
     impact_level: "Low" | "Medium" | "High" | "Critical",
     description: String
-}]->(t:TPO)
+}]->(t:ContextNode {node_type: 'tpo'})
 
 // Mitigation mitigates Risk
 (m:Mitigation)-[:MITIGATES {
@@ -745,4 +746,4 @@ flake8>=6.0.0
 
 ---
 
-*Last updated: March 2026 | Version 2.30.0*
+*Last updated: May 2026 | Version 2.32.0*

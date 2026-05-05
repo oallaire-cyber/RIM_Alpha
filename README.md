@@ -21,7 +21,7 @@ The Risk Influence Map transforms static risk registers into **dynamic risk inte
 | Business Risk | ◆ Diamond | Consequence-oriented, managed by leadership |
 | Operational Risk | ● Circle | Cause-oriented, managed by functional teams |
 | Mitigation | 🛡️ Rounded Box | Controls and protective actions |
-| TPO | ⬡ Hexagon | Top Program Objectives at risk |
+| TPO | ⬡ Hexagon | Top Objectives at risk |
 | Custom Entities | 📦 Configurable | User-defined types (e.g., Asset, Threat Actor) |
 
 ## 🚀 Quick Start
@@ -264,4 +264,4 @@ For questions about the RIM methodology, open an issue on GitHub.
 
 ---
 
-**Current Version**: v2.30.0 | See [CHANGELOG.md](CHANGELOG.md) for history
+**Current Version**: v2.32.0 | See [CHANGELOG.md](CHANGELOG.md) for history

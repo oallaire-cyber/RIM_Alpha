@@ -1313,6 +1313,10 @@ def _commit_sandbox(filter_mgr) -> None:
     st.session_state.scope_sandbox_overrides = {"add": [], "remove": []}
     st.session_state.scope_sandbox_pending_node = None
     st.session_state.scope_sandbox_mode = False
+    # Refresh active_schema so Configuration page shows updated scope membership
+    from config.settings import get_active_schema_name
+    schema_name = get_active_schema_name() or "default"
+    st.session_state.active_schema = SchemaLoader().load_schema(schema_name)
     st.rerun()
 
 

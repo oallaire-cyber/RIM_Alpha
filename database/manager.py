@@ -1262,7 +1262,7 @@ class RiskGraphManager:
         return export_to_excel(
             filepath=filepath,
             risks=self.get_all_risks(),
-            influences=self.get_semantic_influences(),
+            influences=self.get_all_influences(),
             mitigations=self.get_all_mitigations(),
             mitigates_relationships=self.get_all_mitigates_relationships(),
             context_nodes_data=context_nodes_data,
@@ -1284,7 +1284,7 @@ class RiskGraphManager:
 
         return export_to_excel_bytes(
             risks=self.get_all_risks(),
-            influences=self.get_semantic_influences(),
+            influences=self.get_all_influences(),
             mitigations=self.get_all_mitigations(),
             mitigates_relationships=self.get_all_mitigates_relationships(),
             context_nodes_data=context_nodes_data,
@@ -1318,6 +1318,9 @@ class RiskGraphManager:
             get_generic_entities_fn=self.get_entities,
             create_generic_relationship_fn=self.create_relationship,
             registry=registry,
+            # Deduplication callbacks
+            get_all_influences_fn=self.get_all_influences,
+            get_all_mitigates_fn=self.get_all_mitigates_relationships,
         )
 
         result = importer.import_from_excel(filepath)
@@ -1364,7 +1367,7 @@ class RiskGraphManager:
 
         context_nodes_data: Dict[str, list] = {}
         for entity_type in registry.entity_types.values():
-            type_id = entity_type.type_id
+            type_id = entity_type.id  # EntityTypeDefinition uses .id, not .type_id
             if type_id in core_entity_ids:
                 continue
             entities = self.get_entities(type_id) or []

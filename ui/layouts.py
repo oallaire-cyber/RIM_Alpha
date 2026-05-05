@@ -121,7 +121,7 @@ def generate_layered_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str, 
     Returns:
         Position dictionary mapping node IDs to {x, y}
     """
-    tpos = [n for n in nodes if n.get("node_type") == "TPO"]
+    tpos = [n for n in nodes if n.get("node_type") == "tpo"]
     strategic = [n for n in nodes if n.get("level") == "Business" and n.get("node_type") != "TPO"]
     operational = [n for n in nodes if n.get("level") == "Operational" and n.get("node_type") != "TPO"]
     mitigations = [n for n in nodes if n.get("node_type") == "Mitigation"]
@@ -192,7 +192,7 @@ def generate_category_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[str,
     positions = {}
     
     # Place TPOs at the top
-    tpos = [n for n in nodes if n.get("node_type") == "TPO"]
+    tpos = [n for n in nodes if n.get("node_type") == "tpo"]
     min_x_spacing = 500
     x_spacing = max(800 / max(len(tpos), 1), min_x_spacing)
     start_x = 550 - (len(tpos) - 1) * x_spacing / 2
@@ -257,7 +257,7 @@ def generate_tpo_cluster_layout(nodes: List[Dict[str, Any]]) -> Dict[str, Dict[s
         "Safety": (900, 50)
     }
     
-    tpos = [n for n in nodes if n.get("node_type") == "TPO"]
+    tpos = [n for n in nodes if n.get("node_type") == "tpo"]
     cluster_counts = {c: 0 for c in TPO_CLUSTERS}
     
     for node in tpos:

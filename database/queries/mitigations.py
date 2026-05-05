@@ -326,6 +326,10 @@ def create_mitigates_relationship(
     query = """
     MATCH (m:Mitigation {id: $mitigation_id})
     MATCH (r:Risk {id: $risk_id})
+
+    // Only create if no MITIGATES relationship already exists between this mitigation and risk
+    WHERE NOT EXISTS((m)-[:MITIGATES]->(r))
+
     CREATE (m)-[rel:MITIGATES {
         id: randomUUID(),
         effectiveness: $effectiveness,

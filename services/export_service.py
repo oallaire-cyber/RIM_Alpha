@@ -14,6 +14,68 @@ from pathlib import Path
 import io
 
 
+def _coerce_value(v):
+    """
+    Coerce a single record value to an Excel-safe type.
+
+    Handles both Python ``datetime.datetime`` and ``neo4j.time.DateTime``
+    (which is NOT a subclass of Python's datetime, but does have a
+    ``tzinfo`` attribute and a ``to_native()`` conversion method).
+
+    Rules:
+    - neo4j temporal type  → convert to Python datetime via .to_native()
+    - tz-aware datetime     → strip tzinfo (.replace(tzinfo=None))
+    - everything else       → unchanged
+    """
+    import datetime as _dt_mod
+
+    # Duck-type: anything with tzinfo is datetime-like
+    if not hasattr(v, "tzinfo"):
+        return v
+
+    # Convert neo4j.time.* types to native Python datetime first
+    if not isinstance(v, (_dt_mod.datetime, _dt_mod.date)):
+        if hasattr(v, "to_native"):
+            try:
+                v = v.to_native()
+            except Exception:
+                return str(v)
+        else:
+            # Unknown temporal type — stringify rather than crash
+            return str(v)
+
+    # Strip tzinfo if present
+    if isinstance(v, _dt_mod.datetime) and v.tzinfo is not None:
+        v = v.replace(tzinfo=None)
+
+    return v
+
+
+def _coerce_records(records):
+    """
+    Apply _coerce_value to every field in every record dict.
+
+    Call this before building any DataFrame that will be written to Excel.
+    """
+    return [{k: _coerce_value(val) for k, val in dict(r).items()} for r in records]
+
+
+def _strip_tz(df):
+    """
+    Last-resort pass: strip tz from any pandas DatetimeTZDtype columns.
+
+    _coerce_records() handles the common case (Neo4j object columns).
+    This catches any remaining tz-aware datetime64[ns, tz] columns.
+    """
+    import pandas as pd
+
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            if getattr(df[col].dt, "tz", None) is not None:
+                df[col] = df[col].dt.tz_localize(None)
+    return df
+
+
 def _clean_risk_df(df):
     """Clean risk DataFrame for export: remove internal columns, reorder, drop all-null ext_ columns."""
     # Drop internal columns
@@ -58,7 +120,7 @@ def _get_context_node_sheets(
         if not entities:
             continue
         sheet_name = f"CN_{type_id}"
-        df = pd.DataFrame([dict(e) for e in entities])
+        df = pd.DataFrame(_coerce_records(entities))
         # Drop internal Neo4j ID columns that should not round-trip
         for col in ["id", "element_id"]:
             if col in df.columns:
@@ -91,7 +153,7 @@ def _get_context_edge_sheets(
         if not edges:
             continue
         sheet_name = f"CE_{rel_type_id}"
-        df = pd.DataFrame([dict(e) for e in edges])
+        df = pd.DataFrame(_coerce_records(edges))
         # Drop internal ID columns
         for col in ["id", "element_id", "source_id", "target_id"]:
             if col in df.columns:
@@ -140,32 +202,33 @@ def export_to_excel(
     try:
         import pandas as pd
 
-        # Convert core data to DataFrames
-        df_risks = pd.DataFrame([dict(r) for r in risks]) if risks else pd.DataFrame()
-        df_influences = pd.DataFrame([dict(i) for i in influences]) if influences else pd.DataFrame()
-        df_mitigations = pd.DataFrame([dict(m) for m in mitigations]) if mitigations else pd.DataFrame()
-        df_mitigates = pd.DataFrame([dict(rel) for rel in mitigates_relationships]) if mitigates_relationships else pd.DataFrame()
+        # Convert core data to DataFrames — _coerce_records strips tz-aware
+        # datetimes (including neo4j.time.DateTime) before pandas sees them.
+        df_risks = pd.DataFrame(_coerce_records(risks)) if risks else pd.DataFrame()
+        df_influences = pd.DataFrame(_coerce_records(influences)) if influences else pd.DataFrame()
+        df_mitigations = pd.DataFrame(_coerce_records(mitigations)) if mitigations else pd.DataFrame()
+        df_mitigates = pd.DataFrame(_coerce_records(mitigates_relationships)) if mitigates_relationships else pd.DataFrame()
 
         # Build context sheets
         cn_sheets = _get_context_node_sheets(context_nodes_data or {})
         ce_sheets = _get_context_edge_sheets(context_edges_data or {})
 
-        # Write to Excel
+        # Write to Excel (_strip_tz is a last-resort guard for datetime64[ns,tz] columns)
         with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
             if not df_risks.empty:
-                df_risks = _clean_risk_df(df_risks)
+                df_risks = _strip_tz(_clean_risk_df(df_risks))
                 df_risks.to_excel(writer, sheet_name='Risks', index=False)
             if not df_influences.empty:
-                df_influences.to_excel(writer, sheet_name='Influences', index=False)
+                _strip_tz(df_influences).to_excel(writer, sheet_name='Influences', index=False)
             if not df_mitigations.empty:
-                df_mitigations.to_excel(writer, sheet_name='Mitigations', index=False)
+                _strip_tz(df_mitigations).to_excel(writer, sheet_name='Mitigations', index=False)
             if not df_mitigates.empty:
-                df_mitigates.to_excel(writer, sheet_name='Mitigates', index=False)
+                _strip_tz(df_mitigates).to_excel(writer, sheet_name='Mitigates', index=False)
             # Context sheets — one per ContextNode/ContextEdge type
             for sheet_name, df in cn_sheets.items():
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
+                _strip_tz(df).to_excel(writer, sheet_name=sheet_name, index=False)
             for sheet_name, df in ce_sheets.items():
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
+                _strip_tz(df).to_excel(writer, sheet_name=sheet_name, index=False)
 
         return True
 
@@ -201,11 +264,12 @@ def export_to_excel_bytes(
     try:
         import pandas as pd
 
-        # Convert core data to DataFrames
-        df_risks = pd.DataFrame([dict(r) for r in risks]) if risks else pd.DataFrame()
-        df_influences = pd.DataFrame([dict(i) for i in influences]) if influences else pd.DataFrame()
-        df_mitigations = pd.DataFrame([dict(m) for m in mitigations]) if mitigations else pd.DataFrame()
-        df_mitigates = pd.DataFrame([dict(rel) for rel in mitigates_relationships]) if mitigates_relationships else pd.DataFrame()
+        # Convert core data to DataFrames — _coerce_records strips tz-aware
+        # datetimes (including neo4j.time.DateTime) before pandas sees them.
+        df_risks = pd.DataFrame(_coerce_records(risks)) if risks else pd.DataFrame()
+        df_influences = pd.DataFrame(_coerce_records(influences)) if influences else pd.DataFrame()
+        df_mitigations = pd.DataFrame(_coerce_records(mitigations)) if mitigations else pd.DataFrame()
+        df_mitigates = pd.DataFrame(_coerce_records(mitigates_relationships)) if mitigates_relationships else pd.DataFrame()
 
         # Build context sheets
         cn_sheets = _get_context_node_sheets(context_nodes_data or {})
@@ -215,19 +279,19 @@ def export_to_excel_bytes(
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             if not df_risks.empty:
-                df_risks = _clean_risk_df(df_risks)
+                df_risks = _strip_tz(_clean_risk_df(df_risks))
                 df_risks.to_excel(writer, sheet_name='Risks', index=False)
             if not df_influences.empty:
-                df_influences.to_excel(writer, sheet_name='Influences', index=False)
+                _strip_tz(df_influences).to_excel(writer, sheet_name='Influences', index=False)
             if not df_mitigations.empty:
-                df_mitigations.to_excel(writer, sheet_name='Mitigations', index=False)
+                _strip_tz(df_mitigations).to_excel(writer, sheet_name='Mitigations', index=False)
             if not df_mitigates.empty:
-                df_mitigates.to_excel(writer, sheet_name='Mitigates', index=False)
+                _strip_tz(df_mitigates).to_excel(writer, sheet_name='Mitigates', index=False)
             # Context sheets
             for sheet_name, df in cn_sheets.items():
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
+                _strip_tz(df).to_excel(writer, sheet_name=sheet_name, index=False)
             for sheet_name, df in ce_sheets.items():
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
+                _strip_tz(df).to_excel(writer, sheet_name=sheet_name, index=False)
             # Ensure the workbook is never empty (openpyxl requires ≥1 sheet)
             if not writer.sheets:
                 pd.DataFrame([{"info": "RIM Export — no data"}]).to_excel(
@@ -238,8 +302,9 @@ def export_to_excel_bytes(
         return buffer.getvalue()
 
     except Exception as e:
-        print(f"Export error: {e}")
-        return None
+        import traceback
+        print(f"Export error: {e}\n{traceback.format_exc()}")
+        raise  # Re-raise so caller can surface the real error
 
 
 def export_analysis_report(

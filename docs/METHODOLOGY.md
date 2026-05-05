@@ -589,4 +589,4 @@ schema YAML. Until then, the exposure engine uses the hardcoded constant `TRI_AL
 
 ---
 
-*Last updated: March 2026 | Version 2.30.0*
+*Last updated: May 2026 | Version 2.32.0*

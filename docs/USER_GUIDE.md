@@ -10,7 +10,7 @@ Complete documentation for the Risk Influence Map application.
 2. [Risk Management](#risk-management)
 3. [Influence Mapping](#influence-mapping)
 4. [Mitigation Management](#mitigation-management)
-5. [TPO Management](#tpo-management)
+5. [Top Objective Management](#top-objective-management)
 6. [Exposure Calculation](#exposure-calculation)
 7. [Analysis Scopes](#analysis-scopes)
 8. [Visualization](#visualization)
@@ -231,11 +231,11 @@ Rate your confidence in the influence relationship (0.0 - 1.0):
 
 ---
 
-## TPO Management
+## Top Objective Management
 
-### What are TPOs?
+### What are Top Objectives?
 
-Top Program Objectives (TPOs) represent the key goals that risks may threaten:
+Top Objectives represent the key program goals that risks may threaten:
 
 - **Product Efficiency**: Technical performance objectives
 - **Business Efficiency**: Cost and schedule objectives
@@ -243,20 +243,20 @@ Top Program Objectives (TPOs) represent the key goals that risks may threaten:
 - **Sustainability**: Environmental and social objectives
 - **Safety**: Safety and regulatory objectives
 
-### Creating a TPO
+### Creating a Top Objective
 
-1. Go to **Data Management** page → **Context Nodes** tab → Select **TPO**
+1. Go to **Data Management** page → **Context Nodes** tab → Select **Top Objective**
 2. Fill the form:
    - **Reference**: Unique identifier (e.g., TPO-01)
    - **Name**: Objective description
    - **Cluster**: Category grouping
-3. Click **Create TPO**
+3. Click **Create**
 
-### Linking Risks to TPOs
+### Linking Risks to Top Objectives
 
-1. Go to **Data Management** page → **Context Edges** tab → Select **impacts_tpo**
+1. Go to **Data Management** page → **Context Edges** tab → Select **Impacts Top Objective**
 2. Select the **Risk** (typically Business)
-3. Select the **TPO** it threatens
+3. Select the **Top Objective** it threatens
 4. Set **Impact Level** (Low/Medium/High/Critical)
 5. Add optional description
 6. Click **Create Impact**
@@ -911,4 +911,4 @@ Each multi-select filter has **All** and **None** buttons for quick selection.
 
 ---
 
-*Last updated: March 2026 | Version 2.30.0*
+*Last updated: May 2026 | Version 2.32.0*

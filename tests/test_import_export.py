@@ -25,13 +25,14 @@ def _make_registry(extra_entity_types=None, extra_rel_types=None):
     if extra_entity_types:
         for type_id, props in extra_entity_types.items():
             et = MagicMock()
-            et.type_id = type_id
+            et.id = type_id          # EntityTypeDefinition uses .id
+            et.type_id = type_id     # kept for legacy test compat
             prop_objs = []
             for p in props:
                 pm = MagicMock()
                 pm.name = p
                 prop_objs.append(pm)
-            et.properties = prop_objs
+            et.attributes = prop_objs
             entity_types[type_id] = et
 
     registry.entity_types = entity_types
@@ -47,7 +48,7 @@ def _make_registry(extra_entity_types=None, extra_rel_types=None):
                 pm = MagicMock()
                 pm.name = p
                 prop_objs.append(pm)
-            rt.properties = prop_objs
+            rt.attributes = prop_objs
             rel_types[rel_id] = rt
 
     registry.relationship_types = rel_types
@@ -247,7 +248,7 @@ class TestImportContextNodes:
         assert schema_warnings
         w = schema_warnings[0]
         assert "unknown_field" in w
-        assert "context_nodes.scenario.properties" in w
+        assert "context_nodes.scenario.attributes" in w
 
     def test_valid_context_node_is_created(self, tmp_path):
         """Valid CN_ sheet row calls create_generic_entity and increments counter."""
@@ -325,7 +326,6 @@ class TestBackupService:
         from services.backup_service import export_graph_to_json
 
         registry = _make_registry(extra_entity_types={"scenario": ["name"]})
-        registry.entity_types["scenario"].type_id = "scenario"
 
         mgr = self._make_manager()
         mgr.get_entities.side_effect = lambda tid: (

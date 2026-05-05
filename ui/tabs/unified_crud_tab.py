@@ -431,7 +431,7 @@ def _render_edge_card(manager: RiskGraphManager, edge: Dict, definition: Relatio
             # Edit Mode
             st.markdown("### Edit Mode")
             edited_data = build_relationship_form(
-                definition, [], [], key_prefix=f"edit_form_{definition.id}_{edge_id}", default_values=edge, is_edit=True
+                definition, [], [], key_prefix=f"edit_form_{definition.id}_{edge_id}", existing_data=edge
             )
             
             c1, c2 = st.columns(2)

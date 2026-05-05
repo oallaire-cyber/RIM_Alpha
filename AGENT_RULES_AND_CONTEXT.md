@@ -32,7 +32,7 @@ Agents working on the backend or database layer must strictly adhere to these pr
 - `semantic: context` and `semantic: cluster` are traversable and displayable but carry **no computational weight**.
 
 ### D. Computed, Not Stored
-- Risk Level (e.g., distance to Top Programme Objective) is **dynamically computed** via Breadth-First Search at read time. Do not attempt to store or cache it as a static property on the node in the DB.
+- Risk Level (e.g., distance to Top Objective) is **dynamically computed** via Breadth-First Search at read time. Do not attempt to store or cache it as a static property on the node in the DB.
 
 ## 3. Parallel Multi-Agent Execution Rules
 The `ROADMAPv2.md` defines parallel work streams to prevent agent collisions.

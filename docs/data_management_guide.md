@@ -15,8 +15,8 @@ The exported `.xlsx` file contains:
 |---|---|
 | `Risks` | All Risk nodes |
 | `Influences` | Risk → Risk semantic influence relationships |
-| `TPOs` | Top Programme Objectives |
-| `TPO_Impacts` | Risk → TPO impact relationships |
+| `TPOs` | Top Objectives |
+| `TPO_Impacts` | Risk → Top Objective impact relationships |
 | `Mitigations` | All Mitigation nodes |
 | `Mitigates` | Mitigation → Risk relationships |
 | `CN_{type_id}` | One sheet per Context Node type defined in `schema.yaml` |

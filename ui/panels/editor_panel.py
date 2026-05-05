@@ -61,7 +61,7 @@ def render_inline_editor(manager: RiskGraphManager, entity_id: str, key_prefix: 
     with st.expander(f"📝 {emoji} {name} (Properties)", expanded=True):
         if st.session_state.get(edit_state_key):
             st.markdown("### Edit Mode")
-            edited_data = build_entity_form(definition, entity_data, key_prefix=f"form_{key_prefix}_{entity_id}", is_edit=True)
+            edited_data = build_entity_form(definition, entity_data, key_prefix=f"form_{key_prefix}_{entity_id}")
             
             c1, c2 = st.columns(2)
             with c1:
