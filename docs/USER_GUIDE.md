@@ -911,4 +911,4 @@ Each multi-select filter has **All** and **None** buttons for quick selection.
 
 ---
 
-*Last updated: March 2026 | Version 2.30.0*
+*Last updated: May 2026 | Version 2.32.0*
